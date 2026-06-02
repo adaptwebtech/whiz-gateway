@@ -57,7 +57,7 @@ FILES_TOUCHED:
 SCHEMA: migrated? yes|no
 TESTS: GREEN — N unit, M e2e
 LINT: OK  BUILD: OK
-NEXT: fullstack-doc-writer
+NEXT: fullstack-doc-writer-agent
 ```
 
 ## Anti-patterns

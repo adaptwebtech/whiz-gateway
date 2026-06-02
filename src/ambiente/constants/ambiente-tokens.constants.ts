@@ -1,0 +1,1 @@
+export const AMBIENTE_REPOSITORY = Symbol('AMBIENTE_REPOSITORY');

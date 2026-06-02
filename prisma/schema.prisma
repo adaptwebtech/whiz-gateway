@@ -1,0 +1,56 @@
+// Prisma schema — whiz-gateway (feature gateway-foundation)
+// Modelos compartilhados pelas demais features. Ver docs/specs/gateway-foundation.md §6.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// Onde a mensagem falhou no fluxo do gateway.
+enum StatusFalhaMensagem {
+  INBOX_NAO_REGISTRADA
+  FALHA_ENFILEIRAMENTO
+  NACK_RECEBIDO
+  FALHA_ENVIO
+  AMBIENTE_INDISPONIVEL
+}
+
+/// Destino lógico do re-envio. IDs fixos (1/2/3), sem autoincrement.
+model ambiente {
+  id   Int    @id
+  nome String
+  url  String
+  del  Boolean @default(false)
+
+  inboxes inboxes[]
+}
+
+/// Caixa que correlaciona um PID a um ambiente.
+model inboxes {
+  id          String   @id @default(uuid())
+  id_ambiente Int
+  pid         String   @unique
+  nome        String
+  del         Boolean  @default(false)
+  data        DateTime @default(now())
+
+  ambiente              ambiente                @relation(fields: [id_ambiente], references: [id])
+  fila_mensagens_mortas fila_mensagens_mortas[]
+}
+
+/// Webhook que falhou em algum ponto do fluxo.
+model fila_mensagens_mortas {
+  id        String              @id @default(uuid())
+  message   Json
+  id_inbox  String?
+  status    StatusFalhaMensagem
+  reenviado Boolean             @default(false)
+  del       Boolean             @default(false)
+  data      DateTime            @default(now())
+
+  inbox inboxes? @relation(fields: [id_inbox], references: [id])
+}

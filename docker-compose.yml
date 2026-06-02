@@ -1,0 +1,92 @@
+services:
+
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    hostname: rabbitmq
+    container_name: whiz_gateway_rabbitmq_${ENV}
+    restart: always
+    ports:
+      - "${RABBITMQ_PORT}:5672"
+      - "${RABBITMQ_UI_PORT}:15672"
+    volumes:
+      - ./volumes/rabbitmq:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    env_file:
+      - .env
+
+  pg:
+    image: postgres:16
+    container_name: whiz_gateway_pg_${ENV}
+    restart: always
+    volumes:
+      - ./volumes/pg:/var/lib/postgresql/data
+    ports:
+      - "${POSTGRES_PORT}:5432"
+    env_file:
+      - .env
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "${POSTGRES_USER}", "-d", "${POSTGRES_DB}"]
+      interval: 5s
+      retries: 5
+      start_period: 30s
+      timeout: 5s
+
+  redis:
+    image: redis:7
+    container_name: whiz_gateway_redis_${ENV}
+    restart: always
+    ports:
+      - "${REDIS_PORT}:6379"
+    volumes:
+      - ./volumes/redis:/data
+    command: ["redis-server", "--appendonly", "yes"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      retries: 5
+      start_period: 30s
+      timeout: 5s
+    env_file:
+      - .env
+
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile.migrate
+    container_name: whiz_gateway_migrate_${ENV}
+    restart: no
+    depends_on:
+      pg:
+        condition: service_healthy
+    env_file:
+      - .env
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: whiz_gateway_api_${ENV}
+    restart: always
+    depends_on:
+      pg:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO /dev/null http://localhost:3000/ || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    env_file:
+      - .env
+    ports:
+      - "${PORT}:3000"

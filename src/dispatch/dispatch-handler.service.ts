@@ -1,0 +1,95 @@
+import { HttpService } from '@nestjs/axios';
+import { Inject, Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { StatusFalhaMensagem } from '@prisma/client';
+import { firstValueFrom } from 'rxjs';
+import { AMBIENTE_REPOSITORY } from '../ambiente/constants/ambiente-tokens.constants';
+import type { IAmbienteRepository } from '../ambiente/interfaces/ambiente-repository.interface';
+import { DeadLetterService } from '../dead-letter/dead-letter.service';
+import { INBOX_REPOSITORY } from '../inbox/constants/inbox-tokens.constants';
+import type { IInboxRepository } from '../inbox/interfaces/inbox-repository.interface';
+import type { IDispatchHandler } from './interfaces/dispatch-handler.interface';
+
+@Injectable()
+export class DispatchHandlerService implements IDispatchHandler {
+  private readonly logger = new Logger(DispatchHandlerService.name);
+
+  constructor(
+    @Inject(INBOX_REPOSITORY) private readonly inboxRepo: IInboxRepository,
+    @Inject(AMBIENTE_REPOSITORY)
+    private readonly ambienteRepo: IAmbienteRepository,
+    private readonly http: HttpService,
+    private readonly deadLetterService: DeadLetterService,
+    private readonly config: ConfigService,
+  ) {}
+
+  async handle(inboxId: string, payload: unknown): Promise<void> {
+    const inbox = await this.inboxRepo.findById(inboxId);
+
+    if (!inbox || inbox.del) {
+      await this.deadLetterService.create({
+        message: payload,
+        id_inbox: inbox?.id ?? inboxId,
+        status: StatusFalhaMensagem.NACK_RECEBIDO,
+      });
+      return;
+    }
+
+    const ambiente = await this.ambienteRepo.findById(inbox.id_ambiente);
+
+    if (!ambiente || ambiente.del) {
+      await this.deadLetterService.create({
+        message: payload,
+        id_inbox: inbox.id,
+        status: StatusFalhaMensagem.AMBIENTE_INDISPONIVEL,
+      });
+      return;
+    }
+
+    const maxRetries = parseInt(
+      this.config.get<string>('DISPATCH_MAX_RETRIES') ?? '5',
+      10,
+    );
+    const baseMs = parseInt(
+      this.config.get<string>('DISPATCH_BACKOFF_BASE_MS') ?? '1000',
+      10,
+    );
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        await firstValueFrom(
+          this.http.post(ambiente.url, payload, {
+            headers: { 'Content-Type': 'application/json' },
+          }),
+        );
+        return;
+      } catch (err: unknown) {
+        this.logger.warn(
+          `Tentativa ${attempt}/${maxRetries} falhou para inbox ${inboxId}: ${String(err)}`,
+        );
+
+        if (attempt < maxRetries) {
+          await this.sleep(baseMs * Math.pow(2, attempt - 1));
+        } else {
+          const status =
+            err !== null &&
+            typeof err === 'object' &&
+            'response' in err &&
+            (err as Record<string, unknown>).response
+              ? StatusFalhaMensagem.FALHA_ENVIO
+              : StatusFalhaMensagem.AMBIENTE_INDISPONIVEL;
+
+          await this.deadLetterService.create({
+            message: payload,
+            id_inbox: inbox.id,
+            status,
+          });
+        }
+      }
+    }
+  }
+
+  private sleep(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+}
