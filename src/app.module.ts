@@ -14,6 +14,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { RabbitMQModule } from './rabbitmq/rabbitmq.module';
 import { RedisModule } from './redis/redis.module';
 import { WppModule } from './wpp/wpp.module';
+import { WppMessagesModule } from './wpp-messages/wpp-messages.module';
 
 /**
  * Módulo raiz. Agrega a infraestrutura base do gateway (FR-16, AC-14).
@@ -35,6 +36,7 @@ import { WppModule } from './wpp/wpp.module';
     ResendModule,
     ApiKeysModule,
     WppModule,
+    WppMessagesModule,
   ],
 })
 export class AppModule {}

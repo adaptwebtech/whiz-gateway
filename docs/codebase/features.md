@@ -134,3 +134,13 @@ Mapa de cada feature para seus arquivos. Autoritativo para descoberta (evita `gr
 | Service | `src/wpp/wpp.service.ts` |
 | Filter | `src/wpp/filters/wpp-auth.filter.ts` |
 | Config | `src/config/config.validation.ts` (META_GRAPH_URL, META_ACCESS_TOKEN adicionados) |
+
+## wpp-messages
+
+> Feature 3/8 do batch WhatsApp Meta Adapter. Domínio Messages — `POST /wpp/:phoneNumberId/messages` (envio, ~45 variantes por `type`) e `PUT /wpp/:phoneNumberId/messages` (mark-as-read). Proxy transparente: valida casca, repassa corpo íntegro à Meta via `WppService.forward`. Spec: [`docs/specs/wpp-messages.md`](../specs/wpp-messages.md)
+
+| Camada | Arquivos |
+|---|---|
+| Module | `src/wpp-messages/wpp-messages.module.ts` |
+| Controller | `src/wpp-messages/wpp-messages.controller.ts` |
+| DTOs | `src/wpp-messages/dto/send-message.dto.ts` · `src/wpp-messages/dto/mark-as-read.dto.ts` |
