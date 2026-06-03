@@ -130,6 +130,15 @@ Mapa de símbolos exportados → arquivo + assinatura. Autoritativo para descobe
 | `WppForwardResult` | interface | `src/wpp/wpp.service.ts` | `{ status: number, data: unknown }` |
 | `WppAuthFilter` | filtro (`@Catch(ForbiddenException)`) | `src/wpp/filters/wpp-auth.filter.ts` | converte `ForbiddenException` → `UnauthorizedException` (401) |
 
+## wpp-templates
+
+| Símbolo | Tipo | Arquivo | Assinatura / Notas |
+|---|---|---|---|
+| `WppTemplatesModule` | módulo (não-global) | `src/wpp-templates/wpp-templates.module.ts` | importa `WppModule`; declara `WppTemplatesController`; sem exports próprios |
+| `WppTemplatesController` | controller | `src/wpp-templates/wpp-templates.controller.ts` | `@Controller('wpp')` `@ApiTags('WhatsApp Meta Adapter — Templates')` `@ApiBearerAuth('bearer')` `@UseGuards(ApiKeyGuard)` `@UseFilters(WppAuthFilter)` `@UsePipes(ValidationPipe({whitelist:false,transform:true}))`; handlers: `getById`, `getTemplates`, `create`, `edit`, `deleteTemplates` |
+| `CreateTemplateDto` | DTO | `src/wpp-templates/dto/create-template.dto.ts` | `name: string (@IsString)`, `language: string (@IsString)`, `category: string (@IsString)`, `components: object[] (@IsArray)` — passthrough, sem validação de shape interno |
+| `EditTemplateDto` | DTO | `src/wpp-templates/dto/edit-template.dto.ts` | `name?: string (@IsOptional @IsString)`, `components?: object[] (@IsOptional @IsArray)`, `language?: string (@IsOptional @IsString)`, `category?: string (@IsOptional @IsString)` — todos opcionais, passthrough |
+
 ## reenvio-mensagens
 
 | Símbolo | Tipo | Arquivo | Assinatura / Notas |

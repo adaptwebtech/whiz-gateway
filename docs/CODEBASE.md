@@ -51,3 +51,4 @@ Validadas via Joi (`src/config/config.validation.ts`); acesso somente via `Confi
 | 7 | reenvio-mensagens | [spec](specs/reenvio-mensagens.md) | [impl](implementation/reenvio-mensagens.md) | Implementada (2026-06-02) |
 | 8 | api-keys-foundation | [spec](specs/api-keys-foundation.md) | [impl](implementation/api-keys-foundation.md) | Implementada (2026-06-03) |
 | 9 | wpp-adapter-core | [spec](specs/wpp-adapter-core.md) | [impl](implementation/wpp-adapter-core.md) | Implementada (2026-06-03) |
+| 10 | wpp-templates | [spec](specs/wpp-templates.md) | [impl](implementation/wpp-templates.md) | Implementada (2026-06-03) |

@@ -144,3 +144,13 @@ Mapa de cada feature para seus arquivos. Autoritativo para descoberta (evita `gr
 | Module | `src/wpp-messages/wpp-messages.module.ts` |
 | Controller | `src/wpp-messages/wpp-messages.controller.ts` |
 | DTOs | `src/wpp-messages/dto/send-message.dto.ts` · `src/wpp-messages/dto/mark-as-read.dto.ts` |
+
+## wpp-templates
+
+> Feature 4/8 do batch WhatsApp Meta Adapter. Domínio de message templates — leitura (por ID, por nome, listagem, namespace), criação, edição e remoção de templates de uma WABA. Proxy stateless: encaminha body e query params íntegros à Meta via `WppService.forward`. Sem persistência local. Spec: [`docs/specs/wpp-templates.md`](../specs/wpp-templates.md) · Impl: [`docs/implementation/wpp-templates.md`](../implementation/wpp-templates.md)
+
+| Camada | Arquivos |
+|---|---|
+| Module | `src/wpp-templates/wpp-templates.module.ts` |
+| Controller | `src/wpp-templates/wpp-templates.controller.ts` |
+| DTOs | `src/wpp-templates/dto/create-template.dto.ts` · `src/wpp-templates/dto/edit-template.dto.ts` |

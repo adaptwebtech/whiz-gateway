@@ -65,5 +65,6 @@ npm run test:cov   # cobertura
 | reenvio-mensagens | [docs/specs/reenvio-mensagens.md](docs/specs/reenvio-mensagens.md) | [docs/implementation/reenvio-mensagens.md](docs/implementation/reenvio-mensagens.md) |
 | api-keys-foundation | [docs/specs/api-keys-foundation.md](docs/specs/api-keys-foundation.md) | [docs/implementation/api-keys-foundation.md](docs/implementation/api-keys-foundation.md) |
 | wpp-adapter-core | [docs/specs/wpp-adapter-core.md](docs/specs/wpp-adapter-core.md) | [docs/implementation/wpp-adapter-core.md](docs/implementation/wpp-adapter-core.md) |
+| wpp-templates | [docs/specs/wpp-templates.md](docs/specs/wpp-templates.md) | [docs/implementation/wpp-templates.md](docs/implementation/wpp-templates.md) |
 
 Mapa do código: [docs/CODEBASE.md](docs/CODEBASE.md).
