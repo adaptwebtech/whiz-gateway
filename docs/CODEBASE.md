@@ -54,3 +54,4 @@ Validadas via Joi (`src/config/config.validation.ts`); acesso somente via `Confi
 | 2026-06-03 | wpp-messages | [spec](specs/2026-06-03-wpp-messages.md) | — | Implementada |
 | 2026-06-03 | wpp-templates | [spec](specs/2026-06-03-wpp-templates.md) | [impl](implementation/2026-06-03-wpp-templates.md) | Implementada |
 | 2026-06-03 | wpp-phone-numbers | [spec](specs/2026-06-03-wpp-phone-numbers.md) | [impl](implementation/2026-06-03-wpp-phone-numbers.md) | Implementada |
+| 2026-06-03 | wpp-media-business-profiles | [spec](specs/2026-06-03-wpp-media-business-profiles.md) | [impl](implementation/2026-06-03-wpp-media-business-profiles.md) | Implementada |

@@ -4,6 +4,11 @@
 export const DLQ_NAME = 'inbox.dead-letter';
 
 /**
+ * Fila estática de jobs de upload de mídia.
+ */
+export const MEDIA_UPLOAD_QUEUE = 'media.upload';
+
+/**
  * Argumentos padrão de dynamic queue (FR-8). Toda fila de inbox é declarada
  * com estes argumentos para roteamento de dead-letter.
  */

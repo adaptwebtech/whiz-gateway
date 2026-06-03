@@ -8,9 +8,10 @@ Mapa de símbolos exportados → arquivo + assinatura. Autoritativo para descobe
 |---|---|---|---|
 | `PrismaService` | classe (`@Injectable`) | `src/prisma/prisma.service.ts` | `extends PrismaClient implements OnModuleInit, OnModuleDestroy`; `$connect`/`$disconnect` |
 | `PrismaModule` | módulo (`@Global`) | `src/prisma/prisma.module.ts` | provides/exports `PrismaService` |
-| `RabbitMQService` | classe (`@Injectable`) | `src/rabbitmq/rabbitmq.service.ts` | implementa `IRabbitMQService`; `assertQueue`/`deleteQueue`/`startConsuming`/`stopConsuming`/`sendToQueue`/`isConnected`/`defaultDlqArgs` |
+| `RabbitMQService` | classe (`@Injectable`) | `src/rabbitmq/rabbitmq.service.ts` | implementa `IRabbitMQService`; `assertQueue`/`deleteQueue`/`startConsuming`/`stopConsuming`/`sendToQueue`/`publish` (delega a `sendToQueue`)/`isConnected`/`defaultDlqArgs` |
 | `RabbitMQModule` | módulo (`@Global`) | `src/rabbitmq/rabbitmq.module.ts` | provê `RABBITMQ_SERVICE` (useExisting) + `RabbitMQService`; usado apenas para DLQ |
-| `IRabbitMQService` | interface | `src/rabbitmq/interfaces/rabbitmq-service.interface.ts` | contrato do serviço de filas |
+| `IRabbitMQService` | interface | `src/rabbitmq/interfaces/rabbitmq-service.interface.ts` | contrato do serviço de filas; inclui `publish(name, payload)` (serializa job como JSON) |
+| `MEDIA_UPLOAD_QUEUE` | const | `src/rabbitmq/constants/rabbitmq-queue.constants.ts` | `'media.upload'` — fila estática de jobs de upload de mídia |
 | `MessageHandler` | type | `src/rabbitmq/interfaces/rabbitmq-service.interface.ts` | `(payload: Buffer) => Promise<void> \| void` |
 | `RABBITMQ_SERVICE` | token (Symbol) | `src/rabbitmq/constants/rabbitmq-tokens.constants.ts` | token de injeção de `IRabbitMQService` |
 | `DLQ_NAME` | const | `src/rabbitmq/constants/rabbitmq-queue.constants.ts` | `'inbox.dead-letter'` |
@@ -125,7 +126,7 @@ Mapa de símbolos exportados → arquivo + assinatura. Autoritativo para descobe
 |---|---|---|---|
 | `WppModule` | módulo (não-global) | `src/wpp/wpp.module.ts` | importa `HttpModule`; exporta `WppService`; registrado em `AppModule` |
 | `WppController` | controller | `src/wpp/wpp.controller.ts` | `@Controller('wpp')`; `@UseGuards(ApiKeyGuard)`; `GET /wpp/debug_token` |
-| `WppService` | classe (`@Injectable`) | `src/wpp/wpp.service.ts` | `forward(method: string, path: string, opts: WppForwardOptions): Promise<WppForwardResult>` |
+| `WppService` | classe (`@Injectable`) | `src/wpp/wpp.service.ts` | `forward(method, path, opts): Promise<WppForwardResult>` · `forwardMultipart(subPath, tmpFilePath, contentType, messagingProduct): Promise<WppForwardResult>` (lê arquivo do disco, monta `form-data` com `messaging_product`+`file`) · `forwardBinary(subPath, tmpFilePath, contentType, fileOffset): Promise<WppForwardResult>` (POST binário com headers `Content-Type`+`file_offset`) |
 | `WppForwardOptions` | interface | `src/wpp/wpp.service.ts` | `{ query?, body?, headers?, contentType? }` |
 | `WppForwardResult` | interface | `src/wpp/wpp.service.ts` | `{ status: number, data: unknown }` |
 | `WppAuthFilter` | filtro (`@Catch(ForbiddenException)`) | `src/wpp/filters/wpp-auth.filter.ts` | converte `ForbiddenException` → `UnauthorizedException` (401) |
@@ -154,6 +155,21 @@ Mapa de símbolos exportados → arquivo + assinatura. Autoritativo para descobe
 | `SetTwoStepPinDto` | DTO | `src/wpp-phone-numbers/dto/set-two-step-pin.dto.ts` | `pin: string` |
 | `RegisterPhoneDto` | DTO | `src/wpp-phone-numbers/dto/register-phone.dto.ts` | `messaging_product: string`, `pin: string` |
 | `OverrideCallbackDto` | DTO | `src/wpp-phone-numbers/dto/override-callback.dto.ts` | `override_callback_uri?: string`, `verify_token?: string` |
+
+## wpp-media-business-profiles
+
+| Símbolo | Tipo | Arquivo | Assinatura / Notas |
+|---|---|---|---|
+| `WppMediaBusinessProfilesModule` | módulo (não-global) | `src/wpp-media-business-profiles/wpp-media-business-profiles.module.ts` | importa `WppModule`, `ApiKeysModule`, `ScheduleModule.forRoot()`; declara 3 controllers; provê consumer + cleanup; registrado em `AppModule` |
+| `WppMediaController` | controller | `src/wpp-media-business-profiles/wpp-media.controller.ts` | `@Controller('wpp')` `@ApiTags('Mídia WhatsApp')` `@UseGuards(ApiKeyGuard)` `@UseFilters(WppAuthFilter)`; injeta `WppService` + `RABBITMQ_SERVICE`; handlers: `uploadMedia` (POST `:phoneNumberId/media`, 202, busboy) · `getMedia` (GET `:mediaId`) · `deleteMedia` (DELETE `:mediaId`) |
+| `WppResumableUploadController` | controller | `src/wpp-media-business-profiles/wpp-resumable-upload.controller.ts` | `@Controller('wpp')` `@ApiTags('Upload Resumível WhatsApp')`; injeta `WppService` + `RABBITMQ_SERVICE`; handlers: `createUploadSession` (POST `app/uploads`) · `uploadBinary` (POST `uploads/:uploadId`, 202, corpo binário) · `getUploadStatus` (GET `uploads/:uploadId`) |
+| `WppBusinessProfileController` | controller | `src/wpp-media-business-profiles/wpp-business-profile.controller.ts` | `@Controller('wpp')` `@ApiTags('Perfil de Negócio WhatsApp')`; injeta `WppService`; handlers: `getBusinessProfile` (GET) · `updateBusinessProfile` (POST `UpdateBusinessProfileDto`) |
+| `WppMediaUploadConsumerService` | classe (`@Injectable`) | `src/wpp-media-business-profiles/wpp-media-upload-consumer.service.ts` | implementa `OnApplicationBootstrap`; `@Optional() @Inject(RABBITMQ_SERVICE)`; consome `MEDIA_UPLOAD_QUEUE`; `handleJob` → `forwardMultipart`/`forwardBinary`, `unlink` em `finally`, webhook se `callbackUrl`; `fireWebhookWithRetry` (5 retries, backoff 1 s→16 s, `fetch`) |
+| `WppMediaCleanupService` | classe (`@Injectable`) | `src/wpp-media-business-profiles/wpp-media-cleanup.service.ts` | `@Cron('0 * * * *')` `cleanup()`; remove arquivos em `/tmp/wpp-uploads` com `mtime` > 1 h; loga nome |
+| `MediaUploadJobDto` | DTO (payload de fila) | `src/wpp-media-business-profiles/dto/media-upload-job.dto.ts` | `jobId`, `type: 'media' \| 'resumable-binary'`, `subPath`, `tmpFilePath`, `contentType`, `messagingProduct?`, `fileOffset?`, `callbackUrl?` |
+| `UpdateBusinessProfileDto` | DTO | `src/wpp-media-business-profiles/dto/update-business-profile.dto.ts` | `messaging_product: string`; opcionais `about?`, `address?`, `description?`, `email?`, `websites?: string[]`, `vertical?`, `profile_picture_handle?` |
+| `UploadMediaDto` | DTO | `src/wpp-media-business-profiles/dto/upload-media.dto.ts` | `messaging_product: string`, `callback_url?: string` — documentação Swagger do form-data |
+| `WebhookCallbackDto` | DTO | `src/wpp-media-business-profiles/dto/webhook-callback.dto.ts` | `jobId`, `status: 'done' \| 'failed'`, `payload?`, `error?` |
 
 ## reenvio-mensagens
 

@@ -108,6 +108,10 @@ export class RabbitMQService
     await this.channelWrapper.sendToQueue(name, buffer);
   }
 
+  async publish(name: string, payload: unknown): Promise<void> {
+    await this.sendToQueue(name, payload);
+  }
+
   /** Reuso do argumento padrão de dynamic queue (FR-8). */
   get defaultDlqArgs(): typeof DEFAULT_DLQ_ARGS {
     return DEFAULT_DLQ_ARGS;

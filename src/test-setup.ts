@@ -1,6 +1,6 @@
 process.env.DATABASE_URL =
   process.env.DATABASE_URL ||
-  'postgresql://postgres:postgres@localhost:5433/whiz_gateway';
+  'postgresql://postgres:postgres@localhost:5432/whiz_gateway';
 process.env.RABBITMQ_URL = process.env.RABBITMQ_URL || 'amqp://localhost';
 process.env.META_VERIFY_TOKEN =
   process.env.META_VERIFY_TOKEN || 'test-verify-token';

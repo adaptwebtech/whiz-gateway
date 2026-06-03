@@ -13,4 +13,6 @@ export interface IRabbitMQService {
   startConsuming(name: string, handler: MessageHandler): Promise<void>;
   stopConsuming(name: string): Promise<void>;
   sendToQueue(name: string, payload: unknown): Promise<void>;
+  /** Publica um job serializado como JSON na fila especificada. */
+  publish(name: string, payload: unknown): Promise<void>;
 }
