@@ -15,6 +15,7 @@ import { RabbitMQModule } from './rabbitmq/rabbitmq.module';
 import { RedisModule } from './redis/redis.module';
 import { WppModule } from './wpp/wpp.module';
 import { WppMessagesModule } from './wpp-messages/wpp-messages.module';
+import { WppTemplatesModule } from './wpp-templates/wpp-templates.module';
 
 /**
  * Módulo raiz. Agrega a infraestrutura base do gateway (FR-16, AC-14).
@@ -37,6 +38,7 @@ import { WppMessagesModule } from './wpp-messages/wpp-messages.module';
     ApiKeysModule,
     WppModule,
     WppMessagesModule,
+    WppTemplatesModule,
   ],
 })
 export class AppModule {}
