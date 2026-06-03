@@ -154,3 +154,21 @@ Mapa de cada feature para seus arquivos. Autoritativo para descoberta (evita `gr
 | Module | `src/wpp-templates/wpp-templates.module.ts` |
 | Controller | `src/wpp-templates/wpp-templates.controller.ts` |
 | DTOs | `src/wpp-templates/dto/create-template.dto.ts` · `src/wpp-templates/dto/edit-template.dto.ts` |
+
+## wpp-phone-numbers
+
+> Feature 5/8 do batch WhatsApp Meta Adapter. Proxy puro para operações de números de telefone, registro, WABA, inscrições de app e debug de token — 13 rotas sob `/wpp/*`, sem persistência local. Spec: [`docs/specs/2026-06-03-wpp-phone-numbers.md`](../specs/2026-06-03-wpp-phone-numbers.md) · Impl: [`docs/implementation/2026-06-03-wpp-phone-numbers.md`](../implementation/2026-06-03-wpp-phone-numbers.md)
+
+| Camada | Arquivo |
+|---|---|
+| Módulo | `src/wpp-phone-numbers/wpp-phone-numbers.module.ts` |
+| Controller — Números | `src/wpp-phone-numbers/wpp-phone-numbers.controller.ts` |
+| Controller — Registro | `src/wpp-phone-numbers/wpp-registration.controller.ts` |
+| Controller — WABA | `src/wpp-phone-numbers/wpp-waba.controller.ts` |
+| Controller — Inscrições | `src/wpp-phone-numbers/wpp-subscriptions.controller.ts` |
+| Controller — Get Started | `src/wpp-phone-numbers/wpp-get-started.controller.ts` |
+| DTO | `src/wpp-phone-numbers/dto/request-code.dto.ts` |
+| DTO | `src/wpp-phone-numbers/dto/verify-code.dto.ts` |
+| DTO | `src/wpp-phone-numbers/dto/set-two-step-pin.dto.ts` |
+| DTO | `src/wpp-phone-numbers/dto/register-phone.dto.ts` |
+| DTO | `src/wpp-phone-numbers/dto/override-callback.dto.ts` |

@@ -14,6 +14,7 @@ Mapa global dos contextos (módulos de domínio) do whiz-gateway e como se relac
 - [Redis](../../src/redis/context.md) — infraestrutura global de cache via `ioredis`; hash `apikeys:valid` como cache de autenticação
 - [WppAdapterCore](../../src/wpp/context.md) — proxy stateless para a WhatsApp Cloud API; injeta autenticação Meta e normaliza erros de transporte
 - [WppTemplates](../../src/wpp-templates/context.md) — proxy stateless para operações de message templates (leitura, criação, edição, remoção) de uma WABA; sem persistência local
+- [WppPhoneNumbers](../../src/wpp-phone-numbers/context.md) — proxy stateless para gestão de números de telefone, registro, WABA, inscrições de app e debug de token; 13 rotas, sem persistência local
 
 ## Relationships
 
@@ -26,3 +27,5 @@ Mapa global dos contextos (módulos de domínio) do whiz-gateway e como se relac
 - **WppAdapterCore → ApiKeys**: `WppController` usa `ApiKeyGuard` (de `ApiKeysModule`) para autenticar requisições `/wpp/*` via header `X-API-KEY`
 - **WppTemplates → WppAdapterCore**: `WppTemplatesController` injeta `WppService` (via `WppModule`) e delega todos os forwards para a Meta
 - **WppTemplates → ApiKeys**: `WppTemplatesController` usa `ApiKeyGuard` via `@UseGuards` para autenticar requisições de templates via header `X-API-KEY`
+- **WppPhoneNumbers → WppAdapterCore**: os cinco controllers de `WppPhoneNumbersModule` injetam `WppService` (via `WppModule`) e delegam todos os forwards à Meta
+- **WppPhoneNumbers → ApiKeys**: todos os controllers usam `ApiKeyGuard` para autenticar requisições via header `X-API-KEY`
