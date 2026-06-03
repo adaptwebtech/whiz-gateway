@@ -42,14 +42,14 @@ Validadas via Joi (`src/config/config.validation.ts`); acesso somente via `Confi
 
 | Data | Feature | Spec | Implementação | Status |
 |---|---|---|---|---|
-| 2026-06-01 | gateway-foundation | [spec](specs/gateway-foundation.md) | [impl](implementation/gateway-foundation.md) | Implementada |
-| 2026-06-02 | cadastro-ambientes | [spec](specs/cadastro-ambientes.md) | [impl](implementation/cadastro-ambientes.md) | Implementada |
-| 2026-06-02 | cadastro-inboxes | [spec](specs/cadastro-inboxes.md) | [impl](implementation/cadastro-inboxes.md) | Implementada |
-| 2026-06-02 | fila-mensagens-mortas | [spec](specs/fila-mensagens-mortas.md) | [impl](implementation/fila-mensagens-mortas.md) | Implementada |
-| 2026-06-02 | webhook-ingestao | [spec](specs/webhook-ingestao.md) | [impl](implementation/webhook-ingestao.md) | Implementada |
-| 2026-06-02 | despacho-mensagens | [spec](specs/despacho-mensagens.md) | [impl](implementation/despacho-mensagens.md) | Implementada |
-| 2026-06-02 | reenvio-mensagens | [spec](specs/reenvio-mensagens.md) | [impl](implementation/reenvio-mensagens.md) | Implementada |
-| 2026-06-03 | api-keys-foundation | [spec](specs/api-keys-foundation.md) | [impl](implementation/api-keys-foundation.md) | Implementada |
-| 2026-06-03 | wpp-adapter-core | [spec](specs/wpp-adapter-core.md) | [impl](implementation/wpp-adapter-core.md) | Implementada |
-| 2026-06-03 | wpp-messages | [spec](specs/wpp-messages.md) | — | Implementada |
-| 2026-06-03 | wpp-templates | [spec](specs/wpp-templates.md) | [impl](implementation/wpp-templates.md) | Implementada |
+| 2026-06-01 | gateway-foundation | [spec](specs/2026-06-01-gateway-foundation.md) | [impl](implementation/2026-06-01-gateway-foundation.md) | Implementada |
+| 2026-06-02 | cadastro-ambientes | [spec](specs/2026-06-02-cadastro-ambientes.md) | [impl](implementation/2026-06-02-cadastro-ambientes.md) | Implementada |
+| 2026-06-02 | cadastro-inboxes | [spec](specs/2026-06-02-cadastro-inboxes.md) | [impl](implementation/2026-06-02-cadastro-inboxes.md) | Implementada |
+| 2026-06-02 | fila-mensagens-mortas | [spec](specs/2026-06-02-fila-mensagens-mortas.md) | [impl](implementation/2026-06-02-fila-mensagens-mortas.md) | Implementada |
+| 2026-06-02 | webhook-ingestao | [spec](specs/2026-06-02-webhook-ingestao.md) | [impl](implementation/2026-06-02-webhook-ingestao.md) | Implementada |
+| 2026-06-02 | despacho-mensagens | [spec](specs/2026-06-02-despacho-mensagens.md) | [impl](implementation/2026-06-02-despacho-mensagens.md) | Implementada |
+| 2026-06-02 | reenvio-mensagens | [spec](specs/2026-06-02-reenvio-mensagens.md) | [impl](implementation/2026-06-02-reenvio-mensagens.md) | Implementada |
+| 2026-06-03 | api-keys-foundation | [spec](specs/2026-06-03-api-keys-foundation.md) | [impl](implementation/2026-06-03-api-keys-foundation.md) | Implementada |
+| 2026-06-03 | wpp-adapter-core | [spec](specs/2026-06-03-wpp-adapter-core.md) | [impl](implementation/2026-06-03-wpp-adapter-core.md) | Implementada |
+| 2026-06-03 | wpp-messages | [spec](specs/2026-06-03-wpp-messages.md) | — | Implementada |
+| 2026-06-03 | wpp-templates | [spec](specs/2026-06-03-wpp-templates.md) | [impl](implementation/2026-06-03-wpp-templates.md) | Implementada |

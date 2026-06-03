@@ -5,7 +5,7 @@ description: Phase-1 of /feature via feature-router — grill, then write docs/s
 
 # Backend Spec with Mermaid
 
-Phase 1: produce `docs/specs/<feature>.md` (kebab-case). Spec = contract every downstream phase must satisfy. **Grill before you write.**
+Phase 1: produce `docs/specs/<YYYY-MM-DD>-<feature>.md` (date = today, name kebab-case). Spec = contract every downstream phase must satisfy. **Grill before you write.**
 
 ## Workflow
 

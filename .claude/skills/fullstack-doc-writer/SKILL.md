@@ -9,7 +9,7 @@ Phase 4 exception: Read `src/<feature>/` files listed in features.md/symbols.md.
 
 ## Output
 
-`docs/implementation/<feature>.md`. Template + source-extraction table + workflow in [`DOC-TEMPLATE.md`](./DOC-TEMPLATE.md).
+`docs/implementation/<YYYY-MM-DD>-<feature>.md` (date = today). Template + source-extraction table + workflow in [`DOC-TEMPLATE.md`](./DOC-TEMPLATE.md).
 
 ## Mandatory map sync (same commit)
 

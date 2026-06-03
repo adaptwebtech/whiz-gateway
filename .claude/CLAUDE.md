@@ -54,7 +54,7 @@ Hooks block phase skills outside pipeline; never call directly. `router-prompts`
 - `Read src/` for inspiration — use skeletons
 
 **Permitted:**
-- `Read docs/specs/*.md`, `docs/implementation/<feature>.md`
+- `Read docs/specs/*.md`, `docs/implementation/<YYYY-MM-DD>-<feature>.md`
 - `grep`/`find` ONLY for internal logic inside already-identified file
 - Phase 4 doc skill: `Read src/<feature>/` for files in features.md/symbols.md
 
@@ -66,10 +66,10 @@ Stop and ask: scope, entities, rules, naming, edge cases, env. Never infer "reas
 
 ## Pipeline (never skip)
 
-1. **Spec** → `docs/specs/<feature>.md` — AC-N Given/When/Then
+1. **Spec** → `docs/specs/<YYYY-MM-DD>-<feature>.md` — AC-N Given/When/Then
 2. **Tests** → one per AC, RED before phase 3
 3. **Code** → tests GREEN, lint 0, build 0
-4. **Doc** → `docs/implementation/<feature>.md` + README + map updated
+4. **Doc** → `docs/implementation/<YYYY-MM-DD>-<feature>.md` + README + map updated
 
 §7 has HTTP endpoints → backend active. New module/file/env/schema → update map before phase 4.
 

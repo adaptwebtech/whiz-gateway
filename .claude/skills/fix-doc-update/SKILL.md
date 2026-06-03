@@ -31,8 +31,8 @@ Dispatch `fix-doc-update-agent`.
 1. Validate preconditions.
 2. Invoke agent with triage path + branch.
 3. Agent reads triage, `git diff --name-only`, syncs:
-   - `docs/specs/<feature>.md` §17 (always) + body if §5 indicated behavior delta.
-   - `docs/implementation/<feature>.md` §13 + drifted sections.
+   - `docs/specs/<YYYY-MM-DD>-<feature>.md` §17 (always) + body if §5 indicated behavior delta.
+   - `docs/implementation/<YYYY-MM-DD>-<feature>.md` §13 + drifted sections.
    - `docs/changelogs/<feature>.md` (append dated entry).
    - `docs/codebase/features.md`, `erd.md`, `symbols.md` per table below.
 4. Hotfix: backfill §2/§5/§6/§7 + "Retrospectiva do incidente".

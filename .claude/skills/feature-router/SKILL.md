@@ -9,7 +9,7 @@ description: /feature entry — orchestrates greenfield pipeline spec→tests→
 
 1. **Normalize name.** Kebab-case. No arg → ask.
 2. **Not greenfield?** Listed in `docs/codebase/features.md` (§8) → "Feature exists. Use `/fix`." Stop.
-3. **Detect phase (resume):** no artifacts → `spec` · +spec(AC) → `tests` · +`*.spec.ts` → `code` · +impl `.ts` → `doc` · +`docs/implementation/<name>.md` → confirm. (paths: `docs/specs/<name>.md`, `src/<name>/`, `docs/implementation/<name>.md`)
+3. **Detect phase (resume):** no artifacts → `spec` · +spec(AC) → `tests` · +`*.spec.ts` → `code` · +impl `.ts` → `doc` · +`docs/implementation/<YYYY-MM-DD>-<name>.md` → confirm. (paths: `docs/specs/<YYYY-MM-DD>-<name>.md`, `src/<name>/`, `docs/implementation/<YYYY-MM-DD>-<name>.md`)
 4. **Block if active:** phase ∈ {spec,tests,code,doc} in `feature-phase.txt` AND `feature-name.txt` differs → "Pipeline active for '<other>'. Finish or `rm .claude/state/feature-*.txt`". Same name → resume.
 5. **Autonomy:** the `router-prompts` hook injects the pause/auto question. Record the answer to `.claude/state/feature-autonomy.txt`.
 6. **Write state:** `feature-name.txt`=<name> · `feature-phase.txt`=<phase> · `feature-autonomy.txt`=<pause|auto>.
@@ -31,7 +31,7 @@ Pre-phase-3 (pause only): the `router-prompts` hook injects the test-runner ques
 Set `feature-phase.txt = done` (Stop hook clears `feature-*.txt`). Display:
 ```
 FEATURE PIPELINE COMPLETE
-  spec: docs/specs/<name>.md  impl: docs/implementation/<name>.md
+  spec: docs/specs/<YYYY-MM-DD>-<name>.md  impl: docs/implementation/<YYYY-MM-DD>-<name>.md
   tests: GREEN  build: 0
 ```
 

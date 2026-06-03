@@ -29,10 +29,10 @@ Use §8/§13 to identify existing feature docs.
 
 1. Read triage doc.
 2. `git diff --name-only HEAD` — confirm touched files.
-3. **Spec sync (`docs/specs/<feature>.md`):**
+3. **Spec sync (`docs/specs/<YYYY-MM-DD>-<feature>.md`):**
    - §17 (changelog) dated entry.
    - §3/§5 indicates FR/AC change → edit affected FR-N/AC-N. Refactor §5=nenhuma → §17 only.
-4. **Impl sync (`docs/implementation/<feature>.md`):**
+4. **Impl sync (`docs/implementation/<YYYY-MM-DD>-<feature>.md`):**
    - §13 dated entry.
    - Update drifted sections (architecture, sequence, endpoints) from modified files.
 5. **Changelog (`docs/changelogs/<feature>.md`):** append-only, create if absent:
@@ -64,8 +64,8 @@ Use §8/§13 to identify existing feature docs.
 ```
 PHASE: doc-update
 DOCS_UPDATED:
-  - docs/specs/<feature>.md (§17)
-  - docs/implementation/<feature>.md (§13)
+  - docs/specs/<YYYY-MM-DD>-<feature>.md (§17)
+  - docs/implementation/<YYYY-MM-DD>-<feature>.md (§13)
   - docs/changelogs/<feature>.md (append)
   - docs/codebase/symbols.md [if applicable]
 STATE: cleared

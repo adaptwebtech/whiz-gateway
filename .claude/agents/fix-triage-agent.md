@@ -17,7 +17,7 @@ Dispatched by `fix-triage`. Produce `docs/fixes/<feature>-<slug>.md` (7 sections
 ## Rules
 
 **Forbidden:** broad `Grep`/`Glob` in `src/` · invent files not in map/stacktrace.
-**Allowed:** Read `docs/CODEBASE.md`, `docs/specs/<feature>.md`, `docs/implementation/<feature>.md`. Read stacktrace files (max 3). Read §10 symbols cited. Grep for symbol inside file already identified.
+**Allowed:** Read `docs/CODEBASE.md`, `docs/specs/<YYYY-MM-DD>-<feature>.md`, `docs/implementation/<feature>.md`. Read stacktrace files (max 3). Read §10 symbols cited. Grep for symbol inside file already identified.
 
 ## Triage structure
 
@@ -40,7 +40,7 @@ Dispatched by `fix-triage`. Produce `docs/fixes/<feature>-<slug>.md` (7 sections
 ## Workflow
 
 1. Read stacktrace/symptom from prompt. Confirm feature in §8.
-2. Read `docs/specs/<feature>.md` if exists.
+2. Read `docs/specs/<YYYY-MM-DD>-<feature>.md` if exists.
 3. Read stacktrace files (max 3).
 4. Read §10 symbols cited in symptom.
 5. §3 root cause from evidence — no speculation.
