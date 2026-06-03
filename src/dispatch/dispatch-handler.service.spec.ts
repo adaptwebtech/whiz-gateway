@@ -1,6 +1,5 @@
 /**
  * Unit tests for DispatchHandlerService — despacho-mensagens (Feature 6).
- * Tests are RED: the implementation files do not exist yet.
  */
 
 import { HttpService } from '@nestjs/axios';
@@ -9,8 +8,9 @@ import { StatusFalhaMensagem } from '@prisma/client';
 import { AxiosResponse } from 'axios';
 import { of, throwError } from 'rxjs';
 import { AmbienteResponseDto } from '../ambiente/dto/ambiente-response.dto';
-import { DeadLetterService } from '../dead-letter/dead-letter.service';
 import { InboxResponseDto } from '../inbox/dto/inbox-response.dto';
+import type { IRabbitMQService } from '../rabbitmq/interfaces/rabbitmq-service.interface';
+import { DLQ_NAME } from '../rabbitmq/constants/rabbitmq-queue.constants';
 import { DispatchHandlerService } from './dispatch-handler.service';
 import type { IDispatchHandler } from './interfaces/dispatch-handler.interface';
 
@@ -74,7 +74,7 @@ let ambienteRepo: {
 };
 
 let httpService: jest.Mocked<Pick<HttpService, 'post'>>;
-let deadLetterService: jest.Mocked<Pick<DeadLetterService, 'create'>>;
+let mq: jest.Mocked<IRabbitMQService>;
 let configService: jest.Mocked<Pick<ConfigService, 'get'>>;
 
 let service: DispatchHandlerService;
@@ -101,8 +101,12 @@ beforeEach(() => {
     post: jest.fn(),
   };
 
-  deadLetterService = {
-    create: jest.fn(),
+  mq = {
+    assertQueue: jest.fn().mockResolvedValue(undefined),
+    deleteQueue: jest.fn().mockResolvedValue(undefined),
+    startConsuming: jest.fn().mockResolvedValue(undefined),
+    stopConsuming: jest.fn().mockResolvedValue(undefined),
+    sendToQueue: jest.fn().mockResolvedValue(undefined),
   };
 
   configService = {
@@ -117,7 +121,7 @@ beforeEach(() => {
     inboxRepo as any,
     ambienteRepo as any,
     httpService as any,
-    deadLetterService as any,
+    mq as any,
     configService as any,
   );
 });
@@ -127,10 +131,10 @@ afterEach(() => {
 });
 
 // ---------------------------------------------------------------------------
-// AC-1: 2xx → POST to ambiente.url + ACK (no dead-letter)
+// AC-1: 2xx → POST to ambiente.url, no dead-letter
 // ---------------------------------------------------------------------------
 
-it('AC-1: Given a message in queue and environment responding 2xx, when handler processes it, then POSTs to ambiente.url with raw payload and does not call deadLetterService', async () => {
+it('AC-1: Given a message and environment responding 2xx, when handler processes, then POSTs to ambiente.url and does not call mq.sendToQueue', async () => {
   // Arrange
   const inbox = makeInbox();
   const ambiente = makeAmbiente();
@@ -149,7 +153,7 @@ it('AC-1: Given a message in queue and environment responding 2xx, when handler 
     payload,
     expect.anything(),
   );
-  expect(deadLetterService.create).not.toHaveBeenCalled();
+  expect(mq.sendToQueue).not.toHaveBeenCalled();
 });
 
 // ---------------------------------------------------------------------------
@@ -172,7 +176,6 @@ it('AC-2: Given environment responds non-2xx, when handler processes, then retri
       Object.assign(new Error('HTTP 500'), { response: { status: 500 } }),
     ),
   );
-  deadLetterService.create.mockResolvedValue({} as any);
 
   configService.get.mockImplementation((key: string) => {
     if (key === 'DISPATCH_MAX_RETRIES') return String(maxRetries);
@@ -192,7 +195,7 @@ it('AC-2: Given environment responds non-2xx, when handler processes, then retri
 });
 
 // ---------------------------------------------------------------------------
-// AC-3: exponential backoff — wait for attempt n is B * 2^(n-1)
+// AC-3: exponential backoff
 // ---------------------------------------------------------------------------
 
 it('AC-3: Given exponential backoff with base B, when retrying, then wait for attempt n is B * 2^(n-1)', async () => {
@@ -212,7 +215,6 @@ it('AC-3: Given exponential backoff with base B, when retrying, then wait for at
       Object.assign(new Error('HTTP 500'), { response: { status: 500 } }),
     ),
   );
-  deadLetterService.create.mockResolvedValue({} as any);
 
   configService.get.mockImplementation((key: string) => {
     if (key === 'DISPATCH_MAX_RETRIES') return String(maxRetries);
@@ -225,23 +227,22 @@ it('AC-3: Given exponential backoff with base B, when retrying, then wait for at
   await jest.runAllTimersAsync();
   await handlePromise;
 
-  // Assert — backoff delays match B * 2^(n-1) for n = 1..maxRetries-1
+  // Assert
   const delays = setTimeoutSpy.mock.calls
     .map((args) => args[1] as number)
     .filter((d) => d !== undefined);
 
-  // At least (maxRetries - 1) sleeps: attempt 1→ base*1, attempt 2→ base*2, attempt 3→ base*4
-  expect(delays[0]).toBe(base * Math.pow(2, 0)); // attempt 1: B * 2^0 = B
-  expect(delays[1]).toBe(base * Math.pow(2, 1)); // attempt 2: B * 2^1 = 2B
+  expect(delays[0]).toBe(base * Math.pow(2, 0));
+  expect(delays[1]).toBe(base * Math.pow(2, 1));
 
   jest.useRealTimers();
 });
 
 // ---------------------------------------------------------------------------
-// AC-4: all attempts non-2xx → DeadLetterService.create with FALHA_ENVIO
+// AC-4: all attempts non-2xx → mq.sendToQueue with FALHA_ENVIO
 // ---------------------------------------------------------------------------
 
-it('AC-4: Given all attempts respond non-2xx, when exhausted, then DeadLetterService.create called with status=FALHA_ENVIO and id_inbox', async () => {
+it('AC-4: Given all attempts respond non-2xx, when exhausted, then mq.sendToQueue called with DLQ_NAME and FALHA_ENVIO', async () => {
   // Arrange
   jest.useFakeTimers();
 
@@ -256,7 +257,6 @@ it('AC-4: Given all attempts respond non-2xx, when exhausted, then DeadLetterSer
       Object.assign(new Error('HTTP 422'), { response: { status: 422 } }),
     ),
   );
-  deadLetterService.create.mockResolvedValue({} as any);
 
   configService.get.mockImplementation((key: string) => {
     if (key === 'DISPATCH_MAX_RETRIES') return '2';
@@ -270,8 +270,9 @@ it('AC-4: Given all attempts respond non-2xx, when exhausted, then DeadLetterSer
   await handlePromise;
 
   // Assert
-  expect(deadLetterService.create).toHaveBeenCalledTimes(1);
-  expect(deadLetterService.create).toHaveBeenCalledWith(
+  expect(mq.sendToQueue).toHaveBeenCalledTimes(1);
+  expect(mq.sendToQueue).toHaveBeenCalledWith(
+    DLQ_NAME,
     expect.objectContaining({
       status: StatusFalhaMensagem.FALHA_ENVIO,
       id_inbox: inbox.id,
@@ -283,10 +284,10 @@ it('AC-4: Given all attempts respond non-2xx, when exhausted, then DeadLetterSer
 });
 
 // ---------------------------------------------------------------------------
-// AC-5: backend unreachable on all attempts → dead-letter AMBIENTE_INDISPONIVEL
+// AC-5: backend unreachable → dead-letter AMBIENTE_INDISPONIVEL
 // ---------------------------------------------------------------------------
 
-it('AC-5: Given backend unreachable on all attempts, when exhausted, then dead-letter with status=AMBIENTE_INDISPONIVEL', async () => {
+it('AC-5: Given backend unreachable on all attempts, when exhausted, then mq.sendToQueue with AMBIENTE_INDISPONIVEL', async () => {
   // Arrange
   jest.useFakeTimers();
 
@@ -296,9 +297,7 @@ it('AC-5: Given backend unreachable on all attempts, when exhausted, then dead-l
 
   inboxRepo.findById.mockResolvedValue(inbox);
   ambienteRepo.findById.mockResolvedValue(ambiente);
-  // No response property → treated as connection refused / timeout
   httpService.post.mockReturnValue(throwError(() => new Error('ECONNREFUSED')));
-  deadLetterService.create.mockResolvedValue({} as any);
 
   configService.get.mockImplementation((key: string) => {
     if (key === 'DISPATCH_MAX_RETRIES') return '2';
@@ -312,7 +311,8 @@ it('AC-5: Given backend unreachable on all attempts, when exhausted, then dead-l
   await handlePromise;
 
   // Assert
-  expect(deadLetterService.create).toHaveBeenCalledWith(
+  expect(mq.sendToQueue).toHaveBeenCalledWith(
+    DLQ_NAME,
     expect.objectContaining({
       status: StatusFalhaMensagem.AMBIENTE_INDISPONIVEL,
       id_inbox: inbox.id,
@@ -323,24 +323,23 @@ it('AC-5: Given backend unreachable on all attempts, when exhausted, then dead-l
 });
 
 // ---------------------------------------------------------------------------
-// AC-6a: inbox with del=true → dead-letter NACK_RECEBIDO without HTTP retry
+// AC-6a: inbox del=true → mq.sendToQueue NACK_RECEBIDO
 // ---------------------------------------------------------------------------
 
-it('AC-6: Given inbox resolved with del=true, when processing, then dead-letter with status=NACK_RECEBIDO without any HTTP call', async () => {
+it('AC-6: Given inbox resolved with del=true, when processing, then mq.sendToQueue with NACK_RECEBIDO without HTTP call', async () => {
   // Arrange
   const inbox = makeInbox({ del: true });
   const payload = { data: 'deleted-inbox' };
 
   inboxRepo.findById.mockResolvedValue(inbox);
 
-  deadLetterService.create.mockResolvedValue({} as any);
-
   // Act
   await service.handle(inbox.id, payload);
 
   // Assert
   expect(httpService.post).not.toHaveBeenCalled();
-  expect(deadLetterService.create).toHaveBeenCalledWith(
+  expect(mq.sendToQueue).toHaveBeenCalledWith(
+    DLQ_NAME,
     expect.objectContaining({
       status: StatusFalhaMensagem.NACK_RECEBIDO,
       id_inbox: inbox.id,
@@ -349,20 +348,20 @@ it('AC-6: Given inbox resolved with del=true, when processing, then dead-letter 
 });
 
 // ---------------------------------------------------------------------------
-// AC-6b: inbox not found → dead-letter NACK_RECEBIDO without HTTP retry
+// AC-6b: inbox not found → mq.sendToQueue NACK_RECEBIDO
 // ---------------------------------------------------------------------------
 
-it('AC-6: Given inbox not found (null), when processing, then dead-letter with status=NACK_RECEBIDO without any HTTP call', async () => {
+it('AC-6: Given inbox not found (null), when processing, then mq.sendToQueue with NACK_RECEBIDO without HTTP call', async () => {
   // Arrange
   inboxRepo.findById.mockResolvedValue(null);
-  deadLetterService.create.mockResolvedValue({} as any);
 
   // Act
   await service.handle('nonexistent-id', { data: 'orphan' });
 
   // Assert
   expect(httpService.post).not.toHaveBeenCalled();
-  expect(deadLetterService.create).toHaveBeenCalledWith(
+  expect(mq.sendToQueue).toHaveBeenCalledWith(
+    DLQ_NAME,
     expect.objectContaining({
       status: StatusFalhaMensagem.NACK_RECEBIDO,
     }),
@@ -370,24 +369,24 @@ it('AC-6: Given inbox not found (null), when processing, then dead-letter with s
 });
 
 // ---------------------------------------------------------------------------
-// AC-6c: ambiente with del=true → dead-letter AMBIENTE_INDISPONIVEL without HTTP retry
+// AC-6c: ambiente del=true → mq.sendToQueue AMBIENTE_INDISPONIVEL
 // ---------------------------------------------------------------------------
 
-it('AC-6: Given ambiente resolved with del=true, when processing, then dead-letter with status=AMBIENTE_INDISPONIVEL without any HTTP call', async () => {
+it('AC-6: Given ambiente resolved with del=true, when processing, then mq.sendToQueue with AMBIENTE_INDISPONIVEL without HTTP call', async () => {
   // Arrange
   const inbox = makeInbox();
   const ambiente = makeAmbiente({ del: true });
 
   inboxRepo.findById.mockResolvedValue(inbox);
   ambienteRepo.findById.mockResolvedValue(ambiente);
-  deadLetterService.create.mockResolvedValue({} as any);
 
   // Act
   await service.handle(inbox.id, { data: 'deleted-env' });
 
   // Assert
   expect(httpService.post).not.toHaveBeenCalled();
-  expect(deadLetterService.create).toHaveBeenCalledWith(
+  expect(mq.sendToQueue).toHaveBeenCalledWith(
+    DLQ_NAME,
     expect.objectContaining({
       status: StatusFalhaMensagem.AMBIENTE_INDISPONIVEL,
       id_inbox: inbox.id,
@@ -396,23 +395,23 @@ it('AC-6: Given ambiente resolved with del=true, when processing, then dead-lett
 });
 
 // ---------------------------------------------------------------------------
-// AC-6d: ambiente not found (null) → dead-letter AMBIENTE_INDISPONIVEL without HTTP retry
+// AC-6d: ambiente not found → mq.sendToQueue AMBIENTE_INDISPONIVEL
 // ---------------------------------------------------------------------------
 
-it('AC-6: Given ambiente not found (null), when processing, then dead-letter with status=AMBIENTE_INDISPONIVEL without any HTTP call', async () => {
+it('AC-6: Given ambiente not found (null), when processing, then mq.sendToQueue with AMBIENTE_INDISPONIVEL without HTTP call', async () => {
   // Arrange
   const inbox = makeInbox();
 
   inboxRepo.findById.mockResolvedValue(inbox);
   ambienteRepo.findById.mockResolvedValue(null);
-  deadLetterService.create.mockResolvedValue({} as any);
 
   // Act
   await service.handle(inbox.id, { data: 'no-env' });
 
   // Assert
   expect(httpService.post).not.toHaveBeenCalled();
-  expect(deadLetterService.create).toHaveBeenCalledWith(
+  expect(mq.sendToQueue).toHaveBeenCalledWith(
+    DLQ_NAME,
     expect.objectContaining({
       status: StatusFalhaMensagem.AMBIENTE_INDISPONIVEL,
       id_inbox: inbox.id,
@@ -421,10 +420,10 @@ it('AC-6: Given ambiente not found (null), when processing, then dead-letter wit
 });
 
 // ---------------------------------------------------------------------------
-// AC-7: HTTP 2xx → does NOT insert into fila_mensagens_mortas
+// AC-7: HTTP 2xx → does NOT call mq.sendToQueue
 // ---------------------------------------------------------------------------
 
-it('AC-7: Given HTTP 2xx, when processing, then does NOT call DeadLetterService.create', async () => {
+it('AC-7: Given HTTP 2xx, when processing, then does NOT call mq.sendToQueue', async () => {
   // Arrange
   const inbox = makeInbox();
   const ambiente = makeAmbiente();
@@ -437,11 +436,11 @@ it('AC-7: Given HTTP 2xx, when processing, then does NOT call DeadLetterService.
   await service.handle(inbox.id, { data: 'ok' });
 
   // Assert
-  expect(deadLetterService.create).not.toHaveBeenCalled();
+  expect(mq.sendToQueue).not.toHaveBeenCalled();
 });
 
 // ---------------------------------------------------------------------------
-// AC-8: DISPATCH_MAX_RETRIES and DISPATCH_BACKOFF_BASE_MS come from ConfigService
+// AC-8: config values from ConfigService
 // ---------------------------------------------------------------------------
 
 it('AC-8: Given handler runs, when reading retries and backoff config, then values come from ConfigService', async () => {
@@ -458,7 +457,6 @@ it('AC-8: Given handler runs, when reading retries and backoff config, then valu
       Object.assign(new Error('fail'), { response: { status: 503 } }),
     ),
   );
-  deadLetterService.create.mockResolvedValue({} as any);
 
   const customMaxRetries = '2';
   const customBase = '50';
@@ -483,13 +481,10 @@ it('AC-8: Given handler runs, when reading retries and backoff config, then valu
 });
 
 // ---------------------------------------------------------------------------
-// AC-9: IDispatchHandler contract — service implements the interface
+// AC-9: IDispatchHandler contract
 // ---------------------------------------------------------------------------
 
-it('AC-9: Given IDispatchHandler interface, when service is instantiated, then it satisfies the interface duck-type (has handle method)', () => {
-  // Arrange — compile-time assertion via assignability
+it('AC-9: Given IDispatchHandler interface, when service is instantiated, then it satisfies the interface (has handle method)', () => {
   const handler: IDispatchHandler = service;
-
-  // Assert
   expect(typeof handler.handle).toBe('function');
 });

@@ -1,28 +1,27 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { StatusFalhaMensagem } from '@prisma/client';
-import { DeadLetterService } from '../dead-letter/dead-letter.service';
+import { DISPATCH_HANDLER } from '../dispatch/constants/dispatch-tokens.constants';
+import type { IDispatchHandler } from '../dispatch/interfaces/dispatch-handler.interface';
 import { INBOX_REPOSITORY } from '../inbox/constants/inbox-tokens.constants';
 import type { IInboxRepository } from '../inbox/interfaces/inbox-repository.interface';
+import { DLQ_NAME } from '../rabbitmq/constants/rabbitmq-queue.constants';
 import { RABBITMQ_SERVICE } from '../rabbitmq/constants/rabbitmq-tokens.constants';
 import type { IRabbitMQService } from '../rabbitmq/interfaces/rabbitmq-service.interface';
-import { QueueNameFactory } from '../rabbitmq/queue-name.factory';
 
 @Injectable()
 export class WebhookService {
   constructor(
     @Inject(INBOX_REPOSITORY) private readonly inboxRepo: IInboxRepository,
     @Inject(RABBITMQ_SERVICE) private readonly mq: IRabbitMQService,
-    private readonly deadLetterService: DeadLetterService,
+    @Inject(DISPATCH_HANDLER)
+    private readonly dispatchHandler: IDispatchHandler,
   ) {}
 
-  async handleIncoming(
-    payload: Record<string, unknown>,
-    rawBody: Buffer,
-  ): Promise<void> {
+  async handleIncoming(payload: Record<string, unknown>): Promise<void> {
     const pid = this.extractPid(payload);
 
     if (!pid) {
-      await this.deadLetterService.create({
+      await this.mq.sendToQueue(DLQ_NAME, {
         message: payload,
         id_inbox: null,
         status: StatusFalhaMensagem.INBOX_NAO_REGISTRADA,
@@ -33,7 +32,7 @@ export class WebhookService {
     const inbox = await this.inboxRepo.findByPid(pid);
 
     if (!inbox) {
-      await this.deadLetterService.create({
+      await this.mq.sendToQueue(DLQ_NAME, {
         message: payload,
         id_inbox: null,
         status: StatusFalhaMensagem.INBOX_NAO_REGISTRADA,
@@ -41,15 +40,7 @@ export class WebhookService {
       return;
     }
 
-    try {
-      await this.mq.sendToQueue(QueueNameFactory.inbox(inbox.id), rawBody);
-    } catch {
-      await this.deadLetterService.create({
-        message: payload,
-        id_inbox: inbox.id,
-        status: StatusFalhaMensagem.FALHA_ENFILEIRAMENTO,
-      });
-    }
+    void this.dispatchHandler.handle(inbox.id, payload);
   }
 
   private extractPid(payload: Record<string, unknown>): string | null {

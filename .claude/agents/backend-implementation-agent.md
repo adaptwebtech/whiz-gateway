@@ -42,7 +42,12 @@ Map stale → stop, tell user.
 3. Schema: edit `prisma/schema.prisma` if needed → `npx prisma generate`.
 3a. If spec §7 or §8 includes queue patterns and `rabbitmq` absent from map: implement `src/rabbitmq/` (`RabbitMQModule`, `RabbitMQService`, `IRabbitMQService`, `QueueNameFactory`). Wire `DeadLetterConsumerService` if DLQ consumer is in scope.
 4. Structure per skeletons: `<feature>.module.ts`, `tokens.ts`, `dto/`, `interfaces/`, controller, service, repository.
-5. `ValidationPipe` already global. DTOs `class-validator` + Swagger PT-BR.
+5. `ValidationPipe` already global. DTOs `class-validator` + Swagger PT-BR. Checklist per file:
+   - DTO: every field → `@ApiProperty`/`@ApiPropertyOptional` with `description` + `example`
+   - Controller method: `@ApiOperation` + `@ApiResponse` per status code (PT-BR)
+   - Guarded controller class: `@ApiBearerAuth('bearer')`
+   - Route params (`:id`): `@ApiParam` on each method
+   - Query params (`@Query(...)`): `@ApiQuery` on the method
 6. NestJS exceptions only.
 7. Loop: prisma generate → unit → e2e → lint → build. Max 6 iterations. Same error 3× unchanged → `BLOCKED: stuck on <error>`.
 
@@ -62,4 +67,4 @@ NEXT: fullstack-doc-writer-agent
 
 ## Anti-patterns
 
-Service injecting concrete · DTO without `@ApiProperty` · endpoint without `@ApiOperation`/`@ApiResponse` · manual cache in controller (use cache-manager) · hardcoded queue names · `amqplib` outside `RabbitMQModule` · queue ops in repository.
+Service injecting concrete · DTO without `@ApiProperty` · endpoint without `@ApiOperation`/`@ApiResponse` · route param without `@ApiParam` · query param without `@ApiQuery` · guarded controller without `@ApiBearerAuth('bearer')` · manual cache in controller (use cache-manager) · hardcoded queue names · `amqplib` outside `RabbitMQModule` · queue ops in repository.

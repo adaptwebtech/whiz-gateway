@@ -1,9 +1,11 @@
 import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
+import { SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
 import { LoggerService } from './logger/logger.service';
+import { buildSwaggerConfig } from './swagger/swagger.document';
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule, {
@@ -24,8 +26,9 @@ async function bootstrap(): Promise<void> {
   );
   app.useGlobalFilters(new GlobalExceptionFilter(configService, loggerService));
 
-  // A documentação Swagger (/docs) é registrada pelo AppSwaggerModule no
-  // bootstrap do AppModule (FR-13).
+  const swaggerConfig = buildSwaggerConfig();
+  const document = SwaggerModule.createDocument(app, swaggerConfig);
+  SwaggerModule.setup('docs', app, document);
 
   const port = configService.get<number>('PORT') ?? 3000;
   await app.listen(port);

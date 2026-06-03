@@ -24,7 +24,8 @@ case "$REL" in
     ;;
   src/*)
     if git status --short -- "$REL" 2>/dev/null | grep -q '^??'; then
-      echo "NOTE [codebase-map]: new file $REL — add to docs/codebase/symbols.md + features.md." >&2
+      MOD="${REL#src/}"; MOD="${MOD%%/*}"
+      echo "NOTE [codebase-map]: new file $REL — add to docs/codebase/symbols.md + features.md; sync src/$MOD/context.md glossary + docs/codebase/context-map.md." >&2
     fi
     ;;
 esac

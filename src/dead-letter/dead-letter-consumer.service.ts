@@ -1,74 +1,36 @@
 import { Inject, Injectable, OnApplicationBootstrap } from '@nestjs/common';
+import { StatusFalhaMensagem } from '@prisma/client';
 import { LoggerService } from '../logger/logger.service';
-import { RABBITMQ_SERVICE } from '../rabbitmq/constants/rabbitmq-tokens.constants';
 import { DLQ_NAME } from '../rabbitmq/constants/rabbitmq-queue.constants';
+import { RABBITMQ_SERVICE } from '../rabbitmq/constants/rabbitmq-tokens.constants';
 import type { IRabbitMQService } from '../rabbitmq/interfaces/rabbitmq-service.interface';
 import { DeadLetterService } from './dead-letter.service';
 
-/**
- * Forma da mensagem bruta AMQP usada no handler de consumo da DLQ.
- */
-interface RawMessage {
-  content: Buffer;
-  properties: {
-    headers: Record<string, unknown>;
-  };
+interface DlqPayload {
+  message: unknown;
+  id_inbox: string | null;
+  status: StatusFalhaMensagem;
 }
 
-/**
- * Canal AMQP simplificado para ack/nack.
- */
-interface AckChannel {
-  ack(msg: unknown): void;
-  nack(msg: unknown, allUpTo: boolean, requeue: boolean): void;
-}
-
-/**
- * Consumidor da fila de mensagens mortas (DLQ).
- * Inicializa o consumo na bootstrap da aplicação.
- */
 @Injectable()
 export class DeadLetterConsumerService implements OnApplicationBootstrap {
-  @Inject(RABBITMQ_SERVICE)
-  private readonly rabbitMQ: IRabbitMQService;
-
   constructor(
+    @Inject(RABBITMQ_SERVICE) private readonly rabbitMQ: IRabbitMQService,
     private readonly service: DeadLetterService,
     private readonly logger: LoggerService,
   ) {}
 
   async onApplicationBootstrap(): Promise<void> {
-    const handler = this.getHandler();
     await this.rabbitMQ.startConsuming(DLQ_NAME, async (payload: Buffer) => {
-      const fakeMsg: RawMessage = {
-        content: payload,
-        properties: { headers: {} },
-      };
-      const fakeChannel: AckChannel = {
-        ack: () => undefined,
-        nack: () => undefined,
-      };
-      await handler(fakeMsg, fakeChannel);
+      const data = JSON.parse(payload.toString('utf8')) as DlqPayload;
+      await this.service.create({
+        message: data.message,
+        id_inbox: data.id_inbox ?? null,
+        status: data.status ?? StatusFalhaMensagem.NACK_RECEBIDO,
+      });
+      this.logger.log(
+        `Mensagem morta registrada: inbox=${data.id_inbox ?? 'N/A'} status=${data.status}`,
+      );
     });
-  }
-
-  /**
-   * Retorna o handler de consumo da DLQ.
-   * Exposto para testes unitários.
-   */
-  getHandler(): (rawMsg: RawMessage, channel: AckChannel) => Promise<void> {
-    return async (rawMsg: RawMessage, channel: AckChannel): Promise<void> => {
-      try {
-        const payload = JSON.parse(rawMsg.content.toString()) as unknown;
-        const headers = rawMsg.properties.headers ?? {};
-        await this.service.register(payload, headers);
-        channel.ack(rawMsg);
-      } catch (err) {
-        this.logger.error(
-          `Erro ao processar mensagem da DLQ: ${String(err instanceof Error ? err.message : err)}`,
-        );
-        channel.nack(rawMsg, false, false);
-      }
-    };
   }
 }

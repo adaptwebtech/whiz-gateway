@@ -1,6 +1,6 @@
 ---
 name: fix-router
-description: Invoked by /fix and /hotfix commands. Routes bug fixes, refactors, and hotfixes for existing features (present in CODEBASE.md §8). Determines branch (simple-fix/refactor/hotfix), records state, dispatches fix pipeline phases. Do NOT use for greenfield — use /feature.
+description: /fix and /hotfix entry — routes bug/refactor/hotfix for existing features (CODEBASE §8); picks branch, records state, dispatches phases. Not greenfield (use /feature).
 ---
 
 # fix-router (Phase 0 — entry router)
@@ -22,9 +22,8 @@ Confirm name in §8. Absent → stop, instruct greenfield.
 
 ### 2. Branch
 
-- `/hotfix` → branch=**hotfix**, autonomy=**auto** (fixed).
-- `/fix` → ask once:
-  > **simple-fix** (bug, REG-N RED→GREEN) or **refactor** (no behavior change, CHAR-N freeze state)?
+- `/hotfix` → branch=**hotfix**, autonomy=**auto** (fixed, no question).
+- `/fix` → the `router-prompts` hook injects the simple-fix/refactor question. Record to `fix-mode.txt`.
 
 ### 3. Autonomy
 

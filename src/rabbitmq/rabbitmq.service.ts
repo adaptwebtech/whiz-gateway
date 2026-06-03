@@ -15,7 +15,7 @@ import {
   MessageHandler,
 } from './interfaces/rabbitmq-service.interface';
 
-const INITIAL_CONNECT_TIMEOUT_MS = 5000;
+const INITIAL_CONNECT_TIMEOUT_MS = 500;
 
 /**
  * Implementação de IRabbitMQService sobre amqp-connection-manager (FR-4/5).

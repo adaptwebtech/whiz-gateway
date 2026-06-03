@@ -5,9 +5,11 @@ import { StatusFalhaMensagem } from '@prisma/client';
 import { firstValueFrom } from 'rxjs';
 import { AMBIENTE_REPOSITORY } from '../ambiente/constants/ambiente-tokens.constants';
 import type { IAmbienteRepository } from '../ambiente/interfaces/ambiente-repository.interface';
-import { DeadLetterService } from '../dead-letter/dead-letter.service';
 import { INBOX_REPOSITORY } from '../inbox/constants/inbox-tokens.constants';
 import type { IInboxRepository } from '../inbox/interfaces/inbox-repository.interface';
+import { DLQ_NAME } from '../rabbitmq/constants/rabbitmq-queue.constants';
+import { RABBITMQ_SERVICE } from '../rabbitmq/constants/rabbitmq-tokens.constants';
+import type { IRabbitMQService } from '../rabbitmq/interfaces/rabbitmq-service.interface';
 import type { IDispatchHandler } from './interfaces/dispatch-handler.interface';
 
 @Injectable()
@@ -19,7 +21,7 @@ export class DispatchHandlerService implements IDispatchHandler {
     @Inject(AMBIENTE_REPOSITORY)
     private readonly ambienteRepo: IAmbienteRepository,
     private readonly http: HttpService,
-    private readonly deadLetterService: DeadLetterService,
+    @Inject(RABBITMQ_SERVICE) private readonly mq: IRabbitMQService,
     private readonly config: ConfigService,
   ) {}
 
@@ -27,7 +29,7 @@ export class DispatchHandlerService implements IDispatchHandler {
     const inbox = await this.inboxRepo.findById(inboxId);
 
     if (!inbox || inbox.del) {
-      await this.deadLetterService.create({
+      await this.mq.sendToQueue(DLQ_NAME, {
         message: payload,
         id_inbox: inbox?.id ?? inboxId,
         status: StatusFalhaMensagem.NACK_RECEBIDO,
@@ -38,7 +40,7 @@ export class DispatchHandlerService implements IDispatchHandler {
     const ambiente = await this.ambienteRepo.findById(inbox.id_ambiente);
 
     if (!ambiente || ambiente.del) {
-      await this.deadLetterService.create({
+      await this.mq.sendToQueue(DLQ_NAME, {
         message: payload,
         id_inbox: inbox.id,
         status: StatusFalhaMensagem.AMBIENTE_INDISPONIVEL,
@@ -79,7 +81,7 @@ export class DispatchHandlerService implements IDispatchHandler {
               ? StatusFalhaMensagem.FALHA_ENVIO
               : StatusFalhaMensagem.AMBIENTE_INDISPONIVEL;
 
-          await this.deadLetterService.create({
+          await this.mq.sendToQueue(DLQ_NAME, {
             message: payload,
             id_inbox: inbox.id,
             status,

@@ -1,7 +1,6 @@
 import { Module } from '@nestjs/common';
 import { LoggerModule } from '../logger/logger.module';
 import { PrismaModule } from '../prisma/prisma.module';
-import { RabbitMQModule } from '../rabbitmq/rabbitmq.module';
 import { DEAD_LETTER_REPOSITORY } from './constants/dead-letter-tokens.constants';
 import { DeadLetterCleanupService } from './dead-letter-cleanup.service';
 import { DeadLetterConsumerService } from './dead-letter-consumer.service';
@@ -9,11 +8,8 @@ import { DeadLetterController } from './dead-letter.controller';
 import { DeadLetterService } from './dead-letter.service';
 import { DeadLetterPrismaRepository } from './repositories/dead-letter.prisma.repository';
 
-/**
- * Módulo de fila de mensagens mortas (fila-mensagens-mortas).
- */
 @Module({
-  imports: [PrismaModule, RabbitMQModule, LoggerModule],
+  imports: [PrismaModule, LoggerModule],
   providers: [
     DeadLetterPrismaRepository,
     {
@@ -25,6 +21,6 @@ import { DeadLetterPrismaRepository } from './repositories/dead-letter.prisma.re
     DeadLetterCleanupService,
   ],
   controllers: [DeadLetterController],
-  exports: [DeadLetterService],
+  exports: [DeadLetterService, DEAD_LETTER_REPOSITORY],
 })
 export class DeadLetterModule {}

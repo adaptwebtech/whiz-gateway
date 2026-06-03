@@ -1,55 +1,19 @@
 ---
 name: feature-router
-description: Use this skill whenever the user invokes /feature or wants to start/resume the full greenfield pipeline (spec → test → code → doc) for a new feature. Orchestrates all 4 phases in sequence, tracks state, and supports pause-per-phase or auto mode. Do NOT use for fixing existing features — use fix-router instead.
+description: /feature entry — orchestrates greenfield pipeline spec→tests→code→doc, tracks state, pause/auto. Use to start/resume a new feature. Not for existing features (use fix-router).
 ---
 
 # feature-router (Pipeline Orchestrator — greenfield)
 
 ## Workflow
 
-### 1. Normalize feature name
-Kebab-case. No arg → ask.
-
-### 2. Check §8 (not greenfield)
-Listed in `docs/codebase/features.md` → "Feature exists. Use `/fix`." Stop.
-
-### 3. Detect phase (resume)
-
-```bash
-[ -f "docs/specs/<name>.md" ] && grep -q "AC-[0-9]" "docs/specs/<name>.md"  # phase 1
-find "src/<name>" -name "*.spec.ts" 2>/dev/null | grep -q .                  # phase 2
-find "src/<name>" -name "*.ts" ! -name "*.spec.ts" 2>/dev/null | grep -q .   # phase 3
-[ -f "docs/implementation/<name>.md" ]                                       # phase 4
-```
-
-Entry: no artifacts → `spec` | spec → `tests` | +tests → `code` | +impl → `doc` | all → confirm.
-
-### 4. Block if pipeline active
-
-```bash
-cat .claude/state/feature-phase.txt 2>/dev/null
-cat .claude/state/feature-name.txt 2>/dev/null
-```
-
-Phase ∈ {spec,tests,code,doc} AND name differs → "Pipeline active for '<other>'. Finish or `rm .claude/state/feature-*.txt`". Same name → resume.
-
-### 5. Ask autonomy (once)
-> "Autonomy: **pause** (review per phase, default) or **auto** (chain)?"
-
-### 6. Write state
-
-```
-.claude/state/feature-name.txt     → <name>
-.claude/state/feature-phase.txt    → <phase>
-.claude/state/feature-autonomy.txt → pause|auto
-```
-
-### 7. Confirm
-
-```
-FEATURE PIPELINE STARTED
-  feature: <name>  phase: <phase>  autonomy: <pause|auto>
-```
+1. **Normalize name.** Kebab-case. No arg → ask.
+2. **Not greenfield?** Listed in `docs/codebase/features.md` (§8) → "Feature exists. Use `/fix`." Stop.
+3. **Detect phase (resume):** no artifacts → `spec` · +spec(AC) → `tests` · +`*.spec.ts` → `code` · +impl `.ts` → `doc` · +`docs/implementation/<name>.md` → confirm. (paths: `docs/specs/<name>.md`, `src/<name>/`, `docs/implementation/<name>.md`)
+4. **Block if active:** phase ∈ {spec,tests,code,doc} in `feature-phase.txt` AND `feature-name.txt` differs → "Pipeline active for '<other>'. Finish or `rm .claude/state/feature-*.txt`". Same name → resume.
+5. **Autonomy:** the `router-prompts` hook injects the pause/auto question. Record the answer to `.claude/state/feature-autonomy.txt`.
+6. **Write state:** `feature-name.txt`=<name> · `feature-phase.txt`=<phase> · `feature-autonomy.txt`=<pause|auto>.
+7. **Confirm:** `FEATURE PIPELINE STARTED — feature: <name>  phase: <phase>  autonomy: <pause|auto>`
 
 ## Phases
 
@@ -60,31 +24,17 @@ FEATURE PIPELINE STARTED
 | 3 Code | `code` | `backend-implementation` (Agent) | GREEN + lint + build |
 | 4 Doc | `doc` | `fullstack-doc-writer` | done |
 
-### Pre-phase-3 gate (pause mode only)
+Pre-phase-3 (pause only): the `router-prompts` hook injects the test-runner question (Manual / Feature-only / Full) at phase-3 entry and records `feature-runner.txt`. Auto mode skips it.
 
-Ask:
-> 1. **Manual** — skip runner. 2. **Feature only** — `npx jest --testPathPattern=<feature>`. 3. **Full** — `npm test`.
+## Done
 
-Proceed to implementation. Skip gate in auto mode.
-
-### Done
-
-Set `feature-phase.txt = done`. Display:
+Set `feature-phase.txt = done` (Stop hook clears `feature-*.txt`). Display:
 ```
 FEATURE PIPELINE COMPLETE
   spec: docs/specs/<name>.md  impl: docs/implementation/<name>.md
   tests: GREEN  build: 0
 ```
 
-## State commands
-
-```bash
-cat .claude/state/feature-name.txt
-cat .claude/state/feature-phase.txt
-rm .claude/state/feature-*.txt
-echo "code" > .claude/state/feature-phase.txt
-```
-
 ## Anti-patterns
 
-Update `feature-phase.txt` BEFORE invoking · never skip phase 2 · check active pipeline before write · feature in §8 → use fix-router.
+Update `feature-phase.txt` BEFORE invoking · never skip phase 2 · check active pipeline before write · feature in §8 → use fix-router · don't re-ask hook-injected questions once state is set.

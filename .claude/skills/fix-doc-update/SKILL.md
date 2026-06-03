@@ -1,6 +1,6 @@
 ---
 name: fix-doc-update
-description: Internal fix-pipeline phase-4 skill. Dispatched by fix-router. Do not invoke directly — use /fix or /hotfix.
+description: Phase-4 of /fix·/hotfix via fix-router — doc sync + state cleanup. Don't invoke directly.
 ---
 
 # fix-doc-update (Phase 4 — doc sync + state cleanup)

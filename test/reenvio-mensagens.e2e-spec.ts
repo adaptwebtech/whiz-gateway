@@ -190,7 +190,7 @@ describe('Reenvio Mensagens (e2e)', () => {
     expect(body).toHaveProperty('reenviadas', 2);
     expect(body).toHaveProperty('falhas', 0);
     expect(typeof body['reenviadas']).toBe('number');
-    expect((body['reenviadas'] as number)).toBeGreaterThan(0);
+    expect(body['reenviadas'] as number).toBeGreaterThan(0);
   });
 
   it('AC-2: ResendResultDto contém exatamente os campos total, reenviadas, falhas', async () => {

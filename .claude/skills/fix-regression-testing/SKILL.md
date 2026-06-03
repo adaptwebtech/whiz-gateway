@@ -1,6 +1,6 @@
 ---
 name: fix-regression-testing
-description: Internal fix-pipeline phase-2 skill. Dispatched by fix-router. Do not invoke directly — use /fix.
+description: Phase-2 of /fix via fix-router — REG/CHAR tests. Don't invoke directly.
 ---
 
 # fix-regression-testing (Phase 2 — regression / characterization)

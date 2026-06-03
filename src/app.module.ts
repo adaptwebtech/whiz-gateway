@@ -1,16 +1,19 @@
 import { Module } from '@nestjs/common';
 import { ScheduleModule } from '@nestjs/schedule';
 import { AmbienteModule } from './ambiente/ambiente.module';
+import { ApiKeysModule } from './api-keys/api-keys.module';
 import { AppConfigModule } from './config/config.module';
 import { DeadLetterModule } from './dead-letter/dead-letter.module';
 import { DispatchModule } from './dispatch/dispatch.module';
 import { HealthModule } from './health/health.module';
+import { ResendModule } from './resend/resend.module';
 import { WebhookModule } from './webhook/webhook.module';
 import { InboxModule } from './inbox/inbox.module';
 import { LoggerModule } from './logger/logger.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { RabbitMQModule } from './rabbitmq/rabbitmq.module';
-import { AppSwaggerModule } from './swagger/swagger.module';
+import { RedisModule } from './redis/redis.module';
+import { WppModule } from './wpp/wpp.module';
 
 /**
  * Módulo raiz. Agrega a infraestrutura base do gateway (FR-16, AC-14).
@@ -21,14 +24,17 @@ import { AppSwaggerModule } from './swagger/swagger.module';
     LoggerModule,
     PrismaModule,
     RabbitMQModule,
+    RedisModule,
     ScheduleModule.forRoot(),
     HealthModule,
-    AppSwaggerModule,
     AmbienteModule,
     InboxModule,
     DeadLetterModule,
     DispatchModule,
     WebhookModule,
+    ResendModule,
+    ApiKeysModule,
+    WppModule,
   ],
 })
 export class AppModule {}

@@ -28,7 +28,7 @@ NÍVEL DE CONFIANÇA: [0.0–1.0]
 | `/fix <description>` | Bug or refactor on existing feature |
 | `/hotfix <description>` | Prod broken — always auto-mode |
 
-Hooks block phase skills outside pipeline. Never call phase skills directly.
+Hooks block phase skills outside pipeline; never call directly. `router-prompts` hook injects enforced questions (autonomy, pre-phase-3 runner, fix branch, triage batches) while `.claude/state/*.txt` unset — record answer, goes silent.
 
 ## Codebase Map
 
@@ -39,9 +39,12 @@ Hooks block phase skills outside pipeline. Never call phase skills directly.
 | Feature → files | `docs/codebase/features.md` |
 | Symbols | `docs/codebase/symbols.md` |
 | ERD (per domain) | `docs/codebase/erd.md` → `erd/<domain>.md` |
+| Module glossary | `src/<module>/context.md` (ubiquitous language) |
+| Context relationships | `docs/codebase/context-map.md` (global) |
 | Tree | `docs/codebase/structure.md` |
 | Module graph, env, conventions | `docs/CODEBASE.md` inline |
 | Skeletons | `docs/CODEBASE-SKELETONS.md` |
+| Doc formats | `docs/conventions/{CONTEXT,CONTEXT-MAP,ADR}-FORMAT.md` |
 
 **Before any grep/find/ls:** check map first.
 
@@ -59,7 +62,7 @@ Map stale → stop, tell user. Never invent.
 
 ## Zero-assumption policy
 
-Stop and ask: scope, entities, rules, naming, edge cases, env. Never infer "reasonable defaults". List questions at once.
+Stop and ask: scope, entities, rules, naming, edge cases, env. Never infer "reasonable defaults". List all questions at once.
 
 ## Pipeline (never skip)
 
@@ -87,13 +90,13 @@ Stop and ask: scope, entities, rules, naming, edge cases, env. Never infer "reas
 
 Topology: one queue per inbox (created on demand) + one static DLQ.
 
-- `amqp-connection-manager` for dynamic queue management — `@nestjs/microservices` RmqTransport is for static queues only
-- Wrap all channel ops in `RabbitMQService` (singleton `@Global()` module) injected by `IRabbitMQService` interface token
+- `amqp-connection-manager` for dynamic queue management — `@nestjs/microservices` RmqTransport for static queues only
+- Wrap all channel ops in `RabbitMQService` (singleton `@Global()` module) injected by `IRabbitMQService` token
 - Queue naming via `QueueNameFactory.inbox(id: string) → 'inbox.<id>'` — never hardcode queue names
 - DLQ: single `inbox.dead-letter` queue (declared on app bootstrap)
 - Each dynamic queue declared with `{ 'x-dead-letter-exchange': '', 'x-dead-letter-routing-key': 'inbox.dead-letter' }`
-- Queue creation on inbox creation: `IRabbitMQService.assertQueue(name, dlqArgs)` then `startConsuming(name, handler)` — in inbox service only
-- Queue deletion on inbox deletion: `IRabbitMQService.stopConsuming(name)` then `deleteQueue(name)` — in inbox service only
+- Queue creation on inbox creation: `IRabbitMQService.assertQueue(name, dlqArgs)` then `startConsuming(name, handler)` — inbox service only
+- Queue deletion on inbox deletion: `IRabbitMQService.stopConsuming(name)` then `deleteQueue(name)` — inbox service only
 - DLQ consumer: `DeadLetterConsumerService` bootstraps on app start, consumes `inbox.dead-letter`
 - `ConfigService` for `RABBITMQ_URL` — never `process.env`
 

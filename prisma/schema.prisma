@@ -42,6 +42,16 @@ model inboxes {
   fila_mensagens_mortas fila_mensagens_mortas[]
 }
 
+/// Chave de API para autenticação de integrações externas.
+model api_keys {
+  uid  String   @id @default(uuid())
+  name String
+  key  String
+  salt String
+  date DateTime @default(now())
+  del  Boolean  @default(false)
+}
+
 /// Webhook que falhou em algum ponto do fluxo.
 model fila_mensagens_mortas {
   id        String              @id @default(uuid())

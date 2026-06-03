@@ -1,6 +1,6 @@
 ---
 name: backend-testing
-description: Internal phase-2 skill dispatched by feature-router. Writes Jest + Supertest tests against spec ACs. Do not invoke directly — use /feature.
+description: Phase-2 of /feature via feature-router — Jest+Supertest tests from spec ACs. Don't invoke directly.
 ---
 
 # Backend Testing — Jest + Supertest (NestJS)

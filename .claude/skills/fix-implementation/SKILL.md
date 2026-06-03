@@ -1,6 +1,6 @@
 ---
 name: fix-implementation
-description: Internal fix-pipeline phase-3 skill. Dispatched by fix-router. Do not invoke directly — use /fix or /hotfix.
+description: Phase-3 of /fix·/hotfix via fix-router — scope-locked patch. Don't invoke directly.
 ---
 
 # fix-implementation (Phase 3 — scope-locked patch)

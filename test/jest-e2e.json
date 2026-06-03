@@ -5,5 +5,11 @@
   "testRegex": ".e2e-spec.ts$",
   "transform": {
     "^.+\\.(t|j)s$": "ts-jest"
-  }
+  },
+  "moduleNameMapper": {
+    "^crypto$": "<rootDir>/../src/__mocks__/crypto.js"
+  },
+  "setupFiles": [
+    "<rootDir>/../src/test-setup.ts"
+  ]
 }

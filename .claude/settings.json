@@ -16,6 +16,10 @@
           {
             "type": "command",
             "command": ".claude/hooks/feature-gate.sh"
+          },
+          {
+            "type": "command",
+            "command": ".claude/hooks/router-prompts.sh"
           }
         ]
       },

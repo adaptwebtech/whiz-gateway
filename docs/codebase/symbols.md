@@ -9,13 +9,11 @@ Mapa de símbolos exportados → arquivo + assinatura. Autoritativo para descobe
 | `PrismaService` | classe (`@Injectable`) | `src/prisma/prisma.service.ts` | `extends PrismaClient implements OnModuleInit, OnModuleDestroy`; `$connect`/`$disconnect` |
 | `PrismaModule` | módulo (`@Global`) | `src/prisma/prisma.module.ts` | provides/exports `PrismaService` |
 | `RabbitMQService` | classe (`@Injectable`) | `src/rabbitmq/rabbitmq.service.ts` | implementa `IRabbitMQService`; `assertQueue`/`deleteQueue`/`startConsuming`/`stopConsuming`/`sendToQueue`/`isConnected`/`defaultDlqArgs` |
-| `RabbitMQModule` | módulo (`@Global`) | `src/rabbitmq/rabbitmq.module.ts` | provê `RABBITMQ_SERVICE` (useExisting) + `RabbitMQService` |
+| `RabbitMQModule` | módulo (`@Global`) | `src/rabbitmq/rabbitmq.module.ts` | provê `RABBITMQ_SERVICE` (useExisting) + `RabbitMQService`; usado apenas para DLQ |
 | `IRabbitMQService` | interface | `src/rabbitmq/interfaces/rabbitmq-service.interface.ts` | contrato do serviço de filas |
 | `MessageHandler` | type | `src/rabbitmq/interfaces/rabbitmq-service.interface.ts` | `(payload: Buffer) => Promise<void> \| void` |
 | `RABBITMQ_SERVICE` | token (Symbol) | `src/rabbitmq/constants/rabbitmq-tokens.constants.ts` | token de injeção de `IRabbitMQService` |
-| `QueueNameFactory` | classe (static) | `src/rabbitmq/queue-name.factory.ts` | `inbox(id: string): string` → `inbox.<id>` |
 | `DLQ_NAME` | const | `src/rabbitmq/constants/rabbitmq-queue.constants.ts` | `'inbox.dead-letter'` |
-| `DEFAULT_DLQ_ARGS` | const | `src/rabbitmq/constants/rabbitmq-queue.constants.ts` | `{ 'x-dead-letter-exchange': '', 'x-dead-letter-routing-key': 'inbox.dead-letter' }` |
 | `GlobalExceptionFilter` | classe (`@Catch()`) | `src/common/filters/global-exception.filter.ts` | `catch(exception, host)`; resolve status/message/details |
 | `ErrorResponseDto` | DTO | `src/common/dto/error-response.dto.ts` | `{ statusCode, timestamp, message, details? }` |
 | `LoggerService` | classe (`@Injectable`) | `src/logger/logger.service.ts` | Winston console-only; `implements NestLoggerService` |
@@ -50,9 +48,9 @@ Mapa de símbolos exportados → arquivo + assinatura. Autoritativo para descobe
 
 | Símbolo | Tipo | Arquivo | Assinatura / Notas |
 |---|---|---|---|
-| `InboxModule` | módulo (não-global) | `src/inbox/inbox.module.ts` | importa `PrismaModule`, `RabbitMQModule`, `LoggerModule`; exporta `INBOX_REPOSITORY`; registrado em `AppModule` |
+| `InboxModule` | módulo (não-global) | `src/inbox/inbox.module.ts` | importa `PrismaModule`, `LoggerModule`; exporta `INBOX_REPOSITORY`; registrado em `AppModule` |
 | `InboxController` | controller | `src/inbox/inbox.controller.ts` | `@Controller('inboxes')`; `findAll`, `findById`, `create`, `update`, `softDelete` |
-| `InboxService` | classe (`@Injectable`) | `src/inbox/inbox.service.ts` | implementa `OnApplicationBootstrap`; injeta `INBOX_REPOSITORY` e `RABBITMQ_SERVICE`; gerencia ciclo de vida de filas RabbitMQ |
+| `InboxService` | classe (`@Injectable`) | `src/inbox/inbox.service.ts` | injeta `INBOX_REPOSITORY`; CRUD puro sem ciclo de vida de filas |
 | `IInboxRepository` | interface | `src/inbox/interfaces/inbox-repository.interface.ts` | `findAll / findById / findByPid / create / update / softDelete` |
 | `InboxPrismaRepository` | classe (`@Injectable`) | `src/inbox/repositories/inbox.prisma.repository.ts` | implementa `IInboxRepository`; valida `id_ambiente` em `create` — lança `BadRequestException` se ambiente não encontrado ou `del=true` |
 | `INBOX_REPOSITORY` | token (Symbol) | `src/inbox/constants/inbox-tokens.constants.ts` | token de injeção de `IInboxRepository` |
@@ -64,10 +62,10 @@ Mapa de símbolos exportados → arquivo + assinatura. Autoritativo para descobe
 
 | Símbolo | Tipo | Arquivo | Assinatura / Notas |
 |---|---|---|---|
-| `DeadLetterModule` | módulo (não-global) | `src/dead-letter/dead-letter.module.ts` | importa `PrismaModule`, `RabbitMQModule`, `LoggerModule`; exporta `DeadLetterService`; registrado em `AppModule` |
+| `DeadLetterModule` | módulo (não-global) | `src/dead-letter/dead-letter.module.ts` | importa `PrismaModule`, `LoggerModule`; exporta `DeadLetterService`; registrado em `AppModule` |
 | `DeadLetterController` | controller | `src/dead-letter/dead-letter.controller.ts` | `@Controller('dead-letter')`; `findMany`, `findById`, `softDelete` |
-| `DeadLetterService` | classe (`@Injectable`) | `src/dead-letter/dead-letter.service.ts` | injeta `DEAD_LETTER_REPOSITORY` e `LoggerService`; `register(payload, headers)`, `findMany`, `findById`, `softDelete`, `markReenviado`, `create(data: CreateDeadLetterData)`; extrai `id_inbox` via regex sobre `x-death[0].queue` |
-| `DeadLetterConsumerService` | classe (`@Injectable`) | `src/dead-letter/dead-letter-consumer.service.ts` | implementa `OnApplicationBootstrap`; consome `DLQ_NAME` no bootstrap; `ack` após persistência, `nack(false,false)` em erro |
+| `DeadLetterService` | classe (`@Injectable`) | `src/dead-letter/dead-letter.service.ts` | injeta `DEAD_LETTER_REPOSITORY` e `LoggerService`; `create(data)`, `findMany`, `findById`, `softDelete`, `markReenviado` |
+| `DeadLetterConsumerService` | classe (`@Injectable`) | `src/dead-letter/dead-letter-consumer.service.ts` | implementa `OnApplicationBootstrap`; consome `DLQ_NAME`; parseia payload `{ message, id_inbox, status }` → `deadLetterService.create()`; lança em erro (RabbitMQService cuida do nack) |
 | `DeadLetterCleanupService` | classe (`@Injectable`) | `src/dead-letter/dead-letter-cleanup.service.ts` | `@Cron('0 3 * * *')`; hard-delete de registros com `data < now - 30d`; loga count |
 | `IDeadLetterRepository` | interface | `src/dead-letter/interfaces/dead-letter-repository.interface.ts` | `create / findMany / findById / softDelete / markReenviado / hardDeleteOlderThan` |
 | `CreateDeadLetterData` | interface | `src/dead-letter/interfaces/dead-letter-repository.interface.ts` | `{ message: unknown, id_inbox: string \| null, status: StatusFalhaMensagem }` |
@@ -80,9 +78,9 @@ Mapa de símbolos exportados → arquivo + assinatura. Autoritativo para descobe
 
 | Símbolo | Tipo | Arquivo | Assinatura / Notas |
 |---|---|---|---|
-| `WebhookModule` | módulo (não-global) | `src/webhook/webhook.module.ts` | importa `InboxModule`, `DeadLetterModule`; sem exports; registrado em `AppModule` |
+| `WebhookModule` | módulo (não-global) | `src/webhook/webhook.module.ts` | importa `InboxModule`, `DispatchModule`; sem exports; registrado em `AppModule` |
 | `WebhookController` | controller | `src/webhook/webhook.controller.ts` | `@Controller('webhook')`; `verify` (GET, sem guard) · `receive` (POST, `@UseGuards(MetaSignatureGuard)`, `@HttpCode(200)`) |
-| `WebhookService` | classe (`@Injectable`) | `src/webhook/webhook.service.ts` | injeta `INBOX_REPOSITORY`, `RABBITMQ_SERVICE`, `DeadLetterService`; `handleIncoming(payload: Record<string,unknown>, rawBody: Buffer): Promise<void>`; privado `extractPid(payload): string \| null` |
+| `WebhookService` | classe (`@Injectable`) | `src/webhook/webhook.service.ts` | injeta `INBOX_REPOSITORY`, `RABBITMQ_SERVICE`, `DISPATCH_HANDLER`; `handleIncoming(payload: Record<string,unknown>): Promise<void>`; falha de PID/inbox → `mq.sendToQueue(DLQ_NAME, ...)`; inbox encontrada → `dispatchHandler.handle()` fire-and-forget; privado `extractPid(payload): string \| null` |
 | `MetaSignatureGuard` | guard (`CanActivate`) | `src/webhook/guards/meta-signature.guard.ts` | valida `x-hub-signature-256` via `crypto.createHmac('sha256', META_APP_SECRET).update(rawBody)` + `crypto.timingSafeEqual`; lança `UnauthorizedException` em ausência ou mismatch |
 | `WebhookVerifyQueryDto` | DTO | `src/webhook/dto/webhook-verify-query.dto.ts` | campos `hub.mode`, `hub.verify_token`, `hub.challenge` — tipagem sem class-validator; não usado via `@Body()` |
 | `WebhookEventDto` | DTO | `src/webhook/dto/webhook-event.dto.ts` | classe vazia; passthrough intencional — payload Meta variável (FR-9) |
@@ -91,7 +89,54 @@ Mapa de símbolos exportados → arquivo + assinatura. Autoritativo para descobe
 
 | Símbolo | Tipo | Arquivo | Assinatura / Notas |
 |---|---|---|---|
-| `DispatchModule` | módulo (não-global) | `src/dispatch/dispatch.module.ts` | importa `HttpModule`, `DeadLetterModule`, `AmbienteModule`, `PrismaModule`; provê `InboxPrismaRepository`+`INBOX_REPOSITORY` localmente; exporta `DISPATCH_HANDLER`; registrado em `AppModule` e importado por `InboxModule` |
-| `DispatchHandlerService` | classe (`@Injectable`) | `src/dispatch/dispatch-handler.service.ts` | implementa `IDispatchHandler`; injeta `INBOX_REPOSITORY`, `AMBIENTE_REPOSITORY`, `HttpService`, `DeadLetterService`, `ConfigService`; retry exponencial; dead-letter em falha |
+| `DispatchModule` | módulo (não-global) | `src/dispatch/dispatch.module.ts` | importa `HttpModule`, `AmbienteModule`, `PrismaModule`; provê `InboxPrismaRepository`+`INBOX_REPOSITORY` localmente; exporta `DISPATCH_HANDLER`; registrado em `AppModule` e importado por `WebhookModule` |
+| `DispatchHandlerService` | classe (`@Injectable`) | `src/dispatch/dispatch-handler.service.ts` | implementa `IDispatchHandler`; injeta `INBOX_REPOSITORY`, `AMBIENTE_REPOSITORY`, `HttpService`, `RABBITMQ_SERVICE`, `ConfigService`; retry exponencial; em falha → `mq.sendToQueue(DLQ_NAME, { message, id_inbox, status })` |
 | `IDispatchHandler` | interface | `src/dispatch/interfaces/dispatch-handler.interface.ts` | `handle(inboxId: string, payload: unknown): Promise<void>` |
 | `DISPATCH_HANDLER` | token (Symbol) | `src/dispatch/constants/dispatch-tokens.constants.ts` | token de injeção de `IDispatchHandler` |
+
+## redis
+
+| Símbolo | Tipo | Arquivo | Assinatura / Notas |
+|---|---|---|---|
+| `REDIS_CLIENT` | token (Symbol) | `src/redis/constants/redis-tokens.constants.ts` | token de injeção da instância `ioredis.Redis` |
+| `RedisService` | classe (`@Injectable`) | `src/redis/redis.service.ts` | `hset(key,field,value)` · `hgetall(key)` · `hdel(key,field)` · `del(key)` · `get(key)` |
+| `RedisModule` | módulo (`@Global`) | `src/redis/redis.module.ts` | factory `REDIS_CLIENT` via `ConfigService.getOrThrow('REDIS_URL')`; provê/exporta `REDIS_CLIENT` e `RedisService` |
+
+## api-keys-foundation
+
+| Símbolo | Tipo | Arquivo | Assinatura / Notas |
+|---|---|---|---|
+| `ApiKeysModule` | módulo (não-global) | `src/api-keys/api-keys.module.ts` | importa `PrismaModule`, `RedisModule`; exporta `AdminKeyGuard`, `ApiKeyGuard`; registrado em `AppModule` |
+| `ApiKeysController` | controller | `src/api-keys/api-keys.controller.ts` | `@Controller('api-keys')` `@ApiTags('Chaves de API')` `@UseGuards(AdminKeyGuard)`; `create(dto)`, `findAll()`, `revoke(uid)` |
+| `ApiKeysService` | classe (`@Injectable`) | `src/api-keys/api-keys.service.ts` | implementa `OnModuleInit`; injeta `API_KEYS_REPOSITORY`, `RedisService`, `ConfigService`, `Logger`; `onModuleInit` popula Redis com chaves ativas; `create/findAll/revoke` |
+| `IApiKeysRepository` | interface | `src/api-keys/interfaces/api-keys-repository.interface.ts` | `create / findAll / findById / softDelete` |
+| `ApiKeyEntity` | interface | `src/api-keys/interfaces/api-keys-repository.interface.ts` | `{ uid, name, key, salt, date, del }` — entidade interna do repositório |
+| `ApiKeysPrismaRepository` | classe (`@Injectable`) | `src/api-keys/repositories/api-keys.prisma.repository.ts` | implementa `IApiKeysRepository`; `findAll` filtra `del:false`; `softDelete` atualiza `del:true` |
+| `API_KEYS_REPOSITORY` | token (Symbol) | `src/api-keys/constants/api-keys-tokens.constants.ts` | token de injeção de `IApiKeysRepository` |
+| `AdminKeyGuard` | guard (`CanActivate`) | `src/api-keys/guards/admin-key.guard.ts` | valida `Authorization: Bearer {ADMIN_API_KEY}` via `timingSafeEqual`; lança `UnauthorizedException` |
+| `ApiKeyGuard` | guard (`CanActivate`) | `src/api-keys/guards/api-key.guard.ts` | lê `X-API-KEY`, faz `hgetall apikeys:valid`, valida `sha256(rawKey+salt)` via `timingSafeEqual`; lança `UnauthorizedException` |
+| `CreateApiKeyDto` | DTO | `src/api-keys/dto/create-api-key.dto.ts` | `name: string (@IsString @IsNotEmpty @MinLength(1) @MaxLength(120))` |
+| `ApiKeyResponseDto` | DTO | `src/api-keys/dto/api-key-response.dto.ts` | `{ uid, name, date }` — nunca expõe `key`, `salt` ou `apiKey` |
+| `ApiKeyCreatedResponseDto` | DTO | `src/api-keys/dto/api-key-created-response.dto.ts` | `{ uid, name, apiKey, date }` — `apiKey` = rawKey, exibido apenas na resposta do POST |
+
+## wpp-adapter-core
+
+| Símbolo | Tipo | Arquivo | Assinatura / Notas |
+|---|---|---|---|
+| `WppModule` | módulo (não-global) | `src/wpp/wpp.module.ts` | importa `HttpModule`; exporta `WppService`; registrado em `AppModule` |
+| `WppController` | controller | `src/wpp/wpp.controller.ts` | `@Controller('wpp')`; `@UseGuards(ApiKeyGuard)`; `GET /wpp/debug_token` |
+| `WppService` | classe (`@Injectable`) | `src/wpp/wpp.service.ts` | `forward(method: string, path: string, opts: WppForwardOptions): Promise<WppForwardResult>` |
+| `WppForwardOptions` | interface | `src/wpp/wpp.service.ts` | `{ query?, body?, headers?, contentType? }` |
+| `WppForwardResult` | interface | `src/wpp/wpp.service.ts` | `{ status: number, data: unknown }` |
+| `WppAuthFilter` | filtro (`@Catch(ForbiddenException)`) | `src/wpp/filters/wpp-auth.filter.ts` | converte `ForbiddenException` → `UnauthorizedException` (401) |
+
+## reenvio-mensagens
+
+| Símbolo | Tipo | Arquivo | Assinatura / Notas |
+|---|---|---|---|
+| `ResendModule` | módulo (não-global) | `src/resend/resend.module.ts` | importa `DeadLetterModule`, `InboxModule`, `DispatchModule`; provê `ResendService`; declara `ResendController`; registrado em `AppModule` |
+| `ResendController` | controller | `src/resend/resend.controller.ts` | `@Controller('messages')` `@ApiTags('Reenvio de Mensagens')` `@ApiBearerAuth('bearer')`; `POST resend → resend(dto: ResendRequestDto): Promise<ResendResultDto>` `@HttpCode(200)` |
+| `ResendService` | classe (`@Injectable`) | `src/resend/resend.service.ts` | injeta `DEAD_LETTER_REPOSITORY`, `DISPATCH_HANDLER`, `INBOX_REPOSITORY`, `LoggerService`; `resend(input: ResendInput): Promise<ResendResultDto>` — resolve inbox por pid, seleciona mensagens mortas, despacha via `IDispatchHandler.handle`, marca `reenviado` em sucesso, conta falhas |
+| `ResendInput` | interface | `src/resend/resend.service.ts` | `{ pid?: string; dataInicio?: string; dataFim?: string; forcarReenviadas?: boolean }` — forma interna recebida pelo `ResendService.resend` |
+| `ResendRequestDto` | DTO | `src/resend/dto/resend-request.dto.ts` | `pid?: string (@IsOptional @IsString)`, `dataInicio?: string (@IsOptional @IsISO8601)`, `dataFim?: string (@IsOptional @IsISO8601)`, `forcarReenviadas: boolean = false (@IsBoolean @HasValidCriteria @Transform)`; validador customizado `HasValidCriteria` exige pid ou (dataInicio+dataFim) e rejeita dataInicio > dataFim |
+| `ResendResultDto` | DTO | `src/resend/dto/resend-result.dto.ts` | `total: number`, `reenviadas: number`, `falhas: number` — todos com `@Expose() @ApiProperty`; retornado via `plainToInstance` com `excludeExtraneousValues` |

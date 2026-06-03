@@ -1,6 +1,6 @@
 ---
 name: backend-implementation
-description: Internal phase-3 skill dispatched by feature-router. Implements NestJS modules until tests GREEN. Do not invoke directly — use /feature.
+description: Phase-3 of /feature via feature-router — implement NestJS modules until tests GREEN. Don't invoke directly.
 ---
 
 # Backend Implementation — NestJS + Prisma

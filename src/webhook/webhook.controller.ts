@@ -9,7 +9,13 @@ import {
   Res,
   UseGuards,
 } from '@nestjs/common';
-import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBody,
+  ApiOperation,
+  ApiQuery,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import type { Response } from 'express';
 import { ConfigService } from '@nestjs/config';
 import { MetaSignatureGuard } from './guards/meta-signature.guard';
@@ -25,6 +31,21 @@ export class WebhookController {
 
   @Get()
   @ApiOperation({ summary: 'Verificação do webhook Meta (handshake)' })
+  @ApiQuery({
+    name: 'hub.mode',
+    description: 'Modo de verificação enviado pela Meta.',
+    example: 'subscribe',
+  })
+  @ApiQuery({
+    name: 'hub.verify_token',
+    description: 'Token de verificação configurado no painel Meta.',
+    example: 'meu_token',
+  })
+  @ApiQuery({
+    name: 'hub.challenge',
+    description: 'Desafio a ser retornado para confirmar o endpoint.',
+    example: '1234567890',
+  })
   @ApiResponse({
     status: 200,
     description: 'Hub challenge retornado em text/plain',
@@ -47,12 +68,15 @@ export class WebhookController {
   @UseGuards(MetaSignatureGuard)
   @HttpCode(200)
   @ApiOperation({ summary: 'Recebe evento de webhook Meta' })
+  @ApiBody({
+    schema: { type: 'object' },
+    description: 'Payload de evento enviado pela Meta.',
+  })
   @ApiResponse({ status: 200, description: 'Evento recebido e processado' })
   @ApiResponse({ status: 401, description: 'Assinatura inválida' })
   async receive(
     @Req() req: { rawBody?: Buffer; body: Record<string, unknown> },
   ): Promise<void> {
-    const rawBody = req.rawBody ?? Buffer.alloc(0);
-    await this.webhookService.handleIncoming(req.body, rawBody);
+    await this.webhookService.handleIncoming(req.body);
   }
 }

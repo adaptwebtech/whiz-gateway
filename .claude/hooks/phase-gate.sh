@@ -59,6 +59,7 @@ if [[ "$REL" =~ ^docs/implementation/([^/]+)\.md$ ]]; then
   F="${BASH_REMATCH[1]}"
   tests_exist "$F" || block "phase 4 needs tests for '$F'."
   spec_exists "$F" || echo "WARN [phase-gate]: docs/specs/$F.md absent — drift section empty." >&2
+  echo "NOTE [phase-gate]: doc phase — sync src/<module>/context.md glossary + docs/codebase/context-map.md for touched modules." >&2
   exit 0
 fi
 

@@ -13,6 +13,11 @@ export function buildSwaggerConfig(): Omit<OpenAPIObject, 'paths'> {
     )
     .setVersion('1.0')
     .addTag('Saúde', 'Verificação de prontidão da aplicação')
+    .addTag('Ambientes', 'Gerenciamento de ambientes')
+    .addTag('Inboxes', 'Gerenciamento de inboxes')
+    .addTag('Mensagens Mortas', 'Consulta e reenvio de mensagens com falha')
+    .addTag('Webhook', 'Recepção de eventos da Meta')
+    .addTag('Reenvio de Mensagens', 'Reenvio de mensagens da fila morta')
     .addBearerAuth(
       { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
       'bearer',

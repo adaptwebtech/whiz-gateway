@@ -1,20 +1,31 @@
 /**
  * Unit tests — DeadLetterConsumerService (fila-mensagens-mortas)
  *
- * AC-1: Given DLQ message received, when handler called with payload + headers,
- *       then calls service.register() and calls ack() on the channel.
- * AC-2: Given service.register() throws, when handler called,
- *       then does NOT call ack() (calls nack() instead).
+ * AC-1: Given DLQ message received with valid structured payload,
+ *       when consumer handler called, then service.create() is called with correct data.
+ * AC-2: Given service.create() throws, when consumer handler called,
+ *       then error propagates (RabbitMQService handles nack).
  */
 
+import { StatusFalhaMensagem } from '@prisma/client';
 import { DeadLetterConsumerService } from './dead-letter-consumer.service';
-import { DeadLetterService } from './dead-letter.service';
+import type { DeadLetterService } from './dead-letter.service';
+import type { IRabbitMQService } from '../rabbitmq/interfaces/rabbitmq-service.interface';
 import { LoggerService } from '../logger/logger.service';
+import { DLQ_NAME } from '../rabbitmq/constants/rabbitmq-queue.constants';
 
 // ─── Mocks ────────────────────────────────────────────────────────────────────
 
-const makeService = (): jest.Mocked<Pick<DeadLetterService, 'register'>> => ({
-  register: jest.fn(),
+const makeRabbitMQ = (): jest.Mocked<IRabbitMQService> => ({
+  assertQueue: jest.fn().mockResolvedValue(undefined),
+  deleteQueue: jest.fn().mockResolvedValue(undefined),
+  startConsuming: jest.fn().mockResolvedValue(undefined),
+  stopConsuming: jest.fn().mockResolvedValue(undefined),
+  sendToQueue: jest.fn().mockResolvedValue(undefined),
+});
+
+const makeService = (): jest.Mocked<Pick<DeadLetterService, 'create'>> => ({
+  create: jest.fn(),
 });
 
 const makeLogger = (): jest.Mocked<LoggerService> =>
@@ -26,31 +37,28 @@ const makeLogger = (): jest.Mocked<LoggerService> =>
     verbose: jest.fn(),
   }) as unknown as jest.Mocked<LoggerService>;
 
-// Simulated channel with ack/nack
-const makeChannel = () => ({
-  ack: jest.fn(),
-  nack: jest.fn(),
-});
-
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
 
 const DL_ID = 'deadletter-uuid-0001';
 const PAYLOAD_FIXTURE = {
   id_inbox: 'inbox-uuid-001',
-  status: 'FALHA_ENVIO',
+  status: StatusFalhaMensagem.FALHA_ENVIO,
   message: { body: 'test webhook payload' },
 };
 
 describe('DeadLetterConsumerService — unit', () => {
   let consumerService: DeadLetterConsumerService;
-  let service: jest.Mocked<Pick<DeadLetterService, 'register'>>;
+  let rabbitMQ: jest.Mocked<IRabbitMQService>;
+  let service: jest.Mocked<Pick<DeadLetterService, 'create'>>;
   let logger: jest.Mocked<LoggerService>;
 
   beforeEach(() => {
     jest.resetAllMocks();
+    rabbitMQ = makeRabbitMQ();
     service = makeService();
     logger = makeLogger();
     consumerService = new DeadLetterConsumerService(
+      rabbitMQ as unknown as IRabbitMQService,
       service as unknown as DeadLetterService,
       logger,
     );
@@ -58,94 +66,97 @@ describe('DeadLetterConsumerService — unit', () => {
 
   // ─── AC-1 ──────────────────────────────────────────────────────────────────
 
-  it('AC-1: dado mensagem DLQ recebida, quando handler chamado com payload válido, então service.register() é chamado e ack() é chamado no channel', async () => {
+  it('AC-1: onApplicationBootstrap registra consumidor na DLQ_NAME', async () => {
+    // Act
+    await consumerService.onApplicationBootstrap();
+
+    // Assert
+    expect(rabbitMQ.startConsuming).toHaveBeenCalledWith(
+      DLQ_NAME,
+      expect.any(Function),
+    );
+  });
+
+  it('AC-1: dado mensagem DLQ com payload válido, handler chama service.create() com dados corretos', async () => {
     // Arrange
-    const channel = makeChannel();
-    service.register.mockResolvedValueOnce({
+    service.create.mockResolvedValueOnce({
       id: DL_ID,
       message: PAYLOAD_FIXTURE.message,
       id_inbox: PAYLOAD_FIXTURE.id_inbox,
-      status: 'FALHA_ENVIO',
+      status: StatusFalhaMensagem.FALHA_ENVIO,
       reenviado: false,
       del: false,
       data: new Date().toISOString(),
     });
-    const rawMsg = {
-      content: Buffer.from(JSON.stringify(PAYLOAD_FIXTURE)),
-      properties: { headers: { 'x-death': [{ queue: 'inbox.test-id' }] } },
-    };
 
-    // Act — call the handler returned by the consumer service
-    const handler = consumerService.getHandler();
-    await handler(rawMsg, channel);
+    await consumerService.onApplicationBootstrap();
+
+    // Capture the handler passed to startConsuming
+    const handler = rabbitMQ.startConsuming.mock.calls[0][1];
+    const buf = Buffer.from(JSON.stringify(PAYLOAD_FIXTURE));
+
+    // Act
+    await handler(buf);
 
     // Assert
-    expect(service.register).toHaveBeenCalledTimes(1);
-    expect(channel.ack).toHaveBeenCalledWith(rawMsg);
-    expect(channel.nack).not.toHaveBeenCalled();
+    expect(service.create).toHaveBeenCalledWith({
+      message: PAYLOAD_FIXTURE.message,
+      id_inbox: PAYLOAD_FIXTURE.id_inbox,
+      status: StatusFalhaMensagem.FALHA_ENVIO,
+    });
   });
 
-  it('AC-1: ack é chamado com a mensagem original recebida', async () => {
+  it('AC-1: handler chama service.create() exatamente uma vez por mensagem', async () => {
     // Arrange
-    const channel = makeChannel();
-    service.register.mockResolvedValueOnce({
+    service.create.mockResolvedValueOnce({
       id: DL_ID,
       message: {},
       id_inbox: null,
-      status: 'INBOX_NAO_REGISTRADA',
+      status: StatusFalhaMensagem.INBOX_NAO_REGISTRADA,
       reenviado: false,
       del: false,
       data: new Date().toISOString(),
     });
-    const rawMsg = {
-      content: Buffer.from(JSON.stringify({ status: 'INBOX_NAO_REGISTRADA' })),
-      properties: { headers: {} },
-    };
+
+    await consumerService.onApplicationBootstrap();
+    const handler = rabbitMQ.startConsuming.mock.calls[0][1];
+    const buf = Buffer.from(
+      JSON.stringify({
+        message: {},
+        id_inbox: null,
+        status: StatusFalhaMensagem.INBOX_NAO_REGISTRADA,
+      }),
+    );
 
     // Act
-    const handler = consumerService.getHandler();
-    await handler(rawMsg, channel);
+    await handler(buf);
 
     // Assert
-    expect(channel.ack).toHaveBeenCalledTimes(1);
+    expect(service.create).toHaveBeenCalledTimes(1);
   });
 
   // ─── AC-2 ──────────────────────────────────────────────────────────────────
 
-  it('AC-2: dado service.register() lança erro, quando handler chamado, então ack() NÃO é chamado e nack() é chamado', async () => {
+  it('AC-2: dado service.create() lança erro, handler propaga o erro', async () => {
     // Arrange
-    const channel = makeChannel();
-    service.register.mockRejectedValueOnce(new Error('DB write failed'));
-    const rawMsg = {
-      content: Buffer.from(JSON.stringify(PAYLOAD_FIXTURE)),
-      properties: { headers: {} },
-    };
+    service.create.mockRejectedValueOnce(new Error('DB write failed'));
 
-    // Act
-    const handler = consumerService.getHandler();
-    await handler(rawMsg, channel);
+    await consumerService.onApplicationBootstrap();
+    const handler = rabbitMQ.startConsuming.mock.calls[0][1];
+    const buf = Buffer.from(JSON.stringify(PAYLOAD_FIXTURE));
 
-    // Assert
-    expect(channel.ack).not.toHaveBeenCalled();
-    expect(channel.nack).toHaveBeenCalledWith(rawMsg, false, false);
+    // Act & Assert — handler lança, RabbitMQService cuidará do nack
+    await expect(handler(buf)).rejects.toThrow('DB write failed');
   });
 
-  it('AC-2: dado erro em register, nack é chamado com requeue=false para evitar loop infinito', async () => {
+  it('AC-2: dado payload JSON inválido, handler propaga erro de parse', async () => {
     // Arrange
-    const channel = makeChannel();
-    const error = new Error('Unexpected DB error');
-    service.register.mockRejectedValueOnce(error);
-    const rawMsg = {
-      content: Buffer.from(JSON.stringify(PAYLOAD_FIXTURE)),
-      properties: { headers: {} },
-    };
+    await consumerService.onApplicationBootstrap();
+    const handler = rabbitMQ.startConsuming.mock.calls[0][1];
+    const buf = Buffer.from('not-json');
 
-    // Act
-    const handler = consumerService.getHandler();
-    await handler(rawMsg, channel);
-
-    // Assert — nack called, ack not called
-    expect(channel.nack).toHaveBeenCalledTimes(1);
-    expect(channel.ack).not.toHaveBeenCalled();
+    // Act & Assert
+    await expect(handler(buf)).rejects.toThrow();
+    expect(service.create).not.toHaveBeenCalled();
   });
 });

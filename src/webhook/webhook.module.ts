@@ -1,12 +1,12 @@
 import { Module } from '@nestjs/common';
-import { DeadLetterModule } from '../dead-letter/dead-letter.module';
+import { DispatchModule } from '../dispatch/dispatch.module';
 import { InboxModule } from '../inbox/inbox.module';
 import { MetaSignatureGuard } from './guards/meta-signature.guard';
 import { WebhookController } from './webhook.controller';
 import { WebhookService } from './webhook.service';
 
 @Module({
-  imports: [InboxModule, DeadLetterModule],
+  imports: [InboxModule, DispatchModule],
   providers: [WebhookService, MetaSignatureGuard],
   controllers: [WebhookController],
 })

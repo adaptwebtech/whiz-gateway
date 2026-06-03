@@ -10,7 +10,7 @@ import {
   Patch,
   Post,
 } from '@nestjs/common';
-import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { AmbienteService } from './ambiente.service';
 import { AmbienteResponseDto } from './dto/ambiente-response.dto';
 import { CreateAmbienteDto } from './dto/create-ambiente.dto';
@@ -35,6 +35,11 @@ export class AmbienteController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Busca um ambiente pelo id.' })
+  @ApiParam({
+    name: 'id',
+    description: 'Identificador numérico do ambiente.',
+    example: 1,
+  })
   @ApiResponse({
     status: 200,
     description: 'Ambiente encontrado.',
@@ -62,6 +67,11 @@ export class AmbienteController {
 
   @Patch(':id')
   @ApiOperation({ summary: 'Atualiza parcialmente um ambiente.' })
+  @ApiParam({
+    name: 'id',
+    description: 'Identificador numérico do ambiente.',
+    example: 1,
+  })
   @ApiResponse({
     status: 200,
     description: 'Ambiente atualizado com sucesso.',
@@ -79,6 +89,11 @@ export class AmbienteController {
   @Delete(':id')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Remove (soft-delete) um ambiente pelo id.' })
+  @ApiParam({
+    name: 'id',
+    description: 'Identificador numérico do ambiente.',
+    example: 1,
+  })
   @ApiResponse({ status: 200, description: 'Ambiente removido com sucesso.' })
   @ApiResponse({ status: 404, description: 'Ambiente não encontrado.' })
   softDelete(@Param('id', ParseIntPipe) id: number): Promise<void> {
