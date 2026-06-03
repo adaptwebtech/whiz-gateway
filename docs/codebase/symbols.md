@@ -139,6 +139,22 @@ Mapa de símbolos exportados → arquivo + assinatura. Autoritativo para descobe
 | `CreateTemplateDto` | DTO | `src/wpp-templates/dto/create-template.dto.ts` | `name: string (@IsString)`, `language: string (@IsString)`, `category: string (@IsString)`, `components: object[] (@IsArray)` — passthrough, sem validação de shape interno |
 | `EditTemplateDto` | DTO | `src/wpp-templates/dto/edit-template.dto.ts` | `name?: string (@IsOptional @IsString)`, `components?: object[] (@IsOptional @IsArray)`, `language?: string (@IsOptional @IsString)`, `category?: string (@IsOptional @IsString)` — todos opcionais, passthrough |
 
+## wpp-phone-numbers
+
+| Símbolo | Tipo | Arquivo | Assinatura / Notas |
+|---|---|---|---|
+| `WppPhoneNumbersModule` | módulo (não-global) | `src/wpp-phone-numbers/wpp-phone-numbers.module.ts` | importa `WppModule`; declara 5 controllers; sem exports próprios; registrado em `AppModule` |
+| `WppPhoneNumbersController` | controller | `src/wpp-phone-numbers/wpp-phone-numbers.controller.ts` | `@Controller('wpp')` `@ApiTags('WhatsApp — Números de Telefone')`; handlers: listar números por WABA, buscar por ID opaco, request_code, verify_code, set 2-step PIN |
+| `WppRegistrationController` | controller | `src/wpp-phone-numbers/wpp-registration.controller.ts` | `@ApiTags('WhatsApp — Registro de Número')`; handlers: register, deregister |
+| `WppWabaController` | controller | `src/wpp-phone-numbers/wpp-waba.controller.ts` | `@ApiTags('WhatsApp — WABA')`; handlers: owned_whatsapp_business_accounts, client_whatsapp_business_accounts |
+| `WppSubscriptionsController` | controller | `src/wpp-phone-numbers/wpp-subscriptions.controller.ts` | `@ApiTags('WhatsApp — Inscrições de App')`; handlers: POST/GET/DELETE subscribed_apps |
+| `WppGetStartedController` | controller | `src/wpp-phone-numbers/wpp-get-started.controller.ts` | `@ApiTags('WhatsApp — Debug Token')`; handler: GET debug_token |
+| `RequestCodeDto` | DTO | `src/wpp-phone-numbers/dto/request-code.dto.ts` | `code_method: string`, `locale: string` |
+| `VerifyCodeDto` | DTO | `src/wpp-phone-numbers/dto/verify-code.dto.ts` | `code: string` |
+| `SetTwoStepPinDto` | DTO | `src/wpp-phone-numbers/dto/set-two-step-pin.dto.ts` | `pin: string` |
+| `RegisterPhoneDto` | DTO | `src/wpp-phone-numbers/dto/register-phone.dto.ts` | `messaging_product: string`, `pin: string` |
+| `OverrideCallbackDto` | DTO | `src/wpp-phone-numbers/dto/override-callback.dto.ts` | `override_callback_uri?: string`, `verify_token?: string` |
+
 ## reenvio-mensagens
 
 | Símbolo | Tipo | Arquivo | Assinatura / Notas |
