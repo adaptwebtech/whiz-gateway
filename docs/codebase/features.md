@@ -172,3 +172,19 @@ Mapa de cada feature para seus arquivos. Autoritativo para descoberta (evita `gr
 | DTO | `src/wpp-phone-numbers/dto/set-two-step-pin.dto.ts` |
 | DTO | `src/wpp-phone-numbers/dto/register-phone.dto.ts` |
 | DTO | `src/wpp-phone-numbers/dto/override-callback.dto.ts` |
+
+## wpp-media-business-profiles
+
+> Feature 6/8 do batch WhatsApp Meta Adapter. Domínios Media e Business Profiles — 8 rotas `/wpp/*`. Padrão assíncrono para corpo binário: salva em `/tmp/wpp-uploads`, publica na fila estática `media.upload` e retorna `202 { jobId }`; consumer faz forward à Meta e dispara webhook. Estende `WppService` com `forwardMultipart`/`forwardBinary`; adiciona a fila estática `media.upload` (DLQ → `inbox.dead-letter`). Spec: [`docs/specs/2026-06-03-wpp-media-business-profiles.md`](../specs/2026-06-03-wpp-media-business-profiles.md) · Impl: [`docs/implementation/2026-06-03-wpp-media-business-profiles.md`](../implementation/2026-06-03-wpp-media-business-profiles.md)
+
+| Camada | Arquivos |
+|---|---|
+| Módulo | `src/wpp-media-business-profiles/wpp-media-business-profiles.module.ts` |
+| Controller — Mídia | `src/wpp-media-business-profiles/wpp-media.controller.ts` |
+| Controller — Upload Resumível | `src/wpp-media-business-profiles/wpp-resumable-upload.controller.ts` |
+| Controller — Perfil de Negócio | `src/wpp-media-business-profiles/wpp-business-profile.controller.ts` |
+| Consumer (fila `media.upload`) | `src/wpp-media-business-profiles/wpp-media-upload-consumer.service.ts` |
+| Cleanup (cron) | `src/wpp-media-business-profiles/wpp-media-cleanup.service.ts` |
+| DTOs | `src/wpp-media-business-profiles/dto/media-upload-job.dto.ts` · `src/wpp-media-business-profiles/dto/update-business-profile.dto.ts` · `src/wpp-media-business-profiles/dto/upload-media.dto.ts` · `src/wpp-media-business-profiles/dto/webhook-callback.dto.ts` |
+| Extensão WppService | `src/wpp/wpp.service.ts` (`forwardMultipart`, `forwardBinary`) |
+| Fila | `src/rabbitmq/constants/rabbitmq-queue.constants.ts` (`MEDIA_UPLOAD_QUEUE`) · `src/rabbitmq/rabbitmq.service.ts` + interface (`publish`) |

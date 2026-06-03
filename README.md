@@ -67,5 +67,6 @@ npm run test:cov   # cobertura
 | wpp-adapter-core | [docs/specs/wpp-adapter-core.md](docs/specs/wpp-adapter-core.md) | [docs/implementation/wpp-adapter-core.md](docs/implementation/wpp-adapter-core.md) |
 | wpp-templates | [docs/specs/wpp-templates.md](docs/specs/wpp-templates.md) | [docs/implementation/wpp-templates.md](docs/implementation/wpp-templates.md) |
 | wpp-phone-numbers | [docs/specs/2026-06-03-wpp-phone-numbers.md](docs/specs/2026-06-03-wpp-phone-numbers.md) | [docs/implementation/2026-06-03-wpp-phone-numbers.md](docs/implementation/2026-06-03-wpp-phone-numbers.md) |
+| wpp-media-business-profiles | [docs/specs/2026-06-03-wpp-media-business-profiles.md](docs/specs/2026-06-03-wpp-media-business-profiles.md) | [docs/implementation/2026-06-03-wpp-media-business-profiles.md](docs/implementation/2026-06-03-wpp-media-business-profiles.md) |
 
 Mapa do código: [docs/CODEBASE.md](docs/CODEBASE.md).
