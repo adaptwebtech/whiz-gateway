@@ -197,6 +197,23 @@ Mapa de símbolos exportados → arquivo + assinatura. Autoritativo para descobe
 | `FlowEndpointRequestDto` | DTO | `src/wpp-flows/dto/flow-endpoint-request.dto.ts` | `encrypted_flow_data: string (@IsString)`, `encrypted_aes_key: string (@IsString)`, `initial_vector: string (@IsString)` — todos base64 |
 | `FlowEndpointResponseDto` | DTO | `src/wpp-flows/dto/flow-endpoint-response.dto.ts` | `encrypted_flow_data: string` — base64, resposta re-criptografada para a Meta |
 
+## wpp-misc
+
+| Símbolo | Tipo | Arquivo | Assinatura / Notas |
+|---|---|---|---|
+| `WppMiscModule` | módulo (não-global) | `src/wpp-misc/wpp-misc.module.ts` | importa `WppModule`; declara 6 controllers; sem service próprio; registrado em `AppModule` |
+| `WppQrCodeController` | controller | `src/wpp-misc/wpp-qrcode.controller.ts` | `@Controller('wpp')` `@ApiTags('WhatsApp — QR Codes')`; `getQrCode`, `listQrCodes`, `createOrUpdateQrCode`, `deleteQrCode` |
+| `WppAnalyticsController` | controller | `src/wpp-misc/wpp-analytics.controller.ts` | `@Controller('wpp')` `@ApiTags('WhatsApp — Analytics')`; `getAnalytics(wabaId, query)` — serve `analytics` e `conversation_analytics` via `fields` |
+| `WppBillingController` | controller | `src/wpp-misc/wpp-billing.controller.ts` | `@Controller('wpp')` `@ApiTags('WhatsApp — Billing')`; `getExtendedCredits(businessId, query)` |
+| `WppCommerceController` | controller | `src/wpp-misc/wpp-commerce.controller.ts` | `@Controller('wpp')` `@ApiTags('WhatsApp — Commerce Settings')`; `getCommerceSettings`, `updateCommerceSettings` (query passthrough) |
+| `WppBlockUsersController` | controller | `src/wpp-misc/wpp-block-users.controller.ts` | `@Controller('wpp')` `@ApiTags('WhatsApp — Block Users')`; `listBlockedUsers`, `blockUsers(dto: BlockUsersDto)`, `unblockUsers(dto: BlockUsersDto)` |
+| `WppComplianceController` | controller | `src/wpp-misc/wpp-compliance.controller.ts` | `@Controller('wpp')` `@ApiTags('WhatsApp — Business Compliance')`; `getComplianceInfo`, `postComplianceInfo(dto: BusinessComplianceDto)` |
+| `CreateOrUpdateQrCodeDto` | DTO | `src/wpp-misc/dto/create-or-update-qr-code.dto.ts` | `prefilled_message: string`, `generate_qr_image?: string`, `code?: string` |
+| `BlockUsersDto` | DTO | `src/wpp-misc/dto/block-users.dto.ts` | `messaging_product: string`, `block_users: BlockUserItemDto[]` |
+| `BlockUserItemDto` | DTO | `src/wpp-misc/dto/block-users.dto.ts` | `user: string` (número com DDI) |
+| `BusinessComplianceDto` | DTO | `src/wpp-misc/dto/business-compliance.dto.ts` | `messaging_product`, `entity_name`, `entity_type`, `is_registered: boolean`, `grievance_officer_details: GrievanceOfficerDetailsDto` |
+| `GrievanceOfficerDetailsDto` | DTO | `src/wpp-misc/dto/business-compliance.dto.ts` | `name`, `email`, `landline_number?`, `mobile_number?` |
+
 ## reenvio-mensagens
 
 | Símbolo | Tipo | Arquivo | Assinatura / Notas |
