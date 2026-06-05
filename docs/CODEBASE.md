@@ -37,6 +37,8 @@ Validadas via Joi (`src/config/config.validation.ts`); acesso somente via `Confi
 | `ADMIN_API_KEY` | sim | — |
 | `META_GRAPH_URL` | sim | — |
 | `META_ACCESS_TOKEN` | sim | — |
+| `GATEWAY_PUBLIC_URL` | não | — |
+| `FLOWS_PRIVATE_KEY` | não | — |
 
 ## §13 — Registry de features
 
@@ -55,5 +57,5 @@ Validadas via Joi (`src/config/config.validation.ts`); acesso somente via `Confi
 | 2026-06-03 | wpp-templates | [spec](specs/2026-06-03-wpp-templates.md) | [impl](implementation/2026-06-03-wpp-templates.md) | Implementada |
 | 2026-06-03 | wpp-phone-numbers | [spec](specs/2026-06-03-wpp-phone-numbers.md) | [impl](implementation/2026-06-03-wpp-phone-numbers.md) | Implementada |
 | 2026-06-03 | wpp-media-business-profiles | [spec](specs/2026-06-03-wpp-media-business-profiles.md) | [impl](implementation/2026-06-03-wpp-media-business-profiles.md) | Implementada |
-| 2026-06-03 | wpp-flows | [spec](specs/2026-06-03-wpp-flows.md) | — | Spec |
+| 2026-06-05 | wpp-flows | [spec](specs/2026-06-03-wpp-flows.md) | [impl](implementation/2026-06-05-wpp-flows.md) | Implementada |
 | 2026-06-05 | wpp-flow-callbacks | [spec](specs/2026-06-05-wpp-flow-callbacks.md) | [impl](implementation/2026-06-05-wpp-flow-callbacks.md) | Implementada |

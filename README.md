@@ -26,6 +26,8 @@ Validadas no bootstrap (Joi). A ausência de qualquer obrigatória impede a apli
 | `DISPATCH_BACKOFF_BASE_MS` | não | `1000` | Base do backoff exponencial (ms) |
 | `META_GRAPH_URL` | sim | — | Base URL da Meta Graph API com versão embutida (ex.: `https://graph.facebook.com/v20.0`) |
 | `META_ACCESS_TOKEN` | sim | — | Bearer token do app Meta; injetado automaticamente pelo adapter; nunca exposto ao caller |
+| `GATEWAY_PUBLIC_URL` | não | — | URL pública do gateway (ex.: `https://gateway.example.com`); necessário para `endpoint_uri` nas rotas dinâmicas de flows |
+| `FLOWS_PRIVATE_KEY` | não | — | Chave privada RSA-2048 PEM (com `\n` escapados); necessária para descriptografar payloads no endpoint de flows |
 
 ## Como rodar
 
@@ -68,6 +70,7 @@ npm run test:cov   # cobertura
 | wpp-templates | [docs/specs/wpp-templates.md](docs/specs/wpp-templates.md) | [docs/implementation/wpp-templates.md](docs/implementation/wpp-templates.md) |
 | wpp-phone-numbers | [docs/specs/2026-06-03-wpp-phone-numbers.md](docs/specs/2026-06-03-wpp-phone-numbers.md) | [docs/implementation/2026-06-03-wpp-phone-numbers.md](docs/implementation/2026-06-03-wpp-phone-numbers.md) |
 | wpp-media-business-profiles | [docs/specs/2026-06-03-wpp-media-business-profiles.md](docs/specs/2026-06-03-wpp-media-business-profiles.md) | [docs/implementation/2026-06-03-wpp-media-business-profiles.md](docs/implementation/2026-06-03-wpp-media-business-profiles.md) |
+| wpp-flows | [docs/specs/2026-06-03-wpp-flows.md](docs/specs/2026-06-03-wpp-flows.md) | [docs/implementation/2026-06-05-wpp-flows.md](docs/implementation/2026-06-05-wpp-flows.md) |
 | wpp-flow-callbacks | [docs/specs/2026-06-05-wpp-flow-callbacks.md](docs/specs/2026-06-05-wpp-flow-callbacks.md) | [docs/implementation/2026-06-05-wpp-flow-callbacks.md](docs/implementation/2026-06-05-wpp-flow-callbacks.md) |
 
 Mapa do código: [docs/CODEBASE.md](docs/CODEBASE.md).
