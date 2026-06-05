@@ -191,7 +191,7 @@ Mapa de cada feature para seus arquivos. Autoritativo para descoberta (evita `gr
 
 ## wpp-flows
 
-> Feature 7/8 do batch WhatsApp Meta Adapter. Domínio Flows — 24 rotas de proxy puro + variantes com `:uid` (injetam `endpoint_uri`) + endpoint criptografado `POST /wpp/flows/endpoint/:uid` (RSA-OAEP + AES-256-GCM). Depende de `wpp-flow-callbacks` para lookup UID → URL. Spec: [`docs/specs/2026-06-03-wpp-flows.md`](../specs/2026-06-03-wpp-flows.md)
+> Feature 7/8 do batch WhatsApp Meta Adapter. Domínio Flows — proxy de gerenciamento (14 handlers + 3 variantes `:uid` que injetam `endpoint_uri`) + endpoint criptografado `POST /wpp/flows/endpoint/:uid` (RSA-OAEP + AES-256-GCM). Depende de `wpp-flow-callbacks` para lookup UID → URL. Spec: [`docs/specs/2026-06-03-wpp-flows.md`](../specs/2026-06-03-wpp-flows.md) · Impl: [`docs/implementation/2026-06-05-wpp-flows.md`](../implementation/2026-06-05-wpp-flows.md) · Status: Implementada
 
 | Camada | Arquivo |
 |---|---|
@@ -199,7 +199,7 @@ Mapa de cada feature para seus arquivos. Autoritativo para descoberta (evita `gr
 | Controller — Gerenciamento + UID routes | `src/wpp-flows/wpp-flows.controller.ts` |
 | Controller — Endpoint Criptografado | `src/wpp-flows/wpp-flows-endpoint.controller.ts` |
 | Service — Endpoint Criptografado | `src/wpp-flows/wpp-flows-endpoint.service.ts` |
-| DTOs | `src/wpp-flows/dto/create-flow.dto.ts` · `src/wpp-flows/dto/update-flow-metadata.dto.ts` · `src/wpp-flows/dto/update-flow-asset.dto.ts` · `src/wpp-flows/dto/migrate-flows.dto.ts` · `src/wpp-flows/dto/set-encryption-key.dto.ts` · `src/wpp-flows/dto/send-flow-message.dto.ts` · `src/wpp-flows/dto/create-flow-template.dto.ts` · `src/wpp-flows/dto/flow-endpoint-request.dto.ts` |
+| DTOs | `src/wpp-flows/dto/flow-endpoint-request.dto.ts` · `src/wpp-flows/dto/flow-endpoint-response.dto.ts` |
 | Dep. externa | `src/wpp-flow-callbacks/wpp-flow-callbacks.module.ts` (exporta `WppFlowCallbacksService`) |
 
 ## wpp-flow-callbacks

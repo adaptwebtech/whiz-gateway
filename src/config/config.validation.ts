@@ -37,4 +37,6 @@ export const configValidationSchema = Joi.object({
     then: Joi.string().required(),
     otherwise: Joi.string().allow('').optional(),
   }),
+  GATEWAY_PUBLIC_URL: Joi.string().uri().optional(),
+  FLOWS_PRIVATE_KEY: Joi.string().optional(),
 });

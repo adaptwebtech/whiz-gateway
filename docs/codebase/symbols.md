@@ -186,6 +186,17 @@ Mapa de símbolos exportados → arquivo + assinatura. Autoritativo para descobe
 | `UpdateFlowCallbackDto` | DTO | `src/wpp-flow-callbacks/dto/update-flow-callback.dto.ts` | `url: string (@IsUrl({ protocols: ['http','https'], require_protocol: true }))` |
 | `FlowCallbackResponseDto` | DTO | `src/wpp-flow-callbacks/dto/flow-callback-response.dto.ts` | `{ uid: string, url: string, date: string (ISO 8601), del: boolean }` |
 
+## wpp-flows
+
+| Símbolo | Tipo | Arquivo | Assinatura / Notas |
+|---|---|---|---|
+| `WppFlowsModule` | módulo (não-global) | `src/wpp-flows/wpp-flows.module.ts` | importa `WppModule`, `ApiKeysModule`, `WppFlowCallbacksModule`; declara `WppFlowsController`, `WppFlowsEndpointController`; provê `WppFlowsEndpointService`; sem exports |
+| `WppFlowsController` | controller | `src/wpp-flows/wpp-flows.controller.ts` | `@Controller('wpp')` `@ApiTags('Flows')` `@ApiBearerAuth('bearer')` `@UseGuards(ApiKeyGuard)` `@UseFilters(WppAuthFilter)`; injeta `WppService`, `WppFlowCallbacksService`, `ConfigService`; 14 handlers de proxy + 3 variantes `:uid` (`createFlowWithUid`, `migrateFlowsWithUid`, `updateFlowMetadataWithUid`) que injetam `endpoint_uri = GATEWAY_PUBLIC_URL/wpp/flows/endpoint/:uid` antes do forward |
+| `WppFlowsEndpointController` | controller | `src/wpp-flows/wpp-flows-endpoint.controller.ts` | `@Controller('wpp/flows')` `@ApiTags('Flows Endpoint')`; sem `ApiKeyGuard`; handler: `handleEndpoint(uid, body: FlowEndpointRequestDto, req, signature): Promise<{ encrypted_flow_data: string }>` — delega a `WppFlowsEndpointService.handle` |
+| `WppFlowsEndpointService` | classe (`@Injectable`) | `src/wpp-flows/wpp-flows-endpoint.service.ts` | injeta `ConfigService`, `WppFlowCallbacksService`; métodos públicos: `handle(uid, body, rawBody, signature): Promise<{ encrypted_flow_data: string }>` · `verifySignature(rawBody, signature): boolean`; privados: `decryptAesKey(encryptedKey): Buffer` (RSA-OAEP, `FLOWS_PRIVATE_KEY`) · `decryptPayload(data, aesKey, iv): object` (AES-256-GCM, últimos 16 bytes = auth tag) · `encryptResponse(payload, aesKey, iv): string` (AES-256-GCM, IV com XOR `0x01` no primeiro byte) · `forwardToClient(url, payload): Promise<object>` (fetch POST JSON + `Authorization: Bearer META_ACCESS_TOKEN`) |
+| `FlowEndpointRequestDto` | DTO | `src/wpp-flows/dto/flow-endpoint-request.dto.ts` | `encrypted_flow_data: string (@IsString)`, `encrypted_aes_key: string (@IsString)`, `initial_vector: string (@IsString)` — todos base64 |
+| `FlowEndpointResponseDto` | DTO | `src/wpp-flows/dto/flow-endpoint-response.dto.ts` | `encrypted_flow_data: string` — base64, resposta re-criptografada para a Meta |
+
 ## reenvio-mensagens
 
 | Símbolo | Tipo | Arquivo | Assinatura / Notas |

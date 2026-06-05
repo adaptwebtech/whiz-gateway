@@ -15,6 +15,7 @@ Mapa global dos contextos (módulos de domínio) do whiz-gateway e como se relac
 - [WppAdapterCore](../../src/wpp/context.md) — proxy stateless para a WhatsApp Cloud API; injeta autenticação Meta e normaliza erros de transporte
 - [WppTemplates](../../src/wpp-templates/context.md) — proxy stateless para operações de message templates (leitura, criação, edição, remoção) de uma WABA; sem persistência local
 - [WppPhoneNumbers](../../src/wpp-phone-numbers/context.md) — proxy stateless para gestão de números de telefone, registro, WABA, inscrições de app e debug de token; 13 rotas, sem persistência local
+- [WppFlows](../../src/wpp-flows/context.md) — proxy flows WhatsApp com criptografia RSA-OAEP + AES-256-GCM para endpoint dinâmico
 
 ## Relationships
 
@@ -29,3 +30,7 @@ Mapa global dos contextos (módulos de domínio) do whiz-gateway e como se relac
 - **WppTemplates → ApiKeys**: `WppTemplatesController` usa `ApiKeyGuard` via `@UseGuards` para autenticar requisições de templates via header `X-API-KEY`
 - **WppPhoneNumbers → WppAdapterCore**: os cinco controllers de `WppPhoneNumbersModule` injetam `WppService` (via `WppModule`) e delegam todos os forwards à Meta
 - **WppPhoneNumbers → ApiKeys**: todos os controllers usam `ApiKeyGuard` para autenticar requisições via header `X-API-KEY`
+- **WppFlows → WppAdapterCore**: `WppFlowsController` injeta `WppService` para todos os forwards de gerenciamento à Meta
+- **WppFlows → WppFlowCallbacks**: `WppFlowsController` e `WppFlowsEndpointService` consultam `WppFlowCallbacksService.getUrl(uid)` para resolver UID → URL
+- **WppFlows → ApiKeys**: `WppFlowsController` usa `ApiKeyGuard` nas rotas de gerenciamento via header `X-API-KEY`
+- **Meta → WppFlows**: Meta POSTa payload criptografado em `/wpp/flows/endpoint/:uid`; autenticado via `X-Hub-Signature-256` (HMAC-SHA256 com `META_APP_SECRET`)
