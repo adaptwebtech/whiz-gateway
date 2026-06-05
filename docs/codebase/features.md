@@ -188,3 +188,31 @@ Mapa de cada feature para seus arquivos. Autoritativo para descoberta (evita `gr
 | DTOs | `src/wpp-media-business-profiles/dto/media-upload-job.dto.ts` · `src/wpp-media-business-profiles/dto/update-business-profile.dto.ts` · `src/wpp-media-business-profiles/dto/upload-media.dto.ts` · `src/wpp-media-business-profiles/dto/webhook-callback.dto.ts` |
 | Extensão WppService | `src/wpp/wpp.service.ts` (`forwardMultipart`, `forwardBinary`) |
 | Fila | `src/rabbitmq/constants/rabbitmq-queue.constants.ts` (`MEDIA_UPLOAD_QUEUE`) · `src/rabbitmq/rabbitmq.service.ts` + interface (`publish`) |
+
+## wpp-flows
+
+> Feature 7/8 do batch WhatsApp Meta Adapter. Domínio Flows — 24 rotas de proxy puro + variantes com `:uid` (injetam `endpoint_uri`) + endpoint criptografado `POST /wpp/flows/endpoint/:uid` (RSA-OAEP + AES-256-GCM). Depende de `wpp-flow-callbacks` para lookup UID → URL. Spec: [`docs/specs/2026-06-03-wpp-flows.md`](../specs/2026-06-03-wpp-flows.md)
+
+| Camada | Arquivo |
+|---|---|
+| Módulo | `src/wpp-flows/wpp-flows.module.ts` |
+| Controller — Gerenciamento + UID routes | `src/wpp-flows/wpp-flows.controller.ts` |
+| Controller — Endpoint Criptografado | `src/wpp-flows/wpp-flows-endpoint.controller.ts` |
+| Service — Endpoint Criptografado | `src/wpp-flows/wpp-flows-endpoint.service.ts` |
+| DTOs | `src/wpp-flows/dto/create-flow.dto.ts` · `src/wpp-flows/dto/update-flow-metadata.dto.ts` · `src/wpp-flows/dto/update-flow-asset.dto.ts` · `src/wpp-flows/dto/migrate-flows.dto.ts` · `src/wpp-flows/dto/set-encryption-key.dto.ts` · `src/wpp-flows/dto/send-flow-message.dto.ts` · `src/wpp-flows/dto/create-flow-template.dto.ts` · `src/wpp-flows/dto/flow-endpoint-request.dto.ts` |
+| Dep. externa | `src/wpp-flow-callbacks/wpp-flow-callbacks.module.ts` (exporta `WppFlowCallbacksService`) |
+
+## wpp-flow-callbacks
+
+> Feature 9 do whiz-gateway. Tabela `flow_callbacks_urls` (uid → url), CRUD, cache Redis e serviço `WppFlowCallbacksService.getUrl(uid)` usado por `wpp-flows`. Spec: [`docs/specs/2026-06-05-wpp-flow-callbacks.md`](../specs/2026-06-05-wpp-flow-callbacks.md) · Impl: [`docs/implementation/2026-06-05-wpp-flow-callbacks.md`](../implementation/2026-06-05-wpp-flow-callbacks.md) · Status: Implementada
+
+| Camada | Arquivo |
+|---|---|
+| Módulo | `src/wpp-flow-callbacks/wpp-flow-callbacks.module.ts` |
+| Controller | `src/wpp-flow-callbacks/wpp-flow-callbacks.controller.ts` |
+| Service | `src/wpp-flow-callbacks/wpp-flow-callbacks.service.ts` |
+| Repository (interface) | `src/wpp-flow-callbacks/interfaces/wpp-flow-callbacks-repository.interface.ts` |
+| Repository (impl) | `src/wpp-flow-callbacks/repositories/wpp-flow-callbacks.prisma.repository.ts` |
+| Token | `src/wpp-flow-callbacks/constants/wpp-flow-callbacks-tokens.constants.ts` |
+| DTOs | `src/wpp-flow-callbacks/dto/create-flow-callback.dto.ts` · `src/wpp-flow-callbacks/dto/update-flow-callback.dto.ts` · `src/wpp-flow-callbacks/dto/flow-callback-response.dto.ts` |
+| Schema | `prisma/schema.prisma` (`FlowCallbackUrl` model) |

@@ -68,5 +68,6 @@ npm run test:cov   # cobertura
 | wpp-templates | [docs/specs/wpp-templates.md](docs/specs/wpp-templates.md) | [docs/implementation/wpp-templates.md](docs/implementation/wpp-templates.md) |
 | wpp-phone-numbers | [docs/specs/2026-06-03-wpp-phone-numbers.md](docs/specs/2026-06-03-wpp-phone-numbers.md) | [docs/implementation/2026-06-03-wpp-phone-numbers.md](docs/implementation/2026-06-03-wpp-phone-numbers.md) |
 | wpp-media-business-profiles | [docs/specs/2026-06-03-wpp-media-business-profiles.md](docs/specs/2026-06-03-wpp-media-business-profiles.md) | [docs/implementation/2026-06-03-wpp-media-business-profiles.md](docs/implementation/2026-06-03-wpp-media-business-profiles.md) |
+| wpp-flow-callbacks | [docs/specs/2026-06-05-wpp-flow-callbacks.md](docs/specs/2026-06-05-wpp-flow-callbacks.md) | [docs/implementation/2026-06-05-wpp-flow-callbacks.md](docs/implementation/2026-06-05-wpp-flow-callbacks.md) |
 
 Mapa do código: [docs/CODEBASE.md](docs/CODEBASE.md).

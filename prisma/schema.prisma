@@ -64,3 +64,12 @@ model fila_mensagens_mortas {
 
   inbox inboxes? @relation(fields: [id_inbox], references: [id])
 }
+
+model FlowCallbackUrl {
+  uid  String   @id @default(uuid())
+  url  String
+  date DateTime @default(now())
+  del  Boolean  @default(false)
+
+  @@map("flow_callbacks_urls")
+}
