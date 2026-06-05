@@ -100,7 +100,7 @@ Mapa de símbolos exportados → arquivo + assinatura. Autoritativo para descobe
 | Símbolo | Tipo | Arquivo | Assinatura / Notas |
 |---|---|---|---|
 | `REDIS_CLIENT` | token (Symbol) | `src/redis/constants/redis-tokens.constants.ts` | token de injeção da instância `ioredis.Redis` |
-| `RedisService` | classe (`@Injectable`) | `src/redis/redis.service.ts` | `hset(key,field,value)` · `hgetall(key)` · `hdel(key,field)` · `del(key)` · `get(key)` |
+| `RedisService` | classe (`@Injectable`) | `src/redis/redis.service.ts` | `hset(key,field,value)` · `hgetall(key)` · `hdel(key,field)` · `del(key)` · `get(key)` · `set(key,value,ttlSeconds)` (adicionado em `wpp-flow-callbacks`) |
 | `RedisModule` | módulo (`@Global`) | `src/redis/redis.module.ts` | factory `REDIS_CLIENT` via `ConfigService.getOrThrow('REDIS_URL')`; provê/exporta `REDIS_CLIENT` e `RedisService` |
 
 ## api-keys-foundation
@@ -170,6 +170,21 @@ Mapa de símbolos exportados → arquivo + assinatura. Autoritativo para descobe
 | `UpdateBusinessProfileDto` | DTO | `src/wpp-media-business-profiles/dto/update-business-profile.dto.ts` | `messaging_product: string`; opcionais `about?`, `address?`, `description?`, `email?`, `websites?: string[]`, `vertical?`, `profile_picture_handle?` |
 | `UploadMediaDto` | DTO | `src/wpp-media-business-profiles/dto/upload-media.dto.ts` | `messaging_product: string`, `callback_url?: string` — documentação Swagger do form-data |
 | `WebhookCallbackDto` | DTO | `src/wpp-media-business-profiles/dto/webhook-callback.dto.ts` | `jobId`, `status: 'done' \| 'failed'`, `payload?`, `error?` |
+
+## wpp-flow-callbacks
+
+| Símbolo | Tipo | Arquivo | Assinatura / Notas |
+|---|---|---|---|
+| `WppFlowCallbacksModule` | módulo (não-global) | `src/wpp-flow-callbacks/wpp-flow-callbacks.module.ts` | importa `PrismaModule`, `RedisModule`, `ApiKeysModule`; exporta `WppFlowCallbacksService`; registrado em `AppModule` |
+| `WppFlowCallbacksController` | controller | `src/wpp-flow-callbacks/wpp-flow-callbacks.controller.ts` | `@Controller('wpp-flow-callbacks')` `@ApiTags('Flow Callbacks')` `@ApiBearerAuth('bearer')` `@UseGuards(ApiKeyGuard)` `@UseFilters(WppAuthFilter)`; `create`, `findAll`, `findOne`, `update`, `remove` |
+| `WppFlowCallbacksService` | classe (`@Injectable`) | `src/wpp-flow-callbacks/wpp-flow-callbacks.service.ts` | injeta `WPP_FLOW_CALLBACKS_REPOSITORY`, `RedisService`, `Logger`; `create(dto)` · `findAll()` · `findOne(uid)` · `update(uid,dto)` · `remove(uid)` · `getUrl(uid): Promise<string\|null>` (exportado para `wpp-flows`) |
+| `IWppFlowCallbacksRepository` | interface | `src/wpp-flow-callbacks/interfaces/wpp-flow-callbacks-repository.interface.ts` | `create(data) / findAll() / findByUid(uid) / update(uid,url) / softDelete(uid)` |
+| `FlowCallbackEntity` | interface | `src/wpp-flow-callbacks/interfaces/wpp-flow-callbacks-repository.interface.ts` | `{ uid: string, url: string, date: Date, del: boolean }` |
+| `WppFlowCallbacksPrismaRepository` | classe (`@Injectable`) | `src/wpp-flow-callbacks/repositories/wpp-flow-callbacks.prisma.repository.ts` | implementa `IWppFlowCallbacksRepository`; `findAll` filtra `del:false`, ordena por `date:desc`; `softDelete` seta `del:true` |
+| `WPP_FLOW_CALLBACKS_REPOSITORY` | token (string) | `src/wpp-flow-callbacks/constants/wpp-flow-callbacks-tokens.constants.ts` | `'WPP_FLOW_CALLBACKS_REPOSITORY'` — token de injeção de `IWppFlowCallbacksRepository` |
+| `CreateFlowCallbackDto` | DTO | `src/wpp-flow-callbacks/dto/create-flow-callback.dto.ts` | `url: string (@IsUrl({ protocols: ['http','https'], require_protocol: true }))` |
+| `UpdateFlowCallbackDto` | DTO | `src/wpp-flow-callbacks/dto/update-flow-callback.dto.ts` | `url: string (@IsUrl({ protocols: ['http','https'], require_protocol: true }))` |
+| `FlowCallbackResponseDto` | DTO | `src/wpp-flow-callbacks/dto/flow-callback-response.dto.ts` | `{ uid: string, url: string, date: string (ISO 8601), del: boolean }` |
 
 ## reenvio-mensagens
 
