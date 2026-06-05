@@ -202,6 +202,25 @@ Mapa de cada feature para seus arquivos. Autoritativo para descoberta (evita `gr
 | DTOs | `src/wpp-flows/dto/flow-endpoint-request.dto.ts` · `src/wpp-flows/dto/flow-endpoint-response.dto.ts` |
 | Dep. externa | `src/wpp-flow-callbacks/wpp-flow-callbacks.module.ts` (exporta `WppFlowCallbacksService`) |
 
+## wpp-misc
+
+> Feature 8/8 do batch WhatsApp Meta Adapter. Proxy stateless para recursos auxiliares da WhatsApp Cloud API: QR codes de mensagem, analytics de WABA (mensagens e conversas via field expansion), billing (linhas de crédito estendido), commerce settings, bloqueio/desbloqueio de usuários e conformidade regulatória (Índia). Sem persistência local — todas as entidades vivem na Meta. Spec: [`docs/specs/2026-06-03-wpp-misc.md`](../specs/2026-06-03-wpp-misc.md) · Impl: [`docs/implementation/2026-06-05-wpp-misc.md`](../implementation/2026-06-05-wpp-misc.md) · Status: Implementada
+
+| Camada | Arquivos |
+|---|---|
+| Módulo | `src/wpp-misc/wpp-misc.module.ts` |
+| Controller — QR Codes | `src/wpp-misc/wpp-qrcode.controller.ts` |
+| Controller — Analytics | `src/wpp-misc/wpp-analytics.controller.ts` |
+| Controller — Billing | `src/wpp-misc/wpp-billing.controller.ts` |
+| Controller — Commerce Settings | `src/wpp-misc/wpp-commerce.controller.ts` |
+| Controller — Block Users | `src/wpp-misc/wpp-block-users.controller.ts` |
+| Controller — Business Compliance | `src/wpp-misc/wpp-compliance.controller.ts` |
+| DTO | `src/wpp-misc/dto/create-or-update-qr-code.dto.ts` |
+| DTO | `src/wpp-misc/dto/block-users.dto.ts` |
+| DTO | `src/wpp-misc/dto/business-compliance.dto.ts` |
+| Testes | `src/wpp-misc/wpp-misc.controller.spec.ts` (27 casos — GREEN) |
+| Glossário | `src/wpp-misc/context.md` |
+
 ## wpp-flow-callbacks
 
 > Feature 9 do whiz-gateway. Tabela `flow_callbacks_urls` (uid → url), CRUD, cache Redis e serviço `WppFlowCallbacksService.getUrl(uid)` usado por `wpp-flows`. Spec: [`docs/specs/2026-06-05-wpp-flow-callbacks.md`](../specs/2026-06-05-wpp-flow-callbacks.md) · Impl: [`docs/implementation/2026-06-05-wpp-flow-callbacks.md`](../implementation/2026-06-05-wpp-flow-callbacks.md) · Status: Implementada

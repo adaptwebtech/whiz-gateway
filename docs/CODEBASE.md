@@ -59,3 +59,4 @@ Validadas via Joi (`src/config/config.validation.ts`); acesso somente via `Confi
 | 2026-06-03 | wpp-media-business-profiles | [spec](specs/2026-06-03-wpp-media-business-profiles.md) | [impl](implementation/2026-06-03-wpp-media-business-profiles.md) | Implementada |
 | 2026-06-05 | wpp-flows | [spec](specs/2026-06-03-wpp-flows.md) | [impl](implementation/2026-06-05-wpp-flows.md) | Implementada |
 | 2026-06-05 | wpp-flow-callbacks | [spec](specs/2026-06-05-wpp-flow-callbacks.md) | [impl](implementation/2026-06-05-wpp-flow-callbacks.md) | Implementada |
+| 2026-06-05 | wpp-misc | [spec](specs/2026-06-03-wpp-misc.md) | [impl](implementation/2026-06-05-wpp-misc.md) | Implementada |

@@ -20,6 +20,7 @@ import { WppPhoneNumbersModule } from './wpp-phone-numbers/wpp-phone-numbers.mod
 import { WppMediaBusinessProfilesModule } from './wpp-media-business-profiles/wpp-media-business-profiles.module';
 import { WppFlowCallbacksModule } from './wpp-flow-callbacks/wpp-flow-callbacks.module';
 import { WppFlowsModule } from './wpp-flows/wpp-flows.module';
+import { WppMiscModule } from './wpp-misc/wpp-misc.module';
 
 /**
  * Módulo raiz. Agrega a infraestrutura base do gateway (FR-16, AC-14).
@@ -47,6 +48,7 @@ import { WppFlowsModule } from './wpp-flows/wpp-flows.module';
     WppMediaBusinessProfilesModule,
     WppFlowCallbacksModule,
     WppFlowsModule,
+    WppMiscModule,
   ],
 })
 export class AppModule {}
