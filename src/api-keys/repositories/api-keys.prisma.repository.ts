@@ -14,7 +14,7 @@ export class ApiKeysPrismaRepository implements IApiKeysRepository {
     name: string;
     key: string;
     salt: string;
-    date: Date;
+    data: Date;
     del: boolean;
   }): Promise<ApiKeyEntity> {
     return this.prisma.api_keys.create({ data });

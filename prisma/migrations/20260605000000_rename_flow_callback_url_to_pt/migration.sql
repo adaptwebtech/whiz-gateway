@@ -1,0 +1,3 @@
+-- Rename Prisma model FlowCallbackUrl → flow_callbacks_urls (PT-BR snake_case convention).
+-- The underlying table was already named "flow_callbacks_urls" via @@map, so no DDL is needed.
+-- This migration exists solely to register the schema change in migration history.

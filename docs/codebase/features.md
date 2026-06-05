@@ -234,4 +234,4 @@ Mapa de cada feature para seus arquivos. Autoritativo para descoberta (evita `gr
 | Repository (impl) | `src/wpp-flow-callbacks/repositories/wpp-flow-callbacks.prisma.repository.ts` |
 | Token | `src/wpp-flow-callbacks/constants/wpp-flow-callbacks-tokens.constants.ts` |
 | DTOs | `src/wpp-flow-callbacks/dto/create-flow-callback.dto.ts` · `src/wpp-flow-callbacks/dto/update-flow-callback.dto.ts` · `src/wpp-flow-callbacks/dto/flow-callback-response.dto.ts` |
-| Schema | `prisma/schema.prisma` (`FlowCallbackUrl` model) |
+| Schema | `prisma/schema.prisma` (modelo `flow_callbacks_urls`) |

@@ -17,7 +17,7 @@ export class FlowCallbackResponseDto {
     description: 'Data de criação (ISO 8601)',
     example: '2026-06-05T12:00:00.000Z',
   })
-  date: string;
+  data: string;
 
   @ApiProperty({
     description: 'Indica se o registro foi removido (soft-delete)',

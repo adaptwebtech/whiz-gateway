@@ -1,7 +1,7 @@
 export interface FlowCallbackEntity {
   uid: string;
   url: string;
-  date: Date;
+  data: Date;
   del: boolean;
 }
 

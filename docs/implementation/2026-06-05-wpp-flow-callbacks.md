@@ -42,7 +42,7 @@ curl -X POST http://localhost:3000/wpp-flow-callbacks \
 # {
 #   "uid": "550e8400-e29b-41d4-a716-446655440000",
 #   "url": "https://exemplo.com/webhook/flow",
-#   "date": "2026-06-05T12:00:00.000Z",
+#   "data": "2026-06-05T12:00:00.000Z",
 #   "del": false
 # }
 ```
@@ -51,7 +51,7 @@ Erros: `400` (URL inválida ou sem protocolo http/https) · `401` (key ausente/i
 
 ### GET /wpp-flow-callbacks
 
-Retorna todos os registros com `del = false`, ordenados por `date` DESC.
+Retorna todos os registros com `del = false`, ordenados por `data` DESC.
 
 ```bash
 curl http://localhost:3000/wpp-flow-callbacks \
@@ -61,7 +61,7 @@ curl http://localhost:3000/wpp-flow-callbacks \
 #   {
 #     "uid": "550e8400-e29b-41d4-a716-446655440000",
 #     "url": "https://exemplo.com/webhook/flow",
-#     "date": "2026-06-05T12:00:00.000Z",
+#     "data": "2026-06-05T12:00:00.000Z",
 #     "del": false
 #   }
 # ]
@@ -77,7 +77,7 @@ Busca um registro pelo UID. Retorna `404` se não existir ou se `del = true`.
 curl http://localhost:3000/wpp-flow-callbacks/550e8400-e29b-41d4-a716-446655440000 \
   -H "X-API-KEY: $API_KEY"
 # 200
-# { "uid": "...", "url": "https://exemplo.com/webhook/flow", "date": "...", "del": false }
+# { "uid": "...", "url": "https://exemplo.com/webhook/flow", "data": "...", "del": false }
 ```
 
 Erros: `401` · `404`.
@@ -92,7 +92,7 @@ curl -X PATCH http://localhost:3000/wpp-flow-callbacks/550e8400-e29b-41d4-a716-4
   -H "Content-Type: application/json" \
   -d '{"url": "https://novo.exemplo.com/webhook/flow"}'
 # 200
-# { "uid": "...", "url": "https://novo.exemplo.com/webhook/flow", "date": "...", "del": false }
+# { "uid": "...", "url": "https://novo.exemplo.com/webhook/flow", "data": "...", "del": false }
 ```
 
 Erros: `400` · `401` · `404`.
@@ -105,7 +105,7 @@ Aplica soft-delete (`del = true`) e invalida o cache Redis `flow_cb:<uid>`.
 curl -X DELETE http://localhost:3000/wpp-flow-callbacks/550e8400-e29b-41d4-a716-446655440000 \
   -H "X-API-KEY: $API_KEY"
 # 200
-# { "uid": "...", "url": "https://exemplo.com/webhook/flow", "date": "...", "del": true }
+# { "uid": "...", "url": "https://exemplo.com/webhook/flow", "data": "...", "del": true }
 ```
 
 Erros: `401` · `404`.
@@ -116,7 +116,7 @@ Erros: `401` · `404`.
 |---|---|---|
 | `uid` | `string` | UUID v4 gerado no `POST` |
 | `url` | `string` | URL do backend do cliente |
-| `date` | `string` | ISO 8601 — Prisma retorna `Date`; `toDto()` chama `.toISOString()` |
+| `data` | `string` | ISO 8601 — Prisma retorna `Date`; `toDto()` chama `.toISOString()` |
 | `del` | `boolean` | `true` após soft-delete |
 
 ## 3. Contrato do serviço
@@ -234,18 +234,18 @@ erDiagram
     flow_callbacks_urls {
         string uid PK "UUID v4 gerado pelo gateway"
         string url "URL do backend do cliente"
-        datetime date "Data de criação (default now)"
+        datetime data "Data de criação (default now)"
         boolean del "Soft-delete (default false)"
     }
 ```
 
-Modelo Prisma (`@@map("flow_callbacks_urls")`):
+Modelo Prisma (nome do modelo coincide com nome da tabela; sem `@@map`):
 
 ```prisma
-model FlowCallbackUrl {
+model flow_callbacks_urls {
   uid  String   @id @default(uuid())
   url  String
-  date DateTime @default(now())
+  data DateTime @default(now())
   del  Boolean  @default(false)
 }
 ```
@@ -270,7 +270,7 @@ sequenceDiagram
     S->>DB: INSERT flow_callbacks_urls (uid=randomUUID(), url)
     DB-->>S: FlowCallbackEntity
     S-->>Ctrl: FlowCallbackResponseDto
-    Ctrl-->>C: 201 {uid, url, date, del: false}
+    Ctrl-->>C: 201 {uid, url, data, del: false}
 
     note over C: usa uid para criar o flow
 
@@ -372,3 +372,5 @@ Nenhum. A implementação está alinhada com todas as 10 ACs definidas em `docs/
 | Data | Descrição |
 |---|---|
 | 2026-06-05 | Implementação inicial: `WppFlowCallbacksModule`, CRUD, cache Redis, `getUrl(uid)`, `RedisService.set`. Doc criada. |
+| 2026-06-05 | **hotfix `hotfix-flow-callback-url-model`:** modelo Prisma renomeado de `FlowCallbackUrl` (PascalCase + `@@map`) para `flow_callbacks_urls` (snake_case, sem `@@map`), alinhando a convenção do codebase (nome do modelo = nome da tabela). Accessor no repositório atualizado de `prisma.flowCallbackUrl` para `prisma.flow_callbacks_urls`. Migration no-op criada (`20260605000000_rename_flow_callback_url_to_pt`). Sem DDL — tabela já se chamava `flow_callbacks_urls`. Doc atualizada para refletir o nome correto do modelo. |
+| 2026-06-05 | **hotfix `hotfix-date-to-data-rename`:** campo `date` renomeado para `data` em `FlowCallbackEntity`, `FlowCallbackResponseDto` e no schema Prisma `flow_callbacks_urls`. Migration `20260605000001_rename_date_to_data` aplica `ALTER TABLE flow_callbacks_urls RENAME COLUMN "date" TO "data"`. Doc atualizada (ERD, Prisma block, exemplos cURL, tabela DTO). |

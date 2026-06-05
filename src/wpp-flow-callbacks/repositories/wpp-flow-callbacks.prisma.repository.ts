@@ -13,29 +13,29 @@ export class WppFlowCallbacksPrismaRepository implements IWppFlowCallbacksReposi
     uid: string;
     url: string;
   }): Promise<FlowCallbackEntity> {
-    return this.prisma.flowCallbackUrl.create({ data });
+    return this.prisma.flow_callbacks_urls.create({ data });
   }
 
   async findAll(): Promise<FlowCallbackEntity[]> {
-    return this.prisma.flowCallbackUrl.findMany({
+    return this.prisma.flow_callbacks_urls.findMany({
       where: { del: false },
-      orderBy: { date: 'desc' },
+      orderBy: { data: 'desc' },
     });
   }
 
   async findByUid(uid: string): Promise<FlowCallbackEntity | null> {
-    return this.prisma.flowCallbackUrl.findUnique({ where: { uid } });
+    return this.prisma.flow_callbacks_urls.findUnique({ where: { uid } });
   }
 
   async update(uid: string, url: string): Promise<FlowCallbackEntity> {
-    return this.prisma.flowCallbackUrl.update({
+    return this.prisma.flow_callbacks_urls.update({
       where: { uid },
       data: { url },
     });
   }
 
   async softDelete(uid: string): Promise<FlowCallbackEntity> {
-    return this.prisma.flowCallbackUrl.update({
+    return this.prisma.flow_callbacks_urls.update({
       where: { uid },
       data: { del: true },
     });

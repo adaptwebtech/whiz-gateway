@@ -48,7 +48,7 @@ model api_keys {
   name String
   key  String
   salt String
-  date DateTime @default(now())
+  data DateTime @default(now())
   del  Boolean  @default(false)
 }
 
@@ -65,11 +65,9 @@ model fila_mensagens_mortas {
   inbox inboxes? @relation(fields: [id_inbox], references: [id])
 }
 
-model FlowCallbackUrl {
+model flow_callbacks_urls {
   uid  String   @id @default(uuid())
   url  String
-  date DateTime @default(now())
+  data DateTime @default(now())
   del  Boolean  @default(false)
-
-  @@map("flow_callbacks_urls")
 }

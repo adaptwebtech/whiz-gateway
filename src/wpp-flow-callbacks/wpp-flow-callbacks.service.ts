@@ -25,8 +25,8 @@ export class WppFlowCallbacksService {
     return {
       uid: entity.uid,
       url: entity.url,
-      date:
-        entity.date instanceof Date ? entity.date.toISOString() : entity.date,
+      data:
+        entity.data instanceof Date ? entity.data.toISOString() : entity.data,
       del: entity.del,
     };
   }

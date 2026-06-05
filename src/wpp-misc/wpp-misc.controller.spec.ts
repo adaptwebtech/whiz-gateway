@@ -72,7 +72,9 @@ const META_CONV_ANALYTICS = {
 };
 
 const META_EXTENDED_CREDITS = {
-  data: [{ id: 'credit001', owner_business_id: 'biz001', available_balance: 100 }],
+  data: [
+    { id: 'credit001', owner_business_id: 'biz001', available_balance: 100 },
+  ],
 };
 
 const META_COMMERCE = {
@@ -232,7 +234,10 @@ describe('WppMiscModule — integração', () => {
     it('AC-2: dado X-API-KEY válida, quando POST /wpp/pn001/message_qrdls com { prefilled_message, generate_qr_image }, então forward POST pn001/message_qrdls recebe body íntegro', async () => {
       mockWppService.forward.mockResolvedValue({ status: 200, data: META_QR });
 
-      const reqBody = { prefilled_message: 'Olá mundo', generate_qr_image: true };
+      const reqBody = {
+        prefilled_message: 'Olá mundo',
+        generate_qr_image: true,
+      };
 
       const res = await request(app.getHttpServer())
         .post('/wpp/pn001/message_qrdls')
@@ -439,7 +444,9 @@ describe('WppMiscModule — integração', () => {
       mockWppService.forward.mockResolvedValue({ status: 200, data: META_OK });
 
       const res = await request(app.getHttpServer())
-        .post('/wpp/pn001/whatsapp_commerce_settings?is_cart_enabled=true&is_catalog_visible=false')
+        .post(
+          '/wpp/pn001/whatsapp_commerce_settings?is_cart_enabled=true&is_catalog_visible=false',
+        )
         .set('X-API-KEY', 'valid-key')
         .expect(200);
 

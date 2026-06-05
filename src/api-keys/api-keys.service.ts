@@ -51,7 +51,7 @@ export class ApiKeysService implements OnModuleInit {
       name: dto.name,
       key: hashedKey,
       salt,
-      date: new Date(),
+      data: new Date(),
       del: false,
     });
 
@@ -73,13 +73,13 @@ export class ApiKeysService implements OnModuleInit {
       uid: entity.uid,
       name: entity.name,
       apiKey: rawKey,
-      date: entity.date,
+      data: entity.data,
     };
   }
 
   async findAll(): Promise<ApiKeyResponseDto[]> {
     const keys = await this.repo.findAll();
-    return keys.map((k) => ({ uid: k.uid, name: k.name, date: k.date }));
+    return keys.map((k) => ({ uid: k.uid, name: k.name, data: k.data }));
   }
 
   async revoke(uid: string): Promise<void> {

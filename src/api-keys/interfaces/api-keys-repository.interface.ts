@@ -3,7 +3,7 @@ export interface ApiKeyEntity {
   name: string;
   key: string;
   salt: string;
-  date: Date | string;
+  data: Date | string;
   del: boolean;
 }
 
@@ -13,7 +13,7 @@ export interface IApiKeysRepository {
     name: string;
     key: string;
     salt: string;
-    date: Date;
+    data: Date;
     del: boolean;
   }): Promise<ApiKeyEntity>;
 

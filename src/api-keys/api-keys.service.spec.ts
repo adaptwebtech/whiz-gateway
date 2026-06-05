@@ -56,7 +56,7 @@ describe('ApiKeysService', () => {
   // ─── AC-1 ────────────────────────────────────────────────────────────────────
 
   describe('create()', () => {
-    it('AC-1: returns ApiKeyCreatedResponseDto with uid, name, apiKey (64 hex chars) and date', async () => {
+    it('AC-1: returns ApiKeyCreatedResponseDto with uid, name, apiKey (64 hex chars) and data', async () => {
       const now = new Date().toISOString();
       mockRepo.create.mockResolvedValue({
         uid: 'uid-001',
@@ -64,7 +64,7 @@ describe('ApiKeysService', () => {
         key: 'hashedvalue',
         salt: 'salthex',
         del: false,
-        date: now,
+        data: now,
       });
       mockRedis.hset.mockResolvedValue(undefined);
 
@@ -73,7 +73,7 @@ describe('ApiKeysService', () => {
       expect(result).toHaveProperty('uid', 'uid-001');
       expect(result).toHaveProperty('name', 'integração-x');
       expect(result).toHaveProperty('apiKey');
-      expect(result).toHaveProperty('date');
+      expect(result).toHaveProperty('data');
       expect(typeof result.apiKey).toBe('string');
       // 64 hex chars
       expect(result.apiKey).toMatch(/^[0-9a-f]{64}$/);
@@ -90,7 +90,7 @@ describe('ApiKeysService', () => {
           key: data.key,
           salt: data.salt,
           del: false,
-          date: now,
+          data: now,
         }),
       );
       mockRedis.hset.mockResolvedValue(undefined);
@@ -124,7 +124,7 @@ describe('ApiKeysService', () => {
           key: data.key,
           salt: data.salt,
           del: false,
-          date: now,
+          data: now,
         }),
       );
       mockRedis.hset.mockResolvedValue(undefined);
@@ -146,7 +146,7 @@ describe('ApiKeysService', () => {
   // ─── AC-3 ────────────────────────────────────────────────────────────────────
 
   describe('findAll()', () => {
-    it('AC-3: returns list with uid, name, date — no key/salt/apiKey', async () => {
+    it('AC-3: returns list with uid, name, data — no key/salt/apiKey', async () => {
       const now = new Date().toISOString();
       mockRepo.findAll.mockResolvedValue([
         {
@@ -155,7 +155,7 @@ describe('ApiKeysService', () => {
           key: 'hash1',
           salt: 'salt1',
           del: false,
-          date: now,
+          data: now,
         },
         {
           uid: 'uid-002',
@@ -163,7 +163,7 @@ describe('ApiKeysService', () => {
           key: 'hash2',
           salt: 'salt2',
           del: false,
-          date: now,
+          data: now,
         },
       ]);
 
@@ -173,7 +173,7 @@ describe('ApiKeysService', () => {
       for (const item of result) {
         expect(item).toHaveProperty('uid');
         expect(item).toHaveProperty('name');
-        expect(item).toHaveProperty('date');
+        expect(item).toHaveProperty('data');
         expect(item).not.toHaveProperty('key');
         expect(item).not.toHaveProperty('salt');
         expect(item).not.toHaveProperty('apiKey');
@@ -192,7 +192,7 @@ describe('ApiKeysService', () => {
         key: 'hash',
         salt: 'salt',
         del: false,
-        date: now,
+        data: now,
       });
       mockRepo.softDelete.mockResolvedValue(undefined);
       mockRedis.hdel.mockResolvedValue(undefined);
@@ -219,7 +219,7 @@ describe('ApiKeysService', () => {
         key: 'hash',
         salt: 'salt',
         del: false,
-        date: now,
+        data: now,
       });
       mockRepo.softDelete.mockResolvedValue(undefined);
       mockRedis.hdel.mockResolvedValue(undefined);
@@ -245,7 +245,7 @@ describe('ApiKeysService', () => {
           key: 'hash-a',
           salt: 'salt-a',
           del: false,
-          date: now,
+          data: now,
         },
         {
           uid: 'uid-b',
@@ -253,7 +253,7 @@ describe('ApiKeysService', () => {
           key: 'hash-b',
           salt: 'salt-b',
           del: false,
-          date: now,
+          data: now,
         },
         {
           uid: 'uid-c',
@@ -261,7 +261,7 @@ describe('ApiKeysService', () => {
           key: 'hash-c',
           salt: 'salt-c',
           del: false,
-          date: now,
+          data: now,
         },
       ]);
       mockRedis.hset.mockResolvedValue(undefined);

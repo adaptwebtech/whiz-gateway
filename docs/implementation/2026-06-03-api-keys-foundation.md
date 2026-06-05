@@ -39,7 +39,7 @@ curl -X POST http://localhost:3000/api-keys \
 #   "uid": "550e8400-e29b-41d4-a716-446655440000",
 #   "name": "integração-x",
 #   "apiKey": "a1b2c3d4...64hexchars...",
-#   "date": "2026-06-03T00:00:00.000Z"
+#   "data": "2026-06-03T00:00:00.000Z"
 # }
 ```
 
@@ -53,7 +53,7 @@ Lista todas as chaves ativas (`del = false`). Nunca retorna `key`, `salt` ou `ap
 curl http://localhost:3000/api-keys \
   -H "Authorization: Bearer $ADMIN_API_KEY"
 # 200
-# [{"uid": "...", "name": "integração-x", "date": "2026-06-03T00:00:00.000Z"}]
+# [{"uid": "...", "name": "integração-x", "data": "2026-06-03T00:00:00.000Z"}]
 ```
 
 Erros: `401`.
@@ -173,11 +173,11 @@ sequenceDiagram
     G->>Ctrl: canActivate = true
     Ctrl->>S: create(dto)
     S->>S: rawKey = randomBytes(32).hex<br/>salt = randomBytes(16).hex<br/>hashedKey = sha256(rawKey+salt)
-    S->>Repo: create({uid, name, key:hashedKey, salt, date, del:false})
+    S->>Repo: create({uid, name, key:hashedKey, salt, data, del:false})
     Repo-->>S: ApiKeyEntity
     S->>R: hset apikeys:valid uid → JSON{hashedKey,salt,name}
     S-->>Ctrl: ApiKeyCreatedResponseDto (apiKey=rawKey)
-    Ctrl-->>C: 201 {uid, name, apiKey, date}
+    Ctrl-->>C: 201 {uid, name, apiKey, data}
 ```
 
 ### Sequência — validação ApiKeyGuard
@@ -226,7 +226,7 @@ erDiagram
         string name "nome legivel da chave"
         string key "SHA-256(rawKey+salt), 64 hex chars"
         string salt "bytes aleatorios por chave, 32 hex chars"
-        datetime date "criacao, default agora"
+        datetime data "criacao, default agora"
         boolean del "soft-delete, default false"
     }
 ```
@@ -255,7 +255,7 @@ Registros com `del = true` não aparecem no cache Redis e retornam `404` no `fin
 | `uid` | `string` | UUID da chave |
 | `name` | `string` | nome informado |
 | `apiKey` | `string` | rawKey — 64 hex chars, exibido apenas uma vez |
-| `date` | `Date \| string` | data de criação |
+| `data` | `Date \| string` | data de criação |
 
 ### ApiKeyResponseDto (resposta GET)
 
@@ -263,7 +263,7 @@ Registros com `del = true` não aparecem no cache Redis e retornam `404` no `fin
 |---|---|---|
 | `uid` | `string` | UUID da chave |
 | `name` | `string` | nome informado |
-| `date` | `Date \| string` | data de criação |
+| `data` | `Date \| string` | data de criação |
 
 `key` e `salt` nunca aparecem em nenhum response DTO.
 
@@ -332,3 +332,4 @@ Nenhum. A implementação está alinhada com o spec `docs/specs/api-keys-foundat
 | Data | Descrição |
 |---|---|
 | 2026-06-03 | Implementação inicial: `RedisModule`, `ApiKeysModule`, guards, cache Redis, endpoints CRUD. Doc criada. |
+| 2026-06-05 | **hotfix `hotfix-date-to-data-rename`:** campo `date` renomeado para `data` em `ApiKeyEntity`, `ApiKeyResponseDto` e `ApiKeyCreatedResponseDto`. Schema Prisma `api_keys` atualizado. Migration `20260605000001_rename_date_to_data` aplica `ALTER TABLE api_keys RENAME COLUMN "date" TO "data"`. Doc atualizada (ERD, sequência, DTOs, exemplos cURL). |

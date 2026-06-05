@@ -5,7 +5,14 @@
  *        revoke key → use key again → 401
  */
 
-import { INestApplication, ValidationPipe, Controller, Get, UseGuards, HttpCode } from '@nestjs/common';
+import {
+  INestApplication,
+  ValidationPipe,
+  Controller,
+  Get,
+  UseGuards,
+  HttpCode,
+} from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 import { App } from 'supertest/types';
@@ -43,7 +50,9 @@ class InMemoryRedis {
     const hash = this.store.get(key);
     if (!hash || hash.size === 0) return null;
     const result: Record<string, string> = {};
-    hash.forEach((v, k) => { result[k] = v; });
+    hash.forEach((v, k) => {
+      result[k] = v;
+    });
     return result;
   }
 
@@ -144,7 +153,7 @@ describe('ApiKeys (e2e)', () => {
     expect(createBody).toHaveProperty('uid');
     expect(createBody).toHaveProperty('apiKey');
     expect(typeof createBody['apiKey']).toBe('string');
-    expect((createBody['apiKey'] as string)).toMatch(/^[0-9a-f]{64}$/);
+    expect(createBody['apiKey'] as string).toMatch(/^[0-9a-f]{64}$/);
 
     const uid = createBody['uid'] as string;
     const apiKey = createBody['apiKey'] as string;
@@ -177,8 +186,6 @@ describe('ApiKeys (e2e)', () => {
   });
 
   it('AC-11: protected endpoint without X-API-KEY → 401', async () => {
-    await request(app.getHttpServer())
-      .get('/test-protected')
-      .expect(401);
+    await request(app.getHttpServer()).get('/test-protected').expect(401);
   });
 });
