@@ -41,31 +41,35 @@ const MOCK_RABBITMQ = {
 class InMemoryRedis {
   private store: Map<string, Map<string, string>> = new Map();
 
-  async hset(key: string, field: string, value: string): Promise<void> {
+  hset(key: string, field: string, value: string): Promise<void> {
     if (!this.store.has(key)) this.store.set(key, new Map());
     this.store.get(key)!.set(field, value);
+    return Promise.resolve();
   }
 
-  async hgetall(key: string): Promise<Record<string, string> | null> {
+  hgetall(key: string): Promise<Record<string, string> | null> {
     const hash = this.store.get(key);
-    if (!hash || hash.size === 0) return null;
+    if (!hash || hash.size === 0) return Promise.resolve(null);
     const result: Record<string, string> = {};
     hash.forEach((v, k) => {
       result[k] = v;
     });
-    return result;
+    return Promise.resolve(result);
   }
 
-  async hdel(key: string, field: string): Promise<void> {
+  hdel(key: string, field: string): Promise<void> {
     this.store.get(key)?.delete(field);
+    return Promise.resolve();
   }
 
-  async del(key: string): Promise<void> {
+  del(key: string): Promise<void> {
     this.store.delete(key);
+    return Promise.resolve();
   }
 
-  async get(key: string): Promise<string | null> {
-    return null;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  get(_key: string): Promise<string | null> {
+    return Promise.resolve(null);
   }
 
   // ioredis compatibility surface used by RedisService internals

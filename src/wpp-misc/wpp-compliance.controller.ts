@@ -12,10 +12,10 @@ import {
   ValidationPipe,
 } from '@nestjs/common';
 import {
-  ApiBearerAuth,
   ApiOperation,
   ApiParam,
   ApiResponse,
+  ApiSecurity,
   ApiTags,
 } from '@nestjs/swagger';
 import type { Response } from 'express';
@@ -25,7 +25,7 @@ import { WppService } from '../wpp/wpp.service';
 import { BusinessComplianceDto } from './dto/business-compliance.dto';
 
 @ApiTags('WhatsApp — Business Compliance')
-@ApiBearerAuth('bearer')
+@ApiSecurity('api-key')
 @UseFilters(WppAuthFilter)
 @UseGuards(ApiKeyGuard)
 @UsePipes(new ValidationPipe({ whitelist: false, transform: true }))

@@ -28,6 +28,10 @@ _Avoid_: "guard de integração", "key guard"
 Hash `apikeys:valid` no Redis onde field = uid e value = JSON `{hashedKey, salt, name}`. Populado no boot e mantido sincronizado. Elimina acesso ao banco no caminho quente de validação.
 _Avoid_: "cache de chaves", "Redis hash"
 
+**AdminOrApiKeyGuard**:
+Guard composto que aceita requisições autenticadas via `AdminKeyGuard` **ou** `ApiKeyGuard`. Tenta o caminho admin (síncrono, sem I/O) primeiro; se falhar, consulta o Redis via `ApiKeyGuard`. Lança `UnauthorizedException` apenas se ambos falharem. Usado por `InboxController` para aceitar tanto operadores internos quanto integrações externas.
+_Avoid_: "guard duplo", "multi-guard", "guard combinado"
+
 **revogação**:
 Soft-delete da chave (`del = true`) combinado com remoção imediata do campo correspondente no cache Redis. Após a revogação, toda validação via `ApiKeyGuard` passa a retornar `401`.
 _Avoid_: "exclusão", "delete", "invalidação"

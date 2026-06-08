@@ -35,10 +35,7 @@ export class RedirecionamentosWebhooksService {
     @Optional() private readonly config?: ConfigService,
   ) {
     this.baseMs = config
-      ? parseInt(
-          config.get<string>('DISPATCH_BACKOFF_BASE_MS') ?? '1000',
-          10,
-        )
+      ? parseInt(config.get<string>('DISPATCH_BACKOFF_BASE_MS') ?? '1000', 10)
       : 0;
   }
 

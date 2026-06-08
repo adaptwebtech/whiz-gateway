@@ -1,10 +1,18 @@
-import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
 import {
-  ApiBearerAuth,
+  Body,
+  Controller,
+  HttpCode,
+  HttpStatus,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
+import {
   ApiOperation,
   ApiResponse,
+  ApiSecurity,
   ApiTags,
 } from '@nestjs/swagger';
+import { ApiKeyGuard } from '../api-keys/guards/api-key.guard';
 import { ResendRequestDto } from './dto/resend-request.dto';
 import { ResendResultDto } from './dto/resend-result.dto';
 import { ResendService } from './resend.service';
@@ -13,7 +21,8 @@ import { ResendService } from './resend.service';
  * Controller de reenvio de mensagens mortas (reenvio-mensagens, Feature 7).
  */
 @ApiTags('Reenvio de Mensagens')
-@ApiBearerAuth('bearer')
+@ApiSecurity('api-key')
+@UseGuards(ApiKeyGuard)
 @Controller('messages')
 export class ResendController {
   constructor(private readonly resendService: ResendService) {}

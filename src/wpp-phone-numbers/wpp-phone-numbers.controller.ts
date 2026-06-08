@@ -13,11 +13,11 @@ import {
   ValidationPipe,
 } from '@nestjs/common';
 import {
-  ApiBearerAuth,
   ApiOperation,
   ApiParam,
   ApiQuery,
   ApiResponse,
+  ApiSecurity,
   ApiTags,
 } from '@nestjs/swagger';
 import type { Response } from 'express';
@@ -29,7 +29,7 @@ import { SetTwoStepPinDto } from './dto/set-two-step-pin.dto';
 import { VerifyCodeDto } from './dto/verify-code.dto';
 
 @ApiTags('WhatsApp — Números de Telefone')
-@ApiBearerAuth('bearer')
+@ApiSecurity('api-key')
 @UseFilters(WppAuthFilter)
 @UseGuards(ApiKeyGuard)
 @UsePipes(new ValidationPipe({ whitelist: false, transform: true }))

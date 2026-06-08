@@ -13,10 +13,14 @@
 
 import { Test, TestingModule } from '@nestjs/testing';
 import {
+  HttpException,
   INestApplication,
-  ValidationPipe,
+  InternalServerErrorException,
   NotFoundException,
   HttpStatus,
+  ServiceUnavailableException,
+  UnauthorizedException,
+  ValidationPipe,
 } from '@nestjs/common';
 import request from 'supertest';
 import { App } from 'supertest/types';
@@ -162,7 +166,6 @@ describe('WppFlowsEndpointController (integration)', () => {
   it('AC-17: invalid X-Hub-Signature-256 → 401', async () => {
     const uid = 'uid-ac17';
 
-    const { UnauthorizedException } = await import('@nestjs/common');
     mockEndpointService.handle.mockRejectedValue(
       new UnauthorizedException('Assinatura X-Hub-Signature-256 inválida'),
     );
@@ -213,7 +216,6 @@ describe('WppFlowsEndpointController (integration)', () => {
   it('AC-19: FLOWS_PRIVATE_KEY absent → 503', async () => {
     const uid = 'uid-ac19';
 
-    const { ServiceUnavailableException } = await import('@nestjs/common');
     mockEndpointService.handle.mockRejectedValue(
       new ServiceUnavailableException('FLOWS_PRIVATE_KEY não configurado'),
     );
@@ -239,7 +241,6 @@ describe('WppFlowsEndpointController (integration)', () => {
   it('AC-20: Incorrect RSA key (decryption fails) → 421', async () => {
     const uid = 'uid-ac20';
 
-    const { HttpException } = await import('@nestjs/common');
     mockEndpointService.handle.mockRejectedValue(
       new HttpException('Falha ao descriptografar AES key', 421),
     );
@@ -265,7 +266,6 @@ describe('WppFlowsEndpointController (integration)', () => {
   it('AC-21: UID URL returns timeout → 500', async () => {
     const uid = 'uid-ac21';
 
-    const { InternalServerErrorException } = await import('@nestjs/common');
     mockEndpointService.handle.mockRejectedValue(
       new InternalServerErrorException('Timeout ao contatar URL do UID'),
     );

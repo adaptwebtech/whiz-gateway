@@ -5,8 +5,16 @@ import {
   HttpCode,
   Param,
   Query,
+  UseGuards,
 } from '@nestjs/common';
-import { ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  ApiOperation,
+  ApiParam,
+  ApiResponse,
+  ApiSecurity,
+  ApiTags,
+} from '@nestjs/swagger';
+import { ApiKeyGuard } from '../api-keys/guards/api-key.guard';
 import { DeadLetterResponseDto } from './dto/dead-letter-response.dto';
 import { ListDeadLetterQueryDto } from './dto/list-dead-letter-query.dto';
 import { DeadLetterService } from './dead-letter.service';
@@ -15,6 +23,8 @@ import { DeadLetterService } from './dead-letter.service';
  * Controller da fila de mensagens mortas.
  */
 @ApiTags('Mensagens Mortas')
+@ApiSecurity('api-key')
+@UseGuards(ApiKeyGuard)
 @Controller('dead-letter')
 export class DeadLetterController {
   constructor(private readonly service: DeadLetterService) {}
@@ -29,6 +39,10 @@ export class DeadLetterController {
     status: 200,
     description: 'Lista de mensagens mortas.',
     type: [DeadLetterResponseDto],
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Chave de API ausente ou inválida.',
   })
   async findMany(
     @Query() query: ListDeadLetterQueryDto,
@@ -52,6 +66,10 @@ export class DeadLetterController {
     type: DeadLetterResponseDto,
   })
   @ApiResponse({
+    status: 401,
+    description: 'Chave de API ausente ou inválida.',
+  })
+  @ApiResponse({
     status: 404,
     description: 'Mensagem morta não encontrada.',
   })
@@ -73,6 +91,10 @@ export class DeadLetterController {
   @ApiResponse({
     status: 204,
     description: 'Mensagem morta removida com sucesso.',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Chave de API ausente ou inválida.',
   })
   @ApiResponse({
     status: 404,

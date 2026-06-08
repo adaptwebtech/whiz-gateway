@@ -61,3 +61,4 @@ Validadas via Joi (`src/config/config.validation.ts`); acesso somente via `Confi
 | 2026-06-05 | wpp-flow-callbacks | [spec](specs/2026-06-05-wpp-flow-callbacks.md) | [impl](implementation/2026-06-05-wpp-flow-callbacks.md) | Implementada |
 | 2026-06-05 | wpp-misc | [spec](specs/2026-06-03-wpp-misc.md) | [impl](implementation/2026-06-05-wpp-misc.md) | Implementada |
 | 2026-06-08 | redirecionamentos-webhooks | [spec](specs/2026-06-08-redirecionamentos-webhooks.md) | [impl](implementation/2026-06-08-redirecionamentos-webhooks.md) | Implementada |
+| 2026-06-08 | api-key-guard-admin-routes | [spec](specs/2026-06-08-api-key-guard-admin-routes.md) | [impl](implementation/2026-06-08-api-key-guard-admin-routes.md) | Implementada |

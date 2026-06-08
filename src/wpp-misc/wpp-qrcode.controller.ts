@@ -14,11 +14,11 @@ import {
   ValidationPipe,
 } from '@nestjs/common';
 import {
-  ApiBearerAuth,
   ApiOperation,
   ApiParam,
   ApiQuery,
   ApiResponse,
+  ApiSecurity,
   ApiTags,
 } from '@nestjs/swagger';
 import type { Response } from 'express';
@@ -28,7 +28,7 @@ import { WppService } from '../wpp/wpp.service';
 import { CreateOrUpdateQrCodeDto } from './dto/create-or-update-qr-code.dto';
 
 @ApiTags('WhatsApp — QR Codes')
-@ApiBearerAuth('bearer')
+@ApiSecurity('api-key')
 @UseFilters(WppAuthFilter)
 @UseGuards(ApiKeyGuard)
 @UsePipes(new ValidationPipe({ whitelist: false, transform: true }))

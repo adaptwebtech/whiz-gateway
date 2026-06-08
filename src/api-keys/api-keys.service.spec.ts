@@ -11,9 +11,9 @@
  * AC-8: onModuleInit() loads all del=false keys into Redis
  */
 
-import { NotFoundException } from '@nestjs/common';
+import { createHash } from 'crypto';
+import { NotFoundException, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Logger } from '@nestjs/common';
 import { ApiKeysService } from './api-keys.service';
 import { IApiKeysRepository } from './interfaces/api-keys-repository.interface';
 import { RedisService } from '../redis/redis.service';
@@ -106,7 +106,6 @@ describe('ApiKeysService', () => {
       expect(callArg.key).not.toBe(apiKey);
 
       // key must equal sha256(rawKey + salt)
-      const { createHash } = await import('crypto');
       const expectedHash = createHash('sha256')
         .update(apiKey + callArg.salt)
         .digest('hex');

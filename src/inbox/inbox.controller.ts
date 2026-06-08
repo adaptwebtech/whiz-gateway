@@ -8,14 +8,17 @@ import {
   Param,
   Patch,
   Post,
+  UseGuards,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiOperation,
   ApiParam,
   ApiResponse,
+  ApiSecurity,
   ApiTags,
 } from '@nestjs/swagger';
+import { AdminOrApiKeyGuard } from '../api-keys/guards/admin-or-api-key.guard';
 import { CreateInboxDto } from './dto/create-inbox.dto';
 import { InboxResponseDto } from './dto/inbox-response.dto';
 import { UpdateInboxDto } from './dto/update-inbox.dto';
@@ -23,6 +26,8 @@ import { InboxService } from './inbox.service';
 
 @ApiTags('Inboxes')
 @ApiBearerAuth('bearer')
+@ApiSecurity('api-key')
+@UseGuards(AdminOrApiKeyGuard)
 @Controller('inboxes')
 export class InboxController {
   constructor(private readonly service: InboxService) {}
