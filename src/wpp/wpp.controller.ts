@@ -7,10 +7,10 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import {
-  ApiBearerAuth,
   ApiOperation,
   ApiQuery,
   ApiResponse,
+  ApiSecurity,
   ApiTags,
 } from '@nestjs/swagger';
 import type { Response } from 'express';
@@ -19,7 +19,7 @@ import { WppAuthFilter } from './filters/wpp-auth.filter';
 import { WppService } from './wpp.service';
 
 @ApiTags('WhatsApp Meta Adapter')
-@ApiBearerAuth('bearer')
+@ApiSecurity('api-key')
 @UseFilters(WppAuthFilter)
 @UseGuards(ApiKeyGuard)
 @Controller('wpp')

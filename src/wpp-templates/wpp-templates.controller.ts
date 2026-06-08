@@ -14,11 +14,11 @@ import {
   ValidationPipe,
 } from '@nestjs/common';
 import {
-  ApiBearerAuth,
   ApiOperation,
   ApiParam,
   ApiQuery,
   ApiResponse,
+  ApiSecurity,
   ApiTags,
 } from '@nestjs/swagger';
 import type { Response } from 'express';
@@ -29,7 +29,7 @@ import { CreateTemplateDto } from './dto/create-template.dto';
 import { EditTemplateDto } from './dto/edit-template.dto';
 
 @ApiTags('WhatsApp Meta Adapter — Templates')
-@ApiBearerAuth('bearer')
+@ApiSecurity('api-key')
 @UseFilters(WppAuthFilter)
 @UseGuards(ApiKeyGuard)
 @UsePipes(new ValidationPipe({ whitelist: false, transform: true }))

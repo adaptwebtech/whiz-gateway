@@ -9,6 +9,7 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 import { App } from 'supertest/types';
+import { ApiKeyGuard } from '../api-keys/guards/api-key.guard';
 import { ResendController } from './resend.controller';
 import { ResendService } from './resend.service';
 
@@ -32,7 +33,10 @@ describe('ResendController — integration', () => {
           useValue: mockResendService,
         },
       ],
-    }).compile();
+    })
+      .overrideGuard(ApiKeyGuard)
+      .useValue({ canActivate: () => true })
+      .compile();
 
     app = moduleRef.createNestApplication<App>();
 

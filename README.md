@@ -74,5 +74,6 @@ npm run test:cov   # cobertura
 | wpp-flow-callbacks | [docs/specs/2026-06-05-wpp-flow-callbacks.md](docs/specs/2026-06-05-wpp-flow-callbacks.md) | [docs/implementation/2026-06-05-wpp-flow-callbacks.md](docs/implementation/2026-06-05-wpp-flow-callbacks.md) |
 | wpp-misc | [docs/specs/2026-06-03-wpp-misc.md](docs/specs/2026-06-03-wpp-misc.md) | [docs/implementation/2026-06-05-wpp-misc.md](docs/implementation/2026-06-05-wpp-misc.md) |
 | redirecionamentos-webhooks | [docs/specs/2026-06-08-redirecionamentos-webhooks.md](docs/specs/2026-06-08-redirecionamentos-webhooks.md) | [docs/implementation/2026-06-08-redirecionamentos-webhooks.md](docs/implementation/2026-06-08-redirecionamentos-webhooks.md) |
+| api-key-guard-admin-routes | [docs/specs/2026-06-08-api-key-guard-admin-routes.md](docs/specs/2026-06-08-api-key-guard-admin-routes.md) | [docs/implementation/2026-06-08-api-key-guard-admin-routes.md](docs/implementation/2026-06-08-api-key-guard-admin-routes.md) |
 
 Mapa do código: [docs/CODEBASE.md](docs/CODEBASE.md).

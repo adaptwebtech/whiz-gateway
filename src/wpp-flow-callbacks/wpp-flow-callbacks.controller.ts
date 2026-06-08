@@ -11,10 +11,10 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import {
-  ApiBearerAuth,
   ApiOperation,
   ApiParam,
   ApiResponse,
+  ApiSecurity,
   ApiTags,
 } from '@nestjs/swagger';
 import { ApiKeyGuard } from '../api-keys/guards/api-key.guard';
@@ -25,7 +25,7 @@ import { UpdateFlowCallbackDto } from './dto/update-flow-callback.dto';
 import { WppFlowCallbacksService } from './wpp-flow-callbacks.service';
 
 @ApiTags('Flow Callbacks')
-@ApiBearerAuth('bearer')
+@ApiSecurity('api-key')
 @UseGuards(ApiKeyGuard)
 @UseFilters(WppAuthFilter)
 @Controller('wpp-flow-callbacks')

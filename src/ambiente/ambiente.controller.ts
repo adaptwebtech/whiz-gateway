@@ -9,14 +9,24 @@ import {
   ParseIntPipe,
   Patch,
   Post,
+  UseGuards,
 } from '@nestjs/common';
-import { ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiParam,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
+import { AdminKeyGuard } from '../api-keys/guards/admin-key.guard';
 import { AmbienteService } from './ambiente.service';
 import { AmbienteResponseDto } from './dto/ambiente-response.dto';
 import { CreateAmbienteDto } from './dto/create-ambiente.dto';
 import { UpdateAmbienteDto } from './dto/update-ambiente.dto';
 
 @ApiTags('Ambientes')
+@ApiBearerAuth('bearer')
+@UseGuards(AdminKeyGuard)
 @Controller('ambientes')
 export class AmbienteController {
   constructor(private readonly service: AmbienteService) {}
@@ -28,6 +38,10 @@ export class AmbienteController {
     description: 'Lista de ambientes com del=false.',
     type: AmbienteResponseDto,
     isArray: true,
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Chave de administrador ausente ou inválida.',
   })
   findAll(): Promise<AmbienteResponseDto[]> {
     return this.service.findAll();
@@ -45,6 +59,10 @@ export class AmbienteController {
     description: 'Ambiente encontrado.',
     type: AmbienteResponseDto,
   })
+  @ApiResponse({
+    status: 401,
+    description: 'Chave de administrador ausente ou inválida.',
+  })
   @ApiResponse({ status: 404, description: 'Ambiente não encontrado.' })
   findById(
     @Param('id', ParseIntPipe) id: number,
@@ -60,6 +78,10 @@ export class AmbienteController {
     type: AmbienteResponseDto,
   })
   @ApiResponse({ status: 400, description: 'Dados inválidos.' })
+  @ApiResponse({
+    status: 401,
+    description: 'Chave de administrador ausente ou inválida.',
+  })
   @ApiResponse({ status: 409, description: 'Ambiente com este id já existe.' })
   create(@Body() dto: CreateAmbienteDto): Promise<AmbienteResponseDto> {
     return this.service.create(dto);
@@ -78,6 +100,10 @@ export class AmbienteController {
     type: AmbienteResponseDto,
   })
   @ApiResponse({ status: 400, description: 'Dados inválidos.' })
+  @ApiResponse({
+    status: 401,
+    description: 'Chave de administrador ausente ou inválida.',
+  })
   @ApiResponse({ status: 404, description: 'Ambiente não encontrado.' })
   update(
     @Param('id', ParseIntPipe) id: number,
@@ -95,6 +121,10 @@ export class AmbienteController {
     example: 1,
   })
   @ApiResponse({ status: 200, description: 'Ambiente removido com sucesso.' })
+  @ApiResponse({
+    status: 401,
+    description: 'Chave de administrador ausente ou inválida.',
+  })
   @ApiResponse({ status: 404, description: 'Ambiente não encontrado.' })
   softDelete(@Param('id', ParseIntPipe) id: number): Promise<void> {
     return this.service.softDelete(id);

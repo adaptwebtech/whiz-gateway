@@ -243,6 +243,7 @@ Mapa de cada feature para seus arquivos. Autoritativo para descoberta (evita `gr
 | Camada | Arquivo |
 |---|---|
 | Módulo | `src/redirecionamentos-webhooks/redirecionamentos-webhooks.module.ts` |
+
 | Controller | `src/redirecionamentos-webhooks/redirecionamentos-webhooks.controller.ts` |
 | Service | `src/redirecionamentos-webhooks/redirecionamentos-webhooks.service.ts` |
 | Repository (interface) | `src/redirecionamentos-webhooks/interfaces/redirecionamentos-webhooks-repository.interface.ts` |
@@ -251,3 +252,19 @@ Mapa de cada feature para seus arquivos. Autoritativo para descoberta (evita `gr
 | DTOs | `src/redirecionamentos-webhooks/dto/create-redirecionamento-webhook.dto.ts` · `src/redirecionamentos-webhooks/dto/update-redirecionamento-webhook.dto.ts` · `src/redirecionamentos-webhooks/dto/redirecionamento-webhook-response.dto.ts` · `src/redirecionamentos-webhooks/dto/dispatch-result.dto.ts` |
 | Schema | `prisma/schema.prisma` (modelo `redirecionamentos_webhooks`) |
 | Glossário | `src/redirecionamentos-webhooks/context.md` |
+
+## api-key-guard-admin-routes
+
+> Feature 11. Proteção de rotas administrativas com guards + correção de decoradores Swagger. Spec: [`docs/specs/2026-06-08-api-key-guard-admin-routes.md`](../specs/2026-06-08-api-key-guard-admin-routes.md) · Impl: [`docs/implementation/2026-06-08-api-key-guard-admin-routes.md`](../implementation/2026-06-08-api-key-guard-admin-routes.md)
+
+| Camada | Arquivo |
+|---|---|
+| Guard composto (novo) | `src/api-keys/guards/admin-or-api-key.guard.ts` |
+| Module (atualizado) | `src/api-keys/api-keys.module.ts` |
+| Controller — Ambientes | `src/ambiente/ambiente.controller.ts` · `src/ambiente/ambiente.module.ts` |
+| Controller — Inboxes | `src/inbox/inbox.controller.ts` · `src/inbox/inbox.module.ts` |
+| Controller — Dead Letter | `src/dead-letter/dead-letter.controller.ts` · `src/dead-letter/dead-letter.module.ts` |
+| Controller — Resend | `src/resend/resend.controller.ts` · `src/resend/resend.module.ts` |
+| Swagger | `src/swagger/swagger.document.ts` |
+| Controllers wpp-* (Swagger fix) | `src/wpp/wpp.controller.ts` · `src/wpp-flows/wpp-flows.controller.ts` · `src/wpp-flow-callbacks/wpp-flow-callbacks.controller.ts` · `src/redirecionamentos-webhooks/redirecionamentos-webhooks.controller.ts` · `src/wpp-messages/wpp-messages.controller.ts` · `src/wpp-templates/wpp-templates.controller.ts` · `src/wpp-phone-numbers/wpp-phone-numbers.controller.ts` · `src/wpp-media-business-profiles/wpp-media.controller.ts` · `src/wpp-media-business-profiles/wpp-business-profile.controller.ts` · `src/wpp-media-business-profiles/wpp-resumable-upload.controller.ts` · `src/wpp-misc/wpp-analytics.controller.ts` · `src/wpp-misc/wpp-billing.controller.ts` · `src/wpp-misc/wpp-block-users.controller.ts` · `src/wpp-misc/wpp-commerce.controller.ts` · `src/wpp-misc/wpp-compliance.controller.ts` · `src/wpp-misc/wpp-qrcode.controller.ts` |
+| Glossário | `src/api-keys/context.md` |

@@ -11,10 +11,10 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import {
-  ApiBearerAuth,
   ApiOperation,
   ApiParam,
   ApiResponse,
+  ApiSecurity,
   ApiTags,
 } from '@nestjs/swagger';
 import { ApiKeyGuard } from '../api-keys/guards/api-key.guard';
@@ -26,7 +26,7 @@ import { DispatchResultDto } from './dto/dispatch-result.dto';
 import { RedirecionamentosWebhooksService } from './redirecionamentos-webhooks.service';
 
 @ApiTags('Redirecionamentos Webhooks')
-@ApiBearerAuth('bearer')
+@ApiSecurity('api-key')
 @UseGuards(ApiKeyGuard)
 @UseFilters(WppAuthFilter)
 @Controller('redirecionamentos-webhooks')

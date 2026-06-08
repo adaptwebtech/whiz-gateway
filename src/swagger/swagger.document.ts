@@ -22,5 +22,6 @@ export function buildSwaggerConfig(): Omit<OpenAPIObject, 'paths'> {
       { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
       'bearer',
     )
+    .addApiKey({ type: 'apiKey', in: 'header', name: 'x-api-key' }, 'api-key')
     .build();
 }

@@ -25,7 +25,7 @@ Mapa de símbolos exportados → arquivo + assinatura. Autoritativo para descobe
 | `HealthModule` | módulo | `src/health/health.module.ts` | importa `TerminusModule` |
 | `configValidationSchema` | const (Joi) | `src/config/config.validation.ts` | schema das envs |
 | `AppConfigModule` | módulo (global) | `src/config/config.module.ts` | `ConfigModule.forRoot({ isGlobal, validationSchema })` |
-| `buildSwaggerConfig` | função | `src/swagger/swagger.document.ts` | retorna `Omit<OpenAPIObject, 'paths'>` (PT-BR, bearer) |
+| `buildSwaggerConfig` | função | `src/swagger/swagger.document.ts` | retorna `Omit<OpenAPIObject, 'paths'>` (PT-BR); registra dois esquemas: `bearer` (AdminKeyGuard) e `api-key` (ApiKeyGuard, `x-api-key` header) |
 | `SwaggerSetupService` | classe (`@Injectable`) | `src/swagger/swagger.setup.service.ts` | registra `/docs` + `/docs-json` no `onModuleInit` |
 | `AppSwaggerModule` | módulo | `src/swagger/swagger.module.ts` | provê `SwaggerSetupService` |
 | `SWAGGER_PATH` / `SWAGGER_JSON_PATH` | const | `src/swagger/constants/swagger-paths.constants.ts` | `'/docs'` / `'/docs-json'` |
@@ -107,7 +107,7 @@ Mapa de símbolos exportados → arquivo + assinatura. Autoritativo para descobe
 
 | Símbolo | Tipo | Arquivo | Assinatura / Notas |
 |---|---|---|---|
-| `ApiKeysModule` | módulo (não-global) | `src/api-keys/api-keys.module.ts` | importa `PrismaModule`, `RedisModule`; exporta `AdminKeyGuard`, `ApiKeyGuard`; registrado em `AppModule` |
+| `ApiKeysModule` | módulo (não-global) | `src/api-keys/api-keys.module.ts` | importa `PrismaModule`, `RedisModule`; exporta `AdminKeyGuard`, `ApiKeyGuard`, `AdminOrApiKeyGuard`; registrado em `AppModule` |
 | `ApiKeysController` | controller | `src/api-keys/api-keys.controller.ts` | `@Controller('api-keys')` `@ApiTags('Chaves de API')` `@UseGuards(AdminKeyGuard)`; `create(dto)`, `findAll()`, `revoke(uid)` |
 | `ApiKeysService` | classe (`@Injectable`) | `src/api-keys/api-keys.service.ts` | implementa `OnModuleInit`; injeta `API_KEYS_REPOSITORY`, `RedisService`, `ConfigService`, `Logger`; `onModuleInit` popula Redis com chaves ativas; `create/findAll/revoke` |
 | `IApiKeysRepository` | interface | `src/api-keys/interfaces/api-keys-repository.interface.ts` | `create / findAll / findById / softDelete` |
@@ -116,6 +116,9 @@ Mapa de símbolos exportados → arquivo + assinatura. Autoritativo para descobe
 | `API_KEYS_REPOSITORY` | token (Symbol) | `src/api-keys/constants/api-keys-tokens.constants.ts` | token de injeção de `IApiKeysRepository` |
 | `AdminKeyGuard` | guard (`CanActivate`) | `src/api-keys/guards/admin-key.guard.ts` | valida `Authorization: Bearer {ADMIN_API_KEY}` via `timingSafeEqual`; lança `UnauthorizedException` |
 | `ApiKeyGuard` | guard (`CanActivate`) | `src/api-keys/guards/api-key.guard.ts` | lê `X-API-KEY`, faz `hgetall apikeys:valid`, valida `sha256(rawKey+salt)` via `timingSafeEqual`; lança `UnauthorizedException` |
+| `AdminOrApiKeyGuard` | guard (`CanActivate`) | `src/api-keys/guards/admin-or-api-key.guard.ts` | guard composto: tenta `AdminKeyGuard` (síncrono, sem I/O) primeiro; em falha, delega a `ApiKeyGuard` (async, Redis); retorna `true` se qualquer um for válido; lança `UnauthorizedException` se ambos falharem; tokens de DI `ADMIN_OR_API_KEY_CONFIG` + `ADMIN_OR_API_KEY_REDIS` resolvidos via `useExisting` no `ApiKeysModule` |
+| `ADMIN_OR_API_KEY_CONFIG` | token (string) | `src/api-keys/guards/admin-or-api-key.guard.ts` | `'ConfigService'` — alias de DI para `ConfigService` dentro do `AdminOrApiKeyGuard` |
+| `ADMIN_OR_API_KEY_REDIS` | token (string) | `src/api-keys/guards/admin-or-api-key.guard.ts` | `'RedisService'` — alias de DI para `RedisService` dentro do `AdminOrApiKeyGuard` |
 | `CreateApiKeyDto` | DTO | `src/api-keys/dto/create-api-key.dto.ts` | `name: string (@IsString @IsNotEmpty @MinLength(1) @MaxLength(120))` |
 | `ApiKeyResponseDto` | DTO | `src/api-keys/dto/api-key-response.dto.ts` | `{ uid, name, date }` — nunca expõe `key`, `salt` ou `apiKey` |
 | `ApiKeyCreatedResponseDto` | DTO | `src/api-keys/dto/api-key-created-response.dto.ts` | `{ uid, name, apiKey, date }` — `apiKey` = rawKey, exibido apenas na resposta do POST |

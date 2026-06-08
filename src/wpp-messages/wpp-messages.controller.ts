@@ -13,10 +13,10 @@ import {
   ValidationPipe,
 } from '@nestjs/common';
 import {
-  ApiBearerAuth,
   ApiOperation,
   ApiParam,
   ApiResponse,
+  ApiSecurity,
   ApiTags,
 } from '@nestjs/swagger';
 import type { Response } from 'express';
@@ -27,7 +27,7 @@ import { MarkAsReadDto } from './dto/mark-as-read.dto';
 import { SendMessageDto } from './dto/send-message.dto';
 
 @ApiTags('WhatsApp Meta Adapter — Mensagens')
-@ApiBearerAuth('bearer')
+@ApiSecurity('api-key')
 @UseFilters(WppAuthFilter)
 @UseGuards(ApiKeyGuard)
 @UsePipes(new ValidationPipe({ whitelist: false, transform: true }))

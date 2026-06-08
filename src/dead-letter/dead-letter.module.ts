@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ApiKeysModule } from '../api-keys/api-keys.module';
 import { LoggerModule } from '../logger/logger.module';
 import { PrismaModule } from '../prisma/prisma.module';
 import { DEAD_LETTER_REPOSITORY } from './constants/dead-letter-tokens.constants';
@@ -9,7 +10,7 @@ import { DeadLetterService } from './dead-letter.service';
 import { DeadLetterPrismaRepository } from './repositories/dead-letter.prisma.repository';
 
 @Module({
-  imports: [PrismaModule, LoggerModule],
+  imports: [PrismaModule, LoggerModule, ApiKeysModule],
   providers: [
     DeadLetterPrismaRepository,
     {

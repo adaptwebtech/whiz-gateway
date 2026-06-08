@@ -16,11 +16,11 @@ import {
 } from '@nestjs/common';
 import { AnyFilesInterceptor } from '@nestjs/platform-express';
 import {
-  ApiBearerAuth,
   ApiOperation,
   ApiParam,
   ApiQuery,
   ApiResponse,
+  ApiSecurity,
   ApiTags,
 } from '@nestjs/swagger';
 import type { Response } from 'express';
@@ -35,7 +35,7 @@ import { WppService } from '../wpp/wpp.service';
  * Proxy autenticado para a API da Meta via ApiKeyGuard.
  */
 @ApiTags('Flows')
-@ApiBearerAuth('bearer')
+@ApiSecurity('api-key')
 @UseGuards(ApiKeyGuard)
 @UseFilters(WppAuthFilter)
 @Controller('wpp')
