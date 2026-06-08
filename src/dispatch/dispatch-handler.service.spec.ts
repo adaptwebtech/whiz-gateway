@@ -545,6 +545,83 @@ it('AC-6: dado redis.get retorna null, quando handle é chamado, então ambiente
 });
 
 // ---------------------------------------------------------------------------
+// REG-1: redis.get throws → handle resolves (no unhandled rejection) + logger.error called
+// ---------------------------------------------------------------------------
+
+it('REG-1: dado redis.get lançando erro, quando handle é chamado com inbox válido, então a Promise resolve (não rejeita) E logger.error é chamado', async () => {
+  // Arrange
+  const inbox = makeInbox();
+  const redisError = new Error('Redis connection refused');
+
+  inboxRepo.findById.mockResolvedValue(inbox);
+  redis.get.mockRejectedValue(redisError);
+
+  const errorSpy = jest.spyOn(service['logger'], 'error');
+
+  // Act — must resolve, not reject
+  await expect(service.handle(inbox.id, { data: 'reg-1' })).resolves.toBeUndefined();
+
+  // Assert
+  expect(errorSpy).toHaveBeenCalled();
+});
+
+// ---------------------------------------------------------------------------
+// REG-2: inbox del=true → logger.warn called before sendToQueue NACK_RECEBIDO
+// ---------------------------------------------------------------------------
+
+it('REG-2: dado inbox encontrado com del=true, quando handle é chamado, então logger.warn é chamado antes de sendToQueue com NACK_RECEBIDO', async () => {
+  // Arrange
+  const inbox = makeInbox({ del: true });
+  const payload = { data: 'reg-2' };
+
+  inboxRepo.findById.mockResolvedValue(inbox);
+
+  const warnSpy = jest.spyOn(service['logger'], 'warn');
+
+  // Act
+  await service.handle(inbox.id, payload);
+
+  // Assert — warn must be called before or alongside sendToQueue
+  expect(warnSpy).toHaveBeenCalled();
+  expect(mq.sendToQueue).toHaveBeenCalledWith(
+    DLQ_NAME,
+    expect.objectContaining({ status: StatusFalhaMensagem.NACK_RECEBIDO }),
+  );
+  const warnOrder = warnSpy.mock.invocationCallOrder[0];
+  const sendOrder = (mq.sendToQueue as jest.Mock).mock.invocationCallOrder[0];
+  expect(warnOrder).toBeLessThan(sendOrder);
+});
+
+// ---------------------------------------------------------------------------
+// REG-3: inbox found (not del) but getAmbiente returns null → logger.warn called
+// ---------------------------------------------------------------------------
+
+it('REG-3: dado inbox válido mas getAmbiente retorna null, quando handle é chamado, então logger.warn é chamado antes de sendToQueue com AMBIENTE_INDISPONIVEL', async () => {
+  // Arrange
+  const inbox = makeInbox();
+  const payload = { data: 'reg-3' };
+
+  inboxRepo.findById.mockResolvedValue(inbox);
+  redis.get.mockResolvedValue(null);
+  ambienteRepo.findById.mockResolvedValue(null);
+
+  const warnSpy = jest.spyOn(service['logger'], 'warn');
+
+  // Act
+  await service.handle(inbox.id, payload);
+
+  // Assert — warn must be called before sendToQueue
+  expect(warnSpy).toHaveBeenCalled();
+  expect(mq.sendToQueue).toHaveBeenCalledWith(
+    DLQ_NAME,
+    expect.objectContaining({ status: StatusFalhaMensagem.AMBIENTE_INDISPONIVEL }),
+  );
+  const warnOrder = warnSpy.mock.invocationCallOrder[0];
+  const sendOrder = (mq.sendToQueue as jest.Mock).mock.invocationCallOrder[0];
+  expect(warnOrder).toBeLessThan(sendOrder);
+});
+
+// ---------------------------------------------------------------------------
 // AC-7 (cache): successful dispatch → logger emits INFO with inboxId, url, status
 // ---------------------------------------------------------------------------
 

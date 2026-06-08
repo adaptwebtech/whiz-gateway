@@ -4,6 +4,8 @@
  * AC-5: valid sig + PID with active inbox → dispatchHandler.handle(inbox.id, payload) called (fire-and-forget)
  * AC-6: valid sig + PID without inbox → mq.sendToQueue(DLQ, { message, id_inbox: null, status: 'INBOX_NAO_REGISTRADA' })
  * AC-8: payload without phone_number_id → mq.sendToQueue(DLQ, INBOX_NAO_REGISTRADA), responds 200
+ *
+ * REG-4: dispatchHandler.handle rejects → WebhookService catches and logs error (not silent swallow)
  */
 
 import { WebhookService } from './webhook.service';
@@ -12,6 +14,7 @@ import type { IRabbitMQService } from '../rabbitmq/interfaces/rabbitmq-service.i
 import type { IDispatchHandler } from '../dispatch/interfaces/dispatch-handler.interface';
 import { InboxResponseDto } from '../inbox/dto/inbox-response.dto';
 import { DLQ_NAME } from '../rabbitmq/constants/rabbitmq-queue.constants';
+import { Logger } from '@nestjs/common';
 
 // ─── Factory functions ────────────────────────────────────────────────────────
 
@@ -194,5 +197,29 @@ describe('WebhookService — unit', () => {
 
     // Assert
     expect(dispatchHandler.handle).not.toHaveBeenCalled();
+  });
+
+  // ─── REG-4 ─────────────────────────────────────────────────────────────────
+
+  it('REG-4: dado dispatchHandler.handle rejeitando, quando handleIncoming processa inbox válida, então o erro é capturado e logado (não engolido silenciosamente)', async () => {
+    // Arrange
+    inboxRepo.findByPid.mockResolvedValueOnce(INBOX_FIXTURE);
+    const dispatchError = new Error('Redis connection refused');
+    dispatchHandler.handle.mockRejectedValueOnce(dispatchError);
+    const payload = buildPayload(PHONE_NUMBER_ID);
+
+    // Spy on the logger inside the service instance — accessed via private field
+    const loggerErrorSpy = jest.spyOn(Logger.prototype, 'error');
+
+    // Act — must not throw and must not silently swallow
+    await service.handleIncoming(payload);
+
+    // Drain microtask queue so the rejected promise is processed
+    await new Promise((r) => setImmediate(r));
+
+    // Assert — logger.error must have been called with the dispatch error
+    expect(loggerErrorSpy).toHaveBeenCalled();
+
+    loggerErrorSpy.mockRestore();
   });
 });

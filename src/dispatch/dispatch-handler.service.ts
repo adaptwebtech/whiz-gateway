@@ -29,84 +29,96 @@ export class DispatchHandlerService implements IDispatchHandler {
   ) {}
 
   async handle(inboxId: string, payload: unknown): Promise<void> {
-    const inbox = await this.inboxRepo.findById(inboxId);
+    try {
+      const inbox = await this.inboxRepo.findById(inboxId);
 
-    if (!inbox || inbox.del) {
-      await this.mq.sendToQueue(DLQ_NAME, {
-        message: payload,
-        id_inbox: inbox?.id ?? inboxId,
-        status: StatusFalhaMensagem.NACK_RECEBIDO,
-      });
-      return;
-    }
-
-    const ambiente = await this.getAmbiente(inbox.id_ambiente);
-
-    if (!ambiente || ambiente.del) {
-      await this.mq.sendToQueue(DLQ_NAME, {
-        message: payload,
-        id_inbox: inbox.id,
-        status: StatusFalhaMensagem.AMBIENTE_INDISPONIVEL,
-      });
-      return;
-    }
-
-    const maxRetries = parseInt(
-      this.config.get<string>('DISPATCH_MAX_RETRIES') ?? '10',
-      10,
-    );
-    const baseMs = parseInt(
-      this.config.get<string>('DISPATCH_BACKOFF_BASE_MS') ?? '1000',
-      10,
-    );
-
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      try {
-        const response = await firstValueFrom(
-          this.http.post(ambiente.url, payload, {
-            headers: { 'Content-Type': 'application/json' },
-          }),
-        );
-        this.logger.log(
-          `Dispatched inbox ${inboxId} → ${ambiente.url}: ${response.status}`,
-        );
-        return;
-      } catch (err: unknown) {
-        const httpStatus =
-          err !== null &&
-          typeof err === 'object' &&
-          'response' in err &&
-          err.response !== null &&
-          typeof err.response === 'object' &&
-          'status' in err.response
-            ? (err.response as { status: number }).status
-            : undefined;
-        const errLabel =
-          err instanceof Error
-            ? `${err.constructor.name}${httpStatus !== undefined ? ` ${httpStatus}` : ''}`
-            : String(err);
+      if (!inbox || inbox.del) {
         this.logger.warn(
-          `Tentativa ${attempt}/${maxRetries} falhou para inbox ${inboxId} (url: ${ambiente.url}): ${errLabel}`,
+          `Inbox ${inboxId} não encontrada ou deletada — enviando para DLQ`,
         );
+        await this.mq.sendToQueue(DLQ_NAME, {
+          message: payload,
+          id_inbox: inbox?.id ?? inboxId,
+          status: StatusFalhaMensagem.NACK_RECEBIDO,
+        });
+        return;
+      }
 
-        if (attempt < maxRetries) {
-          await this.sleep(baseMs * Math.pow(2, attempt - 1));
-        } else {
-          const status =
+      const ambiente = await this.getAmbiente(inbox.id_ambiente);
+
+      if (!ambiente || ambiente.del) {
+        this.logger.warn(
+          `Ambiente ${inbox.id_ambiente} indisponível para inbox ${inboxId} — enviando para DLQ`,
+        );
+        await this.mq.sendToQueue(DLQ_NAME, {
+          message: payload,
+          id_inbox: inbox.id,
+          status: StatusFalhaMensagem.AMBIENTE_INDISPONIVEL,
+        });
+        return;
+      }
+
+      const maxRetries = parseInt(
+        this.config.get<string>('DISPATCH_MAX_RETRIES') ?? '10',
+        10,
+      );
+      const baseMs = parseInt(
+        this.config.get<string>('DISPATCH_BACKOFF_BASE_MS') ?? '1000',
+        10,
+      );
+
+      for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+          const response = await firstValueFrom(
+            this.http.post(ambiente.url, payload, {
+              headers: { 'Content-Type': 'application/json' },
+            }),
+          );
+          this.logger.log(
+            `Dispatched inbox ${inboxId} → ${ambiente.url}: ${response.status}`,
+          );
+          return;
+        } catch (err: unknown) {
+          const httpStatus =
             err !== null &&
             typeof err === 'object' &&
             'response' in err &&
-            (err as Record<string, unknown>).response
-              ? StatusFalhaMensagem.FALHA_ENVIO
-              : StatusFalhaMensagem.AMBIENTE_INDISPONIVEL;
+            err.response !== null &&
+            typeof err.response === 'object' &&
+            'status' in err.response
+              ? (err.response as { status: number }).status
+              : undefined;
+          const errLabel =
+            err instanceof Error
+              ? `${err.constructor.name}${httpStatus !== undefined ? ` ${httpStatus}` : ''}`
+              : String(err);
+          this.logger.warn(
+            `Tentativa ${attempt}/${maxRetries} falhou para inbox ${inboxId} (url: ${ambiente.url}): ${errLabel}`,
+          );
 
-          await this.mq.sendToQueue(DLQ_NAME, {
-            message: payload,
-            id_inbox: inbox.id,
-            status,
-          });
+          if (attempt < maxRetries) {
+            await this.sleep(baseMs * Math.pow(2, attempt - 1));
+          } else {
+            const status =
+              err !== null &&
+              typeof err === 'object' &&
+              'response' in err &&
+              (err as Record<string, unknown>).response
+                ? StatusFalhaMensagem.FALHA_ENVIO
+                : StatusFalhaMensagem.AMBIENTE_INDISPONIVEL;
+
+            await this.mq.sendToQueue(DLQ_NAME, {
+              message: payload,
+              id_inbox: inbox.id,
+              status,
+            });
+          }
         }
       }
+    } catch (err: unknown) {
+      this.logger.error(
+        `Erro inesperado em handle() para inbox ${inboxId}: ${String(err)}`,
+      );
     }
   }
 

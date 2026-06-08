@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { StatusFalhaMensagem } from '@prisma/client';
 import { DISPATCH_HANDLER } from '../dispatch/constants/dispatch-tokens.constants';
 import type { IDispatchHandler } from '../dispatch/interfaces/dispatch-handler.interface';
@@ -10,6 +10,8 @@ import type { IRabbitMQService } from '../rabbitmq/interfaces/rabbitmq-service.i
 
 @Injectable()
 export class WebhookService {
+  private readonly logger = new Logger(WebhookService.name);
+
   constructor(
     @Inject(INBOX_REPOSITORY) private readonly inboxRepo: IInboxRepository,
     @Inject(RABBITMQ_SERVICE) private readonly mq: IRabbitMQService,
@@ -20,7 +22,7 @@ export class WebhookService {
   async handleIncoming(payload: Record<string, unknown>): Promise<void> {
     const pid = this.extractPid(payload);
 
-    console.dir({payload, extractedPid: pid}, { depth: null });
+    console.dir({ payload, extractedPid: pid }, { depth: null });
 
     if (!pid) {
       await this.mq.sendToQueue(DLQ_NAME, {
@@ -33,7 +35,7 @@ export class WebhookService {
 
     const inbox = await this.inboxRepo.findByPid(pid);
 
-    console.dir({inbox}, { depth: null });
+    console.dir({ inbox }, { depth: null });
 
     if (!inbox) {
       await this.mq.sendToQueue(DLQ_NAME, {
@@ -44,7 +46,11 @@ export class WebhookService {
       return;
     }
 
-    void this.dispatchHandler.handle(inbox.id, payload);
+    this.dispatchHandler.handle(inbox.id, payload).catch((err: unknown) => {
+      this.logger.error(
+        `Erro inesperado no despacho inbox ${inbox.id}: ${String(err)}`,
+      );
+    });
   }
 
   private extractPid(payload: Record<string, unknown>): string | null {

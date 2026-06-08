@@ -108,10 +108,12 @@ sequenceDiagram
     participant DL as DeadLetterService
 
     Q->>H: handle(inboxId, payload)
+    Note over H: try/catch externo envolve todo o corpo de handle()
     H->>IR: findById(inboxId)
     IR-->>H: inbox | null
 
     alt inbox nulo ou del=true
+        H->>H: logger.warn("Inbox X não encontrada ou deletada — enviando para DLQ")
         H->>DL: create({ status: NACK_RECEBIDO, id_inbox, message })
         H-->>Q: retorna (ack implícito pelo caller)
     else inbox válido
@@ -119,6 +121,7 @@ sequenceDiagram
         AR-->>H: ambiente | null
 
         alt ambiente nulo ou del=true
+            H->>H: logger.warn("Ambiente X indisponível para inbox Y — enviando para DLQ")
             H->>DL: create({ status: AMBIENTE_INDISPONIVEL, id_inbox, message })
             H-->>Q: retorna
         else ambiente válido
@@ -141,6 +144,9 @@ sequenceDiagram
                 end
             end
         end
+    end
+    alt exceção inesperada (ex.: repo/redis lança fora do loop)
+        H->>H: logger.error("Erro inesperado em handle() para inbox X: ...")
     end
 ```
 
@@ -191,13 +197,16 @@ Fórmula do backoff: tentativa `n` (1-based) espera `DISPATCH_BACKOFF_BASE_MS * 
 
 | Situação | Discriminação | `status` em `fila_mensagens_mortas` |
 |---|---|---|
-| Inbox não encontrado ou `del=true` | Verificação prévia ao HTTP | `NACK_RECEBIDO` |
-| Ambiente não encontrado ou `del=true` | Verificação prévia ao HTTP | `AMBIENTE_INDISPONIVEL` |
+| Inbox não encontrado ou `del=true` | `logger.warn` + `sendToQueue` DLQ | `NACK_RECEBIDO` |
+| Ambiente não encontrado ou `del=true` | `logger.warn` + `sendToQueue` DLQ | `AMBIENTE_INDISPONIVEL` |
 | Todas as tentativas com resposta HTTP não-2xx | `err.response` presente (Axios) | `FALHA_ENVIO` |
 | Todas as tentativas sem resposta (ECONNREFUSED/timeout/DNS) | `err.response` ausente | `AMBIENTE_INDISPONIVEL` |
+| Exceção inesperada fora do loop (ex.: repo/redis lança) | `try/catch` externo em `handle()` → `logger.error` | nenhum registro criado (falha observável via log) |
 | HTTP 2xx | — | nenhum registro criado |
 
 A discriminação entre `FALHA_ENVIO` e `AMBIENTE_INDISPONIVEL` é feita inspecionando se o erro possui a propriedade `.response` (presença indica que o servidor respondeu com status não-2xx; ausência indica falha de conectividade).
+
+**Observabilidade do caller (`WebhookService`):** `handleIncoming` chama `dispatchHandler.handle(...).catch(err => logger.error(...))` — qualquer rejeição propagada é logada pelo `WebhookService` com o `inboxId` e a mensagem de erro, garantindo que falhas não sejam silenciadas pelo caller.
 
 ## 11. Notas operacionais
 
@@ -221,3 +230,4 @@ A discriminação entre `FALHA_ENVIO` e `AMBIENTE_INDISPONIVEL` é feita inspeci
 |---|---|
 | 2026-06-02 | Feature implementada (despacho-mensagens, Feature 6/7) |
 | 2026-06-08 | **hotfix-despacho-retries-log** — default `DISPATCH_MAX_RETRIES` elevado de `5` para `10` (Joi schema + fallback no service); log de tentativa falha enriquecido com `ambiente.url` e HTTP status code. Ver `docs/fixes/despacho-mensagens-hotfix-despacho-retries-log.md`. |
+| 2026-06-08 | **simple-fix-despacho-dispatch-silent** — adicionado `try/catch` externo em `handle()` cobrindo toda exceção não capturada pelo loop de retry; adicionados `logger.warn` antes de cada `sendToQueue` nos blocos de guarda (inbox nulo/del e ambiente nulo/del); `WebhookService` substituiu `void handle()` por `.catch(err => logger.error(...))`. Ver `docs/fixes/despacho-mensagens-simple-fix-despacho-dispatch-silent.md`. |

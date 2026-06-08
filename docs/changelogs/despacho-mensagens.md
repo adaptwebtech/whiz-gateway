@@ -8,3 +8,12 @@
 - Arquivos: `src/config/config.validation.ts`, `src/dispatch/dispatch-handler.service.ts`
 - REG: REG-1 (10 tentativas sem env definida), REG-2 (log warn com URL e status HTTP em falha 404)
 - Triage: docs/fixes/despacho-mensagens-hotfix-despacho-retries-log.md
+
+## 2026-06-08 · simple-fix · simple-fix-despacho-dispatch-silent
+
+- Sintoma: Log `"Dispatched inbox"` nunca aparecia; despacho abortava silenciosamente sem nenhum log de retry ou erro; fila do inbox acumulava mensagens sem dreno.
+- Root cause: `handle()` não possuía `try/catch` externo — exceção em `getAmbiente()` (redis/repo) escapava sem log; `WebhookService` chamava `void handle()`, descartando silenciosamente a Promise rejeitada.
+- Fix: Adicionado `try/catch` externo em `handle()` com `logger.error` para toda exceção inesperada; adicionados `logger.warn` antes de cada `sendToQueue` nos blocos de guarda (inbox nulo/del e ambiente nulo/del); `WebhookService` substituiu `void handle()` por `.catch(err => logger.error(...))`.
+- Arquivos: `src/dispatch/dispatch-handler.service.ts`, `src/webhook/webhook.service.ts`
+- REG: REG-1, REG-2, REG-3, REG-4, REG-5
+- Triage: docs/fixes/despacho-mensagens-simple-fix-despacho-dispatch-silent.md
