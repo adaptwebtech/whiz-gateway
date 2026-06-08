@@ -12,6 +12,7 @@ if [ -f "$PHASE_FILE" ]; then
   PHASE=$(tr -d '[:space:]' < "$PHASE_FILE" 2>/dev/null || echo "")
   if [ "$PHASE" = "done" ]; then
     rm -f "$STATE_DIR"/feature-*.txt
+    rm -f "$STATE_DIR"/phase-*-summary.txt
     echo "NOTE [stop-cleanup]: feature pipeline state cleared (phase was done)." >&2
   fi
 fi

@@ -235,3 +235,19 @@ Mapa de cada feature para seus arquivos. Autoritativo para descoberta (evita `gr
 | Token | `src/wpp-flow-callbacks/constants/wpp-flow-callbacks-tokens.constants.ts` |
 | DTOs | `src/wpp-flow-callbacks/dto/create-flow-callback.dto.ts` · `src/wpp-flow-callbacks/dto/update-flow-callback.dto.ts` · `src/wpp-flow-callbacks/dto/flow-callback-response.dto.ts` |
 | Schema | `prisma/schema.prisma` (modelo `flow_callbacks_urls`) |
+
+## redirecionamentos-webhooks
+
+> Feature 10 do whiz-gateway. Tabela `redirecionamentos_webhooks`: CRUD de redirecionamentos temporários de webhooks com TTL configurável e dispatch fire-and-forget com retry exponencial. Spec: [`docs/specs/2026-06-08-redirecionamentos-webhooks.md`](../specs/2026-06-08-redirecionamentos-webhooks.md) · Impl: [`docs/implementation/2026-06-08-redirecionamentos-webhooks.md`](../implementation/2026-06-08-redirecionamentos-webhooks.md) · Status: Implementada
+
+| Camada | Arquivo |
+|---|---|
+| Módulo | `src/redirecionamentos-webhooks/redirecionamentos-webhooks.module.ts` |
+| Controller | `src/redirecionamentos-webhooks/redirecionamentos-webhooks.controller.ts` |
+| Service | `src/redirecionamentos-webhooks/redirecionamentos-webhooks.service.ts` |
+| Repository (interface) | `src/redirecionamentos-webhooks/interfaces/redirecionamentos-webhooks-repository.interface.ts` |
+| Repository (impl) | `src/redirecionamentos-webhooks/repositories/redirecionamentos-webhooks.prisma.repository.ts` |
+| Token | `src/redirecionamentos-webhooks/constants/redirecionamentos-webhooks-tokens.constants.ts` |
+| DTOs | `src/redirecionamentos-webhooks/dto/create-redirecionamento-webhook.dto.ts` · `src/redirecionamentos-webhooks/dto/update-redirecionamento-webhook.dto.ts` · `src/redirecionamentos-webhooks/dto/redirecionamento-webhook-response.dto.ts` · `src/redirecionamentos-webhooks/dto/dispatch-result.dto.ts` |
+| Schema | `prisma/schema.prisma` (modelo `redirecionamentos_webhooks`) |
+| Glossário | `src/redirecionamentos-webhooks/context.md` |
