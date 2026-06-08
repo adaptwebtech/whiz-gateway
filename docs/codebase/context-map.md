@@ -16,6 +16,7 @@ Mapa global dos contextos (módulos de domínio) do whiz-gateway e como se relac
 - [WppTemplates](../../src/wpp-templates/context.md) — proxy stateless para operações de message templates (leitura, criação, edição, remoção) de uma WABA; sem persistência local
 - [WppPhoneNumbers](../../src/wpp-phone-numbers/context.md) — proxy stateless para gestão de números de telefone, registro, WABA, inscrições de app e debug de token; 13 rotas, sem persistência local
 - [WppFlows](../../src/wpp-flows/context.md) — proxy flows WhatsApp com criptografia RSA-OAEP + AES-256-GCM para endpoint dinâmico
+- [RedirecionamentosWebhooks](../../src/redirecionamentos-webhooks/context.md) — registros de redirecionamento temporário de webhooks para URLs externas com TTL configurável
 
 ## Relationships
 
@@ -34,3 +35,6 @@ Mapa global dos contextos (módulos de domínio) do whiz-gateway e como se relac
 - **WppFlows → WppFlowCallbacks**: `WppFlowsController` e `WppFlowsEndpointService` consultam `WppFlowCallbacksService.getUrl(uid)` para resolver UID → URL
 - **WppFlows → ApiKeys**: `WppFlowsController` usa `ApiKeyGuard` nas rotas de gerenciamento via header `X-API-KEY`
 - **Meta → WppFlows**: Meta POSTa payload criptografado em `/wpp/flows/endpoint/:uid`; autenticado via `X-Hub-Signature-256` (HMAC-SHA256 com `META_APP_SECRET`)
+- **RedirecionamentosWebhooks → Inbox**: resolve PID para `id_ambiente` via `IInboxRepository.findByPid` (mesmo mecanismo de `WebhookService.extractPid`)
+- **RedirecionamentosWebhooks → Ambiente**: FK `id_ambiente` filtra redirecionamentos elegíveis por ambiente; `null` = todos os ambientes
+- **RedirecionamentosWebhooks → ApiKeys**: `RedirecionamentosWebhooksController` usa `ApiKeyGuard` para autenticar todas as rotas via header `X-API-KEY`

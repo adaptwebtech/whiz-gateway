@@ -26,7 +26,8 @@ model ambiente {
   url  String
   del  Boolean @default(false)
 
-  inboxes inboxes[]
+  inboxes                  inboxes[]
+  redirecionamentos_webhooks redirecionamentos_webhooks[]
 }
 
 /// Caixa que correlaciona um PID a um ambiente.
@@ -70,4 +71,15 @@ model flow_callbacks_urls {
   url  String
   data DateTime @default(now())
   del  Boolean  @default(false)
+}
+
+model redirecionamentos_webhooks {
+  uid            String    @id @default(uuid())
+  url            String
+  data_expiracao DateTime?
+  id_ambiente    Int?
+  data           DateTime  @default(now())
+  del            Boolean   @default(false)
+
+  ambiente ambiente? @relation(fields: [id_ambiente], references: [id])
 }
