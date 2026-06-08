@@ -257,6 +257,15 @@ Mapa de cada feature para seus arquivos. Autoritativo para descoberta (evita `gr
 
 > Feature 11. Proteção de rotas administrativas com guards + correção de decoradores Swagger. Spec: [`docs/specs/2026-06-08-api-key-guard-admin-routes.md`](../specs/2026-06-08-api-key-guard-admin-routes.md) · Impl: [`docs/implementation/2026-06-08-api-key-guard-admin-routes.md`](../implementation/2026-06-08-api-key-guard-admin-routes.md)
 
+## cache-ambientes-redis
+
+> Feature 12. Cache Redis de `Ambiente` no pipeline de despacho — warm-up no bootstrap, sincronização em mutações e lookup cache-first para eliminar round-trips ao PostgreSQL. Spec: [`docs/specs/2026-06-08-cache-ambientes-redis.md`](../specs/2026-06-08-cache-ambientes-redis.md) · Impl: [`docs/implementation/2026-06-08-cache-ambientes-redis.md`](../implementation/2026-06-08-cache-ambientes-redis.md)
+
+| Camada | Arquivos |
+|---|---|
+| Service (modificado) | `src/ambiente/ambiente.service.ts` |
+| Service (modificado) | `src/dispatch/dispatch-handler.service.ts` |
+
 | Camada | Arquivo |
 |---|---|
 | Guard composto (novo) | `src/api-keys/guards/admin-or-api-key.guard.ts` |

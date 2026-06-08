@@ -11,6 +11,7 @@ import { AmbienteResponseDto } from '../ambiente/dto/ambiente-response.dto';
 import { InboxResponseDto } from '../inbox/dto/inbox-response.dto';
 import type { IRabbitMQService } from '../rabbitmq/interfaces/rabbitmq-service.interface';
 import { DLQ_NAME } from '../rabbitmq/constants/rabbitmq-queue.constants';
+import { RedisService } from '../redis/redis.service';
 import { DispatchHandlerService } from './dispatch-handler.service';
 import type { IDispatchHandler } from './interfaces/dispatch-handler.interface';
 
@@ -76,6 +77,7 @@ let ambienteRepo: {
 let httpService: jest.Mocked<Pick<HttpService, 'post'>>;
 let mq: jest.Mocked<IRabbitMQService>;
 let configService: jest.Mocked<Pick<ConfigService, 'get'>>;
+let redis: jest.Mocked<Pick<RedisService, 'get' | 'set'>>;
 
 let service: DispatchHandlerService;
 
@@ -117,12 +119,18 @@ beforeEach(() => {
     }),
   };
 
+  redis = {
+    get: jest.fn().mockResolvedValue(null),
+    set: jest.fn().mockResolvedValue(undefined),
+  };
+
   service = new DispatchHandlerService(
     inboxRepo as any,
     ambienteRepo as any,
     httpService as any,
     mq as any,
     configService as any,
+    redis as unknown as RedisService,
   );
 });
 
@@ -487,4 +495,78 @@ it('AC-8: Given handler runs, when reading retries and backoff config, then valu
 it('AC-9: Given IDispatchHandler interface, when service is instantiated, then it satisfies the interface (has handle method)', () => {
   const handler: IDispatchHandler = service;
   expect(typeof handler.handle).toBe('function');
+});
+
+// ---------------------------------------------------------------------------
+// AC-5 (cache): cache hit → ambienteRepo.findById NOT called
+// ---------------------------------------------------------------------------
+
+it('AC-5: dado redis.get retorna JSON válido de ambiente, quando handle é chamado com inbox válido, então ambienteRepo.findById NÃO é chamado', async () => {
+  // Arrange
+  const inbox = makeInbox();
+  const ambiente = makeAmbiente();
+
+  inboxRepo.findById.mockResolvedValue(inbox);
+  redis.get.mockResolvedValue(JSON.stringify(ambiente));
+  httpService.post.mockReturnValue(of(makeAxiosResponse(200)));
+
+  // Act
+  await service.handle(inbox.id, { data: 'cache-hit-payload' });
+
+  // Assert
+  expect(ambienteRepo.findById).not.toHaveBeenCalled();
+});
+
+// ---------------------------------------------------------------------------
+// AC-6 (cache): cache miss → ambienteRepo.findById IS called + redis.set
+// ---------------------------------------------------------------------------
+
+it('AC-6: dado redis.get retorna null, quando handle é chamado, então ambienteRepo.findById é chamado e redis.set é chamado com chave ambiente:<id> e TTL 3600', async () => {
+  // Arrange
+  const inbox = makeInbox();
+  const ambiente = makeAmbiente();
+
+  inboxRepo.findById.mockResolvedValue(inbox);
+  redis.get.mockResolvedValue(null);
+  ambienteRepo.findById.mockResolvedValue(ambiente);
+  httpService.post.mockReturnValue(of(makeAxiosResponse(200)));
+
+  // Act
+  await service.handle(inbox.id, { data: 'cache-miss-payload' });
+
+  // Assert
+  expect(ambienteRepo.findById).toHaveBeenCalledWith(inbox.id_ambiente);
+  expect(redis.set).toHaveBeenCalledTimes(1);
+  expect(redis.set).toHaveBeenCalledWith(
+    `ambiente:${ambiente.id}`,
+    expect.any(String),
+    3600,
+  );
+});
+
+// ---------------------------------------------------------------------------
+// AC-7 (cache): successful dispatch → logger emits INFO with inboxId, url, status
+// ---------------------------------------------------------------------------
+
+it('AC-7: dado despacho HTTP bem-sucedido, quando handle completa, então logger emite INFO contendo inboxId, url e status code', async () => {
+  // Arrange
+  const inbox = makeInbox();
+  const ambiente = makeAmbiente();
+
+  inboxRepo.findById.mockResolvedValue(inbox);
+  ambienteRepo.findById.mockResolvedValue(ambiente);
+  httpService.post.mockReturnValue(of(makeAxiosResponse(200)));
+
+  const logSpy = jest.spyOn(service['logger'], 'log');
+
+  // Act
+  await service.handle(inbox.id, { data: 'success-payload' });
+
+  // Assert
+  expect(logSpy).toHaveBeenCalledTimes(1);
+  const logMessage: string = logSpy.mock.calls[0][0] as string;
+  expect(logMessage).toContain('Dispatched inbox');
+  expect(logMessage).toContain(inbox.id);
+  expect(logMessage).toContain(ambiente.url);
+  expect(logMessage).toContain('200');
 });
