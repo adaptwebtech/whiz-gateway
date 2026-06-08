@@ -2,6 +2,7 @@ import {
   ConflictException,
   Inject,
   Injectable,
+  Logger,
   NotFoundException,
   OnModuleInit,
 } from '@nestjs/common';
@@ -18,6 +19,8 @@ const cacheKey = (id: number) => `ambiente:${id}`;
 
 @Injectable()
 export class AmbienteService implements OnModuleInit {
+  private readonly logger = new Logger(AmbienteService.name);
+
   constructor(
     @Inject(AMBIENTE_REPOSITORY)
     private readonly repo: IAmbienteRepository,
@@ -25,10 +28,14 @@ export class AmbienteService implements OnModuleInit {
   ) {}
 
   async onModuleInit(): Promise<void> {
-    const all = await this.findAll();
-    await Promise.all(
-      all.map((a) => this.redis.set(cacheKey(a.id), JSON.stringify(a), CACHE_TTL)),
-    );
+    try {
+      const all = await this.findAll();
+      await Promise.all(
+        all.map((a) => this.redis.set(cacheKey(a.id), JSON.stringify(a), CACHE_TTL)),
+      );
+    } catch (err) {
+      this.logger.error(`Falha no warm-up do cache de ambientes: ${String(err)}`);
+    }
   }
 
   async findAll(): Promise<AmbienteResponseDto[]> {
