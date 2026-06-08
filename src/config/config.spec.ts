@@ -47,7 +47,7 @@ describe('ConfigService (env loading)', () => {
     expect(configService.get('META_APP_SECRET')).toBeDefined();
     expect(env).toBe('development');
     expect(Number(port)).toBe(3000);
-    expect(Number(retries)).toBe(5);
+    expect(Number(retries)).toBe(10);
     expect(Number(backoff)).toBe(1000);
   });
 });
