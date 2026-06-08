@@ -21,7 +21,7 @@ export const configValidationSchema = Joi.object({
     then: Joi.string().required(),
     otherwise: Joi.string().allow('').optional(),
   }),
-  DISPATCH_MAX_RETRIES: Joi.number().default(5),
+  DISPATCH_MAX_RETRIES: Joi.number().default(10),
   DISPATCH_BACKOFF_BASE_MS: Joi.number().default(1000),
   REDIS_URL: Joi.string().required(),
   // strip() remove ADMIN_API_KEY do cache validado para que ConfigService leia

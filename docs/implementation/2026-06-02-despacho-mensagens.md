@@ -156,12 +156,12 @@ N/A — sem DTOs de entrada/saída HTTP próprios. O payload é tratado como `un
 
 | Env | Obrigatória | Default | Validação (Joi) | Descrição |
 |---|---|---|---|---|
-| `DISPATCH_MAX_RETRIES` | não | `5` | `Joi.number().default(5)` | Número máximo de tentativas de re-envio HTTP |
+| `DISPATCH_MAX_RETRIES` | não | `10` | `Joi.number().default(10)` | Número máximo de tentativas de re-envio HTTP |
 | `DISPATCH_BACKOFF_BASE_MS` | não | `1000` | `Joi.number().default(1000)` | Base do backoff exponencial em milissegundos |
 
 Leitura via `ConfigService` com fallback manual via `parseInt(...  ?? 'N')` no service. Os valores são lidos a cada invocação do handler (não cacheados no constructor).
 
-Fórmula do backoff: tentativa `n` (1-based) espera `DISPATCH_BACKOFF_BASE_MS * 2^(n-1)` ms. Exemplo com base 1000ms e 5 tentativas: 1s → 2s → 4s → 8s → 16s.
+Fórmula do backoff: tentativa `n` (1-based) espera `DISPATCH_BACKOFF_BASE_MS * 2^(n-1)` ms. Exemplo com base 1000ms e 10 tentativas: 1s → 2s → 4s → 8s → 16s → 32s → 64s → 128s → 256s → 512s.
 
 ## 8. Dependências
 
@@ -203,7 +203,7 @@ A discriminação entre `FALHA_ENVIO` e `AMBIENTE_INDISPONIVEL` é feita inspeci
 
 - **Ack/nack:** O handler retorna após registrar o dead-letter. Quem dá ack/nack é o consumidor no `RabbitMQService` (lado do `InboxService.getMessageHandler()`). A estratégia documentada na spec (OQ-1) é **insert direto + ack** — o `NACK_RECEBIDO` via DLQ nativa (`x-dead-letter-routing-key`) ocorre apenas em falhas irrecuperáveis externas ao handler.
 - **Payload passthrough:** Nenhuma transformação é aplicada. O payload recebido é enviado tal qual para o `ambiente.url`.
-- **Segredos:** Nenhum campo do payload é logado. Os logs de tentativa incluem apenas `inboxId` e o `String(err)` da exceção.
+- **Segredos:** Nenhum campo do payload é logado. Os logs de tentativa incluem `inboxId`, a URL do ambiente (`ambiente.url`) e o HTTP status code da resposta quando disponível. Formato: `Tentativa X/N falhou para inbox <id> (url: <url>): <AxiosError HTTP_STATUS>`. Se o erro não tiver `.response` (falha de conectividade), o status não é exibido.
 - **Idempotência:** Re-entrega pelo broker (após crash) resulta em reprocessamento. Idempotência do destino está fora de escopo deste módulo.
 - **Timeout HTTP:** Nenhum timeout explícito por tentativa no código atual. Dependência do timeout padrão do Node.js/`axios`. Ver OQ-3 na spec.
 
@@ -220,3 +220,4 @@ A discriminação entre `FALHA_ENVIO` e `AMBIENTE_INDISPONIVEL` é feita inspeci
 | Data | Descrição |
 |---|---|
 | 2026-06-02 | Feature implementada (despacho-mensagens, Feature 6/7) |
+| 2026-06-08 | **hotfix-despacho-retries-log** — default `DISPATCH_MAX_RETRIES` elevado de `5` para `10` (Joi schema + fallback no service); log de tentativa falha enriquecido com `ambiente.url` e HTTP status code. Ver `docs/fixes/despacho-mensagens-hotfix-despacho-retries-log.md`. |

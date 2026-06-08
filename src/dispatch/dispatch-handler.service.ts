@@ -49,7 +49,7 @@ export class DispatchHandlerService implements IDispatchHandler {
     }
 
     const maxRetries = parseInt(
-      this.config.get<string>('DISPATCH_MAX_RETRIES') ?? '5',
+      this.config.get<string>('DISPATCH_MAX_RETRIES') ?? '10',
       10,
     );
     const baseMs = parseInt(
@@ -66,8 +66,21 @@ export class DispatchHandlerService implements IDispatchHandler {
         );
         return;
       } catch (err: unknown) {
+        const httpStatus =
+          err !== null &&
+          typeof err === 'object' &&
+          'response' in err &&
+          err.response !== null &&
+          typeof err.response === 'object' &&
+          'status' in err.response
+            ? (err.response as { status: number }).status
+            : undefined;
+        const errLabel =
+          err instanceof Error
+            ? `${err.constructor.name}${httpStatus !== undefined ? ` ${httpStatus}` : ''}`
+            : String(err);
         this.logger.warn(
-          `Tentativa ${attempt}/${maxRetries} falhou para inbox ${inboxId}: ${String(err)}`,
+          `Tentativa ${attempt}/${maxRetries} falhou para inbox ${inboxId} (url: ${ambiente.url}): ${errLabel}`,
         );
 
         if (attempt < maxRetries) {
