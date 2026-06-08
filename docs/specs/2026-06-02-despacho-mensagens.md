@@ -210,3 +210,9 @@ flowchart TD
 - **OQ-5:** O que conta como "2xx de sucesso"? Apenas `2xx`, ou também `3xx`? Proposto: apenas `2xx`.
 - **OQ-6:** Inbox apagado entre enfileiramento e consumo: qual `status`? Proposto `NACK_RECEBIDO` (não há para onde entregar).
 - **OQ-7:** Retentar dentro do handler (sleep no consumidor, segura a mensagem) ou re-publicar com delay (requeue)? Proposto: retry **in-handler** com backoff (mais simples); avaliar requeue com delay se prefetch sofrer.
+
+## 17. Changelog
+
+| Data | Tipo | Descrição |
+|---|---|---|
+| 2026-06-08 | hotfix | `DISPATCH_MAX_RETRIES` default elevado de `5` para `10`. Log de tentativa falha enriquecido com URL do ambiente e HTTP status code. Sem alteração de FR/AC — comportamento de retry e dead-letter inalterado. Ver `docs/fixes/despacho-mensagens-hotfix-despacho-retries-log.md`. |
