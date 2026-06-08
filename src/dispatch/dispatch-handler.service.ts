@@ -4,12 +4,14 @@ import { ConfigService } from '@nestjs/config';
 import { StatusFalhaMensagem } from '@prisma/client';
 import { firstValueFrom } from 'rxjs';
 import { AMBIENTE_REPOSITORY } from '../ambiente/constants/ambiente-tokens.constants';
+import type { AmbienteResponseDto } from '../ambiente/dto/ambiente-response.dto';
 import type { IAmbienteRepository } from '../ambiente/interfaces/ambiente-repository.interface';
 import { INBOX_REPOSITORY } from '../inbox/constants/inbox-tokens.constants';
 import type { IInboxRepository } from '../inbox/interfaces/inbox-repository.interface';
 import { DLQ_NAME } from '../rabbitmq/constants/rabbitmq-queue.constants';
 import { RABBITMQ_SERVICE } from '../rabbitmq/constants/rabbitmq-tokens.constants';
 import type { IRabbitMQService } from '../rabbitmq/interfaces/rabbitmq-service.interface';
+import { RedisService } from '../redis/redis.service';
 import type { IDispatchHandler } from './interfaces/dispatch-handler.interface';
 
 @Injectable()
@@ -23,6 +25,7 @@ export class DispatchHandlerService implements IDispatchHandler {
     private readonly http: HttpService,
     @Inject(RABBITMQ_SERVICE) private readonly mq: IRabbitMQService,
     private readonly config: ConfigService,
+    private readonly redis: RedisService,
   ) {}
 
   async handle(inboxId: string, payload: unknown): Promise<void> {
@@ -37,7 +40,7 @@ export class DispatchHandlerService implements IDispatchHandler {
       return;
     }
 
-    const ambiente = await this.ambienteRepo.findById(inbox.id_ambiente);
+    const ambiente = await this.getAmbiente(inbox.id_ambiente);
 
     if (!ambiente || ambiente.del) {
       await this.mq.sendToQueue(DLQ_NAME, {
@@ -59,10 +62,13 @@ export class DispatchHandlerService implements IDispatchHandler {
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        await firstValueFrom(
+        const response = await firstValueFrom(
           this.http.post(ambiente.url, payload, {
             headers: { 'Content-Type': 'application/json' },
           }),
+        );
+        this.logger.log(
+          `Dispatched inbox ${inboxId} → ${ambiente.url}: ${response.status}`,
         );
         return;
       } catch (err: unknown) {
@@ -102,6 +108,18 @@ export class DispatchHandlerService implements IDispatchHandler {
         }
       }
     }
+  }
+
+  private async getAmbiente(id: number): Promise<AmbienteResponseDto | null> {
+    const cached = await this.redis.get(`ambiente:${id}`);
+    if (cached) {
+      return JSON.parse(cached) as AmbienteResponseDto;
+    }
+    const found = await this.ambienteRepo.findById(id);
+    if (found) {
+      await this.redis.set(`ambiente:${id}`, JSON.stringify(found), 3600);
+    }
+    return found;
   }
 
   private sleep(ms: number): Promise<void> {

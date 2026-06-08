@@ -37,7 +37,7 @@ Mapa de símbolos exportados → arquivo + assinatura. Autoritativo para descobe
 |---|---|---|---|
 | `AmbienteModule` | módulo (não-global) | `src/ambiente/ambiente.module.ts` | importa `PrismaModule`; registrado em `AppModule` |
 | `AmbienteController` | controller | `src/ambiente/ambiente.controller.ts` | `@Controller('ambientes')`; `findAll`, `findById`, `create`, `update`, `softDelete` |
-| `AmbienteService` | classe (`@Injectable`) | `src/ambiente/ambiente.service.ts` | injeta `AMBIENTE_REPOSITORY`; usa `plainToInstance` com `excludeExtraneousValues` |
+| `AmbienteService` | classe (`@Injectable`) | `src/ambiente/ambiente.service.ts` | implementa `OnModuleInit` (warm-up Redis); injeta `AMBIENTE_REPOSITORY` + `RedisService`; usa `plainToInstance` com `excludeExtraneousValues`; `onModuleInit` pré-carrega todos os ambientes no Redis (chave `ambiente:<id>`, TTL 3600 s); `create`/`update` → `redis.set`; `softDelete` → `redis.del` |
 | `IAmbienteRepository` | interface | `src/ambiente/interfaces/ambiente-repository.interface.ts` | `findAll / findById / create / update / softDelete` |
 | `AmbientePrismaRepository` | classe (`@Injectable`) | `src/ambiente/repositories/ambiente.prisma.repository.ts` | implementa `IAmbienteRepository`; usa `PrismaService` |
 | `AMBIENTE_REPOSITORY` | token (Symbol) | `src/ambiente/constants/ambiente-tokens.constants.ts` | token de injeção de `IAmbienteRepository` |
@@ -91,7 +91,7 @@ Mapa de símbolos exportados → arquivo + assinatura. Autoritativo para descobe
 | Símbolo | Tipo | Arquivo | Assinatura / Notas |
 |---|---|---|---|
 | `DispatchModule` | módulo (não-global) | `src/dispatch/dispatch.module.ts` | importa `HttpModule`, `AmbienteModule`, `PrismaModule`; provê `InboxPrismaRepository`+`INBOX_REPOSITORY` localmente; exporta `DISPATCH_HANDLER`; registrado em `AppModule` e importado por `WebhookModule` |
-| `DispatchHandlerService` | classe (`@Injectable`) | `src/dispatch/dispatch-handler.service.ts` | implementa `IDispatchHandler`; injeta `INBOX_REPOSITORY`, `AMBIENTE_REPOSITORY`, `HttpService`, `RABBITMQ_SERVICE`, `ConfigService`; retry exponencial; em falha → `mq.sendToQueue(DLQ_NAME, { message, id_inbox, status })` |
+| `DispatchHandlerService` | classe (`@Injectable`) | `src/dispatch/dispatch-handler.service.ts` | implementa `IDispatchHandler`; injeta `INBOX_REPOSITORY`, `AMBIENTE_REPOSITORY`, `HttpService`, `RABBITMQ_SERVICE`, `ConfigService`, `RedisService`; lookup cache-first via `getAmbiente(id)` privado (`redis.get` → parse; em miss: `ambienteRepo.findById` + `redis.set`); retry exponencial; em sucesso: `logger.log("Dispatched inbox <id> → <url>: <status>")`; em falha → `mq.sendToQueue(DLQ_NAME, { message, id_inbox, status })` |
 | `IDispatchHandler` | interface | `src/dispatch/interfaces/dispatch-handler.interface.ts` | `handle(inboxId: string, payload: unknown): Promise<void>` |
 | `DISPATCH_HANDLER` | token (Symbol) | `src/dispatch/constants/dispatch-tokens.constants.ts` | token de injeção de `IDispatchHandler` |
 

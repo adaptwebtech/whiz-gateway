@@ -6,6 +6,7 @@
  */
 
 import { ConflictException, NotFoundException } from '@nestjs/common';
+import { RedisService } from '../redis/redis.service';
 import { AmbienteService } from './ambiente.service';
 import { IAmbienteRepository } from './interfaces/ambiente-repository.interface';
 import { AmbienteResponseDto } from './dto/ambiente-response.dto';
@@ -20,9 +21,16 @@ const makeRepo = (): jest.Mocked<IAmbienteRepository> => ({
   softDelete: jest.fn(),
 });
 
+const makeRedis = (): jest.Mocked<Pick<RedisService, 'get' | 'set' | 'del'>> => ({
+  get: jest.fn().mockResolvedValue(null),
+  set: jest.fn().mockResolvedValue(undefined),
+  del: jest.fn().mockResolvedValue(undefined),
+});
+
 describe('AmbienteService — unit', () => {
   let service: AmbienteService;
   let repo: jest.Mocked<IAmbienteRepository>;
+  let redis: jest.Mocked<Pick<RedisService, 'get' | 'set' | 'del'>>;
 
   const ambienteFixture: AmbienteResponseDto = {
     id: 1,
@@ -33,11 +41,13 @@ describe('AmbienteService — unit', () => {
 
   beforeEach(() => {
     repo = makeRepo();
-    service = new AmbienteService(repo);
+    redis = makeRedis();
+    service = new AmbienteService(repo, redis as unknown as RedisService);
     jest.resetAllMocks();
     // Re-assign after reset so mock references stay valid
     repo = makeRepo();
-    service = new AmbienteService(repo);
+    redis = makeRedis();
+    service = new AmbienteService(repo, redis as unknown as RedisService);
   });
 
   // ─── AC-5 ─────────────────────────────────────────────────────────────────
@@ -165,6 +175,91 @@ describe('AmbienteService — unit', () => {
     expect(Object.keys(result as object).sort()).toEqual(
       ['del', 'id', 'nome', 'url'].sort(),
     );
+  });
+
+  // ─── AC-1: warm-up onModuleInit ────────────────────────────────────────────
+
+  it('AC-1: dado 3 ambientes no repo, quando onModuleInit é chamado, então redis.set é chamado 3 vezes com chave ambiente:<id> e TTL 3600', async () => {
+    // Arrange
+    const ambientes: AmbienteResponseDto[] = [
+      { id: 1, nome: 'env1', url: 'https://env1.example.com', del: false },
+      { id: 2, nome: 'env2', url: 'https://env2.example.com', del: false },
+      { id: 3, nome: 'env3', url: 'https://env3.example.com', del: false },
+    ];
+    repo.findAll.mockResolvedValueOnce(ambientes);
+
+    // Act
+    await service.onModuleInit();
+
+    // Assert
+    expect(redis.set).toHaveBeenCalledTimes(3);
+    expect(redis.set).toHaveBeenCalledWith('ambiente:1', expect.any(String), 3600);
+    expect(redis.set).toHaveBeenCalledWith('ambiente:2', expect.any(String), 3600);
+    expect(redis.set).toHaveBeenCalledWith('ambiente:3', expect.any(String), 3600);
+  });
+
+  // ─── AC-2: create grava no cache ───────────────────────────────────────────
+
+  it('AC-2: dado CreateAmbienteDto válido sem conflito, quando create é chamado, então redis.set é chamado 1 vez com chave ambiente:<id> e TTL 3600', async () => {
+    // Arrange
+    const dto: CreateAmbienteDto = {
+      id: 1,
+      nome: 'development',
+      url: 'https://dev.example.com',
+    };
+    repo.findById.mockResolvedValueOnce(null);
+    repo.create.mockResolvedValueOnce(ambienteFixture);
+
+    // Act
+    await service.create(dto);
+
+    // Assert
+    expect(redis.set).toHaveBeenCalledTimes(1);
+    expect(redis.set).toHaveBeenCalledWith(
+      `ambiente:${ambienteFixture.id}`,
+      expect.any(String),
+      3600,
+    );
+  });
+
+  // ─── AC-3: update atualiza cache ───────────────────────────────────────────
+
+  it('AC-3: dado ambiente existente, quando update é chamado, então redis.set é chamado 1 vez com chave ambiente:<id> e TTL 3600 com valor atualizado', async () => {
+    // Arrange
+    const updatedFixture: AmbienteResponseDto = {
+      ...ambienteFixture,
+      nome: 'updated-name',
+    };
+    repo.findById.mockResolvedValueOnce(ambienteFixture);
+    repo.update.mockResolvedValueOnce(updatedFixture);
+
+    const dto: UpdateAmbienteDto = { nome: 'updated-name' };
+
+    // Act
+    await service.update(ambienteFixture.id, dto);
+
+    // Assert
+    expect(redis.set).toHaveBeenCalledTimes(1);
+    expect(redis.set).toHaveBeenCalledWith(
+      `ambiente:${ambienteFixture.id}`,
+      expect.stringContaining('updated-name'),
+      3600,
+    );
+  });
+
+  // ─── AC-4: softDelete remove do cache ─────────────────────────────────────
+
+  it('AC-4: dado ambiente existente, quando softDelete é chamado, então redis.del é chamado 1 vez com chave ambiente:<id>', async () => {
+    // Arrange
+    repo.findById.mockResolvedValueOnce(ambienteFixture);
+    repo.softDelete.mockResolvedValueOnce(undefined);
+
+    // Act
+    await service.softDelete(ambienteFixture.id);
+
+    // Assert
+    expect(redis.del).toHaveBeenCalledTimes(1);
+    expect(redis.del).toHaveBeenCalledWith(`ambiente:${ambienteFixture.id}`);
   });
 
   // ─── Cobertura complementar ────────────────────────────────────────────────
