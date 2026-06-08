@@ -20,6 +20,8 @@ export class WebhookService {
   async handleIncoming(payload: Record<string, unknown>): Promise<void> {
     const pid = this.extractPid(payload);
 
+    console.dir({payload, extractedPid: pid}, { depth: null });
+
     if (!pid) {
       await this.mq.sendToQueue(DLQ_NAME, {
         message: payload,
@@ -30,6 +32,8 @@ export class WebhookService {
     }
 
     const inbox = await this.inboxRepo.findByPid(pid);
+
+    console.dir({inbox}, { depth: null });
 
     if (!inbox) {
       await this.mq.sendToQueue(DLQ_NAME, {
