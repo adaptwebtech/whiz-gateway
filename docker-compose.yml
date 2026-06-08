@@ -70,6 +70,7 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: whiz_gateway_api_${ENV}
+    image: adaptweb/whiz-gateway:${ENV}
     restart: always
     depends_on:
       pg:
