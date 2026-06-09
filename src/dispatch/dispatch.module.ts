@@ -6,9 +6,15 @@ import { InboxPrismaRepository } from '../inbox/repositories/inbox.prisma.reposi
 import { PrismaModule } from '../prisma/prisma.module';
 import { DISPATCH_HANDLER } from './constants/dispatch-tokens.constants';
 import { DispatchHandlerService } from './dispatch-handler.service';
+import { RedirecionamentosWebhooksModule } from '../redirecionamentos-webhooks/redirecionamentos-webhooks.module';
 
 @Module({
-  imports: [HttpModule, AmbienteModule, PrismaModule],
+  imports: [
+    HttpModule,
+    AmbienteModule,
+    PrismaModule,
+    RedirecionamentosWebhooksModule,
+  ],
   providers: [
     InboxPrismaRepository,
     { provide: INBOX_REPOSITORY, useExisting: InboxPrismaRepository },

@@ -21,7 +21,9 @@ const makeRepo = (): jest.Mocked<IAmbienteRepository> => ({
   softDelete: jest.fn(),
 });
 
-const makeRedis = (): jest.Mocked<Pick<RedisService, 'get' | 'set' | 'del'>> => ({
+const makeRedis = (): jest.Mocked<
+  Pick<RedisService, 'get' | 'set' | 'del'>
+> => ({
   get: jest.fn().mockResolvedValue(null),
   set: jest.fn().mockResolvedValue(undefined),
   del: jest.fn().mockResolvedValue(undefined),
@@ -193,9 +195,21 @@ describe('AmbienteService — unit', () => {
 
     // Assert
     expect(redis.set).toHaveBeenCalledTimes(3);
-    expect(redis.set).toHaveBeenCalledWith('ambiente:1', expect.any(String), 3600);
-    expect(redis.set).toHaveBeenCalledWith('ambiente:2', expect.any(String), 3600);
-    expect(redis.set).toHaveBeenCalledWith('ambiente:3', expect.any(String), 3600);
+    expect(redis.set).toHaveBeenCalledWith(
+      'ambiente:1',
+      expect.any(String),
+      3600,
+    );
+    expect(redis.set).toHaveBeenCalledWith(
+      'ambiente:2',
+      expect.any(String),
+      3600,
+    );
+    expect(redis.set).toHaveBeenCalledWith(
+      'ambiente:3',
+      expect.any(String),
+      3600,
+    );
   });
 
   // ─── AC-2: create grava no cache ───────────────────────────────────────────

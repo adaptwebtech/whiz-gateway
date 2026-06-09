@@ -31,10 +31,14 @@ export class AmbienteService implements OnModuleInit {
     try {
       const all = await this.findAll();
       await Promise.all(
-        all.map((a) => this.redis.set(cacheKey(a.id), JSON.stringify(a), CACHE_TTL)),
+        all.map((a) =>
+          this.redis.set(cacheKey(a.id), JSON.stringify(a), CACHE_TTL),
+        ),
       );
     } catch (err) {
-      this.logger.error(`Falha no warm-up do cache de ambientes: ${String(err)}`);
+      this.logger.error(
+        `Falha no warm-up do cache de ambientes: ${String(err)}`,
+      );
     }
   }
 
@@ -66,7 +70,11 @@ export class AmbienteService implements OnModuleInit {
     const response = plainToInstance(AmbienteResponseDto, result, {
       excludeExtraneousValues: true,
     });
-    await this.redis.set(cacheKey(response.id), JSON.stringify(response), CACHE_TTL);
+    await this.redis.set(
+      cacheKey(response.id),
+      JSON.stringify(response),
+      CACHE_TTL,
+    );
     return response;
   }
 
@@ -79,7 +87,11 @@ export class AmbienteService implements OnModuleInit {
     const response = plainToInstance(AmbienteResponseDto, result, {
       excludeExtraneousValues: true,
     });
-    await this.redis.set(cacheKey(response.id), JSON.stringify(response), CACHE_TTL);
+    await this.redis.set(
+      cacheKey(response.id),
+      JSON.stringify(response),
+      CACHE_TTL,
+    );
     return response;
   }
 

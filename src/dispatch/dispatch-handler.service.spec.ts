@@ -559,7 +559,9 @@ it('REG-1: dado redis.get lançando erro, quando handle é chamado com inbox vá
   const errorSpy = jest.spyOn(service['logger'], 'error');
 
   // Act — must resolve, not reject
-  await expect(service.handle(inbox.id, { data: 'reg-1' })).resolves.toBeUndefined();
+  await expect(
+    service.handle(inbox.id, { data: 'reg-1' }),
+  ).resolves.toBeUndefined();
 
   // Assert
   expect(errorSpy).toHaveBeenCalled();
@@ -614,7 +616,9 @@ it('REG-3: dado inbox válido mas getAmbiente retorna null, quando handle é cha
   expect(warnSpy).toHaveBeenCalled();
   expect(mq.sendToQueue).toHaveBeenCalledWith(
     DLQ_NAME,
-    expect.objectContaining({ status: StatusFalhaMensagem.AMBIENTE_INDISPONIVEL }),
+    expect.objectContaining({
+      status: StatusFalhaMensagem.AMBIENTE_INDISPONIVEL,
+    }),
   );
   const warnOrder = warnSpy.mock.invocationCallOrder[0];
   const sendOrder = (mq.sendToQueue as jest.Mock).mock.invocationCallOrder[0];

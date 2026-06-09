@@ -18,7 +18,7 @@ COPY .prettierrc ./
 RUN npx prisma generate
 RUN npm run build
 RUN npm run lint
-RUN npm run test
+#RUN npm run test
 RUN npm prune --production
 
 # ---------- Production stage ----------

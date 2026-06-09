@@ -20,5 +20,6 @@ import { RedirecionamentosWebhooksService } from './redirecionamentos-webhooks.s
       useClass: RedirecionamentosWebhooksPrismaRepository,
     },
   ],
+  exports: [RedirecionamentosWebhooksService],
 })
 export class RedirecionamentosWebhooksModule {}
