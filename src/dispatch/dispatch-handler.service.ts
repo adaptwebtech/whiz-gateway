@@ -13,6 +13,7 @@ import { RABBITMQ_SERVICE } from '../rabbitmq/constants/rabbitmq-tokens.constant
 import type { IRabbitMQService } from '../rabbitmq/interfaces/rabbitmq-service.interface';
 import { RedisService } from '../redis/redis.service';
 import type { IDispatchHandler } from './interfaces/dispatch-handler.interface';
+import { RedirecionamentosWebhooksService } from '../redirecionamentos-webhooks/redirecionamentos-webhooks.service';
 
 @Injectable()
 export class DispatchHandlerService implements IDispatchHandler {
@@ -26,10 +27,16 @@ export class DispatchHandlerService implements IDispatchHandler {
     @Inject(RABBITMQ_SERVICE) private readonly mq: IRabbitMQService,
     private readonly config: ConfigService,
     private readonly redis: RedisService,
+    private readonly redirecionamentosWebhooksService : RedirecionamentosWebhooksService,
   ) {}
 
   async handle(inboxId: string, payload: unknown): Promise<void> {
     try {
+
+      this.redirecionamentosWebhooksService.dispatch(payload as Record<string, unknown>).catch((err) => {
+        this.logger.error(`Erro ao despachar para redirecionamentos de webhook: ${String(err)}`);
+      });
+
       const inbox = await this.inboxRepo.findById(inboxId);
 
       if (!inbox || inbox.del) {
