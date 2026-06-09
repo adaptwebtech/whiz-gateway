@@ -144,22 +144,22 @@ export class RedirecionamentosWebhooksService {
 
   async dispatch(payload: Record<string, unknown>): Promise<DispatchResultDto> {
 
-    console.log("1 - Payload recebido para dispatch:", JSON.stringify(payload));
+    this.logger.log("1 - Payload recebido para dispatch:", JSON.stringify(payload));
     const pid = this.extractPid(payload);
     if (!pid) {
       return { dispatched: 0 };
     }
-    console.log("2 - PID extraído:", pid);  
+    this.logger.log("2 - PID extraído:", pid);  
     const inbox = await this.inboxRepo.findByPid(pid);
     if (!inbox) {
       return { dispatched: 0 };
     }
-    console.log("3 - Inbox encontrada:", inbox);
+    this.logger.log("3 - Inbox encontrada:", inbox);
     const redirects = await this.repo.findActiveByAmbiente(inbox.id_ambiente);
     if (redirects.length === 0) {
       return { dispatched: 0 };
     }
-    console.log(`4 - ${redirects.length} redirecionamentos ativos encontrados para ambiente ${inbox.id_ambiente}`);
+    this.logger.log(`4 - ${redirects.length} redirecionamentos ativos encontrados para ambiente ${inbox.id_ambiente}`);
     await Promise.all(redirects.map((r) => this.sendWithRetry(r.url, payload)));
 
     return { dispatched: redirects.length };
