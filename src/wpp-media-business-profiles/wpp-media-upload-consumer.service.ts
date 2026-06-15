@@ -6,6 +6,7 @@ import {
   OnApplicationBootstrap,
   Optional,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { RABBITMQ_SERVICE } from '../rabbitmq/constants/rabbitmq-tokens.constants';
 import {
   DEFAULT_DLQ_ARGS,
@@ -21,6 +22,7 @@ export class WppMediaUploadConsumerService implements OnApplicationBootstrap {
 
   constructor(
     private readonly wppService: WppService,
+    private readonly config: ConfigService,
     @Optional()
     @Inject(RABBITMQ_SERVICE)
     private readonly rabbitMQService?: IRabbitMQService,
@@ -96,11 +98,15 @@ export class WppMediaUploadConsumerService implements OnApplicationBootstrap {
     jobId: string,
   ): Promise<void> {
     const delays = [1000, 2000, 4000, 8000, 16000];
+    const callbackSecret = this.config.get<string>('CALLBACK_SECRET') ?? '';
     for (let attempt = 0; attempt <= 5; attempt++) {
       try {
         const res = await fetch(url, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'x-callback-secret': callbackSecret,
+          },
           body: JSON.stringify(payload),
         });
         if (res.ok) return;

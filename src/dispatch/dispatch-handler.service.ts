@@ -76,12 +76,16 @@ export class DispatchHandlerService implements IDispatchHandler {
         this.config.get<string>('DISPATCH_BACKOFF_BASE_MS') ?? '1000',
         10,
       );
+      const callbackSecret = this.config.get<string>('CALLBACK_SECRET') ?? '';
 
       for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try {
           const response = await firstValueFrom(
             this.http.post(ambiente.url, payload, {
-              headers: { 'Content-Type': 'application/json' },
+              headers: {
+                'Content-Type': 'application/json',
+                'x-callback-secret': callbackSecret,
+              },
             }),
           );
           this.logger.log(

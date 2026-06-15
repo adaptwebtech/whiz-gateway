@@ -12,3 +12,5 @@ process.env.META_GRAPH_URL =
   process.env.META_GRAPH_URL || 'https://graph.facebook.com/v20.0';
 process.env.META_ACCESS_TOKEN =
   process.env.META_ACCESS_TOKEN || 'test-meta-token';
+process.env.CALLBACK_SECRET =
+  process.env.CALLBACK_SECRET || 'test-callback-secret';

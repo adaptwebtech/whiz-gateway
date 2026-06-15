@@ -22,6 +22,7 @@ Validadas no bootstrap (Joi). A ausência de qualquer obrigatória impede a apli
 | `PORT` | não | `3000` | Porta HTTP |
 | `META_VERIFY_TOKEN` | sim | — | Token de verificação do webhook da Meta |
 | `META_APP_SECRET` | sim | — | Segredo da app Meta (validação de assinatura) |
+| `CALLBACK_SECRET` | sim (produção) | — | Segredo enviado no header `x-callback-secret` em callbacks de saída (despacho de mensagens e callbacks de upload de mídia) |
 | `DISPATCH_MAX_RETRIES` | não | `5` | Máximo de retentativas de re-envio |
 | `DISPATCH_BACKOFF_BASE_MS` | não | `1000` | Base do backoff exponencial (ms) |
 | `META_GRAPH_URL` | sim | — | Base URL da Meta Graph API com versão embutida (ex.: `https://graph.facebook.com/v20.0`) |

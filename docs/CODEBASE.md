@@ -31,6 +31,7 @@ Validadas via Joi (`src/config/config.validation.ts`); acesso somente via `Confi
 | `PORT` | não | `3000` |
 | `META_VERIFY_TOKEN` | sim | — |
 | `META_APP_SECRET` | sim | — |
+| `CALLBACK_SECRET` | sim (produção) | — |
 | `DISPATCH_MAX_RETRIES` | não | `5` |
 | `DISPATCH_BACKOFF_BASE_MS` | não | `1000` |
 | `REDIS_URL` | sim | — |

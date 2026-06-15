@@ -1,6 +1,6 @@
 # Dispatch
 
-Consome a fila de cada inbox e re-envia o payload cru para a `url` do ambiente, com retry e backoff exponencial.
+Consome a fila de cada inbox e re-envia o payload cru para a `url` do ambiente, com retry e backoff exponencial. Cada re-envio carrega o header `x-callback-secret` (valor de `CALLBACK_SECRET`) para o destino validar a origem.
 
 ## Language
 

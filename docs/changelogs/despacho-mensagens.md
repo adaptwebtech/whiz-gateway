@@ -1,5 +1,12 @@
 # Changelog — despacho-mensagens
 
+## 2026-06-15 · feature · callback-secret-header
+
+- Mudança: Callbacks de saída passam a enviar o header `x-callback-secret` com valor fixo de `CALLBACK_SECRET` (obrigatória em produção via Joi), permitindo ao destino validar a origem do callback.
+- Escopo: `DispatchHandlerService` (despacho inbox→ambiente) e `WppMediaUploadConsumerService` (callback de upload de mídia). `RedirecionamentosWebhooksService` fora de escopo.
+- Arquivos: `src/config/config.validation.ts`, `src/dispatch/dispatch-handler.service.ts`, `src/wpp-media-business-profiles/wpp-media-upload-consumer.service.ts`, `.env.example`, `src/test-setup.ts`
+- Testes: AC-10 (dispatch-handler) e AC-18 (wpp-media-upload-consumer) validam o header.
+
 ## 2026-06-08 · hotfix · hotfix-despacho-retries-log
 
 - Sintoma: Default de `DISPATCH_MAX_RETRIES` fixo em `5` e log de tentativa falha sem URL do ambiente nem HTTP status, dificultando diagnóstico em produção.

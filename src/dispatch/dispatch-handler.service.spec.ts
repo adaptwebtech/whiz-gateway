@@ -78,6 +78,7 @@ let httpService: jest.Mocked<Pick<HttpService, 'post'>>;
 let mq: jest.Mocked<IRabbitMQService>;
 let configService: jest.Mocked<Pick<ConfigService, 'get'>>;
 let redis: jest.Mocked<Pick<RedisService, 'get' | 'set'>>;
+let redirecionamentosWebhooksService: { dispatch: jest.Mock };
 
 let service: DispatchHandlerService;
 
@@ -124,6 +125,10 @@ beforeEach(() => {
     set: jest.fn().mockResolvedValue(undefined),
   };
 
+  redirecionamentosWebhooksService = {
+    dispatch: jest.fn().mockResolvedValue(undefined),
+  };
+
   service = new DispatchHandlerService(
     inboxRepo as any,
     ambienteRepo as any,
@@ -131,6 +136,7 @@ beforeEach(() => {
     mq as any,
     configService as any,
     redis as unknown as RedisService,
+    redirecionamentosWebhooksService as any,
   );
 });
 
@@ -486,6 +492,43 @@ it('AC-8: Given handler runs, when reading retries and backoff config, then valu
   expect(httpService.post).toHaveBeenCalledTimes(Number(customMaxRetries));
 
   jest.useRealTimers();
+});
+
+// ---------------------------------------------------------------------------
+// AC-10: outgoing POST carries x-callback-secret header from ConfigService
+// ---------------------------------------------------------------------------
+
+it('AC-10: dado CALLBACK_SECRET configurado, quando handle despacha, então http.post é chamado com header x-callback-secret igual ao valor do ConfigService', async () => {
+  // Arrange
+  const inbox = makeInbox();
+  const ambiente = makeAmbiente();
+  const secret = 'super-secret-token';
+
+  configService.get.mockImplementation((key: string) => {
+    if (key === 'DISPATCH_MAX_RETRIES') return '3';
+    if (key === 'DISPATCH_BACKOFF_BASE_MS') return '100';
+    if (key === 'CALLBACK_SECRET') return secret;
+    return undefined;
+  });
+
+  inboxRepo.findById.mockResolvedValue(inbox);
+  ambienteRepo.findById.mockResolvedValue(ambiente);
+  httpService.post.mockReturnValue(of(makeAxiosResponse(200)));
+
+  // Act
+  await service.handle(inbox.id, { data: 'secret-payload' });
+
+  // Assert
+  expect(configService.get).toHaveBeenCalledWith('CALLBACK_SECRET');
+  expect(httpService.post).toHaveBeenCalledWith(
+    ambiente.url,
+    expect.anything(),
+    expect.objectContaining({
+      headers: expect.objectContaining({
+        'x-callback-secret': secret,
+      }),
+    }),
+  );
 });
 
 // ---------------------------------------------------------------------------

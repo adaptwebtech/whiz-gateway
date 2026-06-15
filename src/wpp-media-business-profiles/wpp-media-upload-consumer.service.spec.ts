@@ -11,6 +11,7 @@
 
 import * as fs from 'fs';
 import { Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { WppMediaUploadConsumerService } from './wpp-media-upload-consumer.service';
 import { WppService } from '../wpp/wpp.service';
 import { MediaUploadJobDto } from './dto/media-upload-job.dto';
@@ -22,6 +23,12 @@ const mockWppService = {
   forwardBinary: jest.fn(),
   forward: jest.fn(),
 } as unknown as WppService;
+
+const mockConfigService = {
+  get: jest.fn((key: string) =>
+    key === 'CALLBACK_SECRET' ? 'media-secret' : undefined,
+  ),
+} as unknown as ConfigService;
 
 // ─── Helper ───────────────────────────────────────────────────────────────────
 
@@ -51,7 +58,14 @@ describe('WppMediaUploadConsumerService — unit', () => {
     jest.resetAllMocks();
     jest.useFakeTimers();
 
-    service = new WppMediaUploadConsumerService(mockWppService);
+    (mockConfigService.get as jest.Mock).mockImplementation((key: string) =>
+      key === 'CALLBACK_SECRET' ? 'media-secret' : undefined,
+    );
+
+    service = new WppMediaUploadConsumerService(
+      mockWppService,
+      mockConfigService,
+    );
 
     unlinkSpy = jest.spyOn(fs.promises, 'unlink').mockResolvedValue(undefined);
 
@@ -176,6 +190,38 @@ describe('WppMediaUploadConsumerService — unit', () => {
     );
 
     expect(unlinkSpy).toHaveBeenCalledWith('/tmp/wpp-uploads/job-uuid-001');
+  });
+
+  // ── AC-18: webhook carrega header x-callback-secret ───────────────────────
+
+  it('AC-18: dado forward success com callbackUrl, quando webhook disparado, então fetch recebe header x-callback-secret igual ao valor do ConfigService', async () => {
+    const job = makeJob({
+      type: 'media',
+      callbackUrl: 'https://cb.example.com/webhook',
+    });
+
+    (mockWppService.forwardMultipart as jest.Mock).mockResolvedValue({
+      status: 200,
+      data: { id: 'media-abc' },
+    });
+
+    let capturedHeaders: unknown;
+    // eslint-disable-next-line @typescript-eslint/require-await
+    fetchSpy.mockImplementation(async (_url: unknown, opts: unknown) => {
+      capturedHeaders = (opts as RequestInit).headers;
+      return {
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({}),
+      } as Response;
+    });
+
+    await service.handleJob(job);
+
+    expect(mockConfigService.get).toHaveBeenCalledWith('CALLBACK_SECRET');
+    expect(capturedHeaders).toEqual(
+      expect.objectContaining({ 'x-callback-secret': 'media-secret' }),
+    );
   });
 
   // ── AC-9: type=resumable-binary ───────────────────────────────────────────

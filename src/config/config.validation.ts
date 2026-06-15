@@ -21,6 +21,11 @@ export const configValidationSchema = Joi.object({
     then: Joi.string().required(),
     otherwise: Joi.string().allow('').optional(),
   }),
+  CALLBACK_SECRET: Joi.when('ENV', {
+    is: 'production',
+    then: Joi.string().required(),
+    otherwise: Joi.string().allow('').optional(),
+  }),
   DISPATCH_MAX_RETRIES: Joi.number().default(10),
   DISPATCH_BACKOFF_BASE_MS: Joi.number().default(1000),
   REDIS_URL: Joi.string().required(),
