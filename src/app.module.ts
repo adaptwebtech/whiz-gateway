@@ -11,6 +11,7 @@ import { WebhookModule } from './webhook/webhook.module';
 import { InstagramWebhookModule } from './instagram-webhook/instagram-webhook.module';
 import { InboxModule } from './inbox/inbox.module';
 import { LoggerModule } from './logger/logger.module';
+import { MetaTokenModule } from './meta-token/meta-token.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { RabbitMQModule } from './rabbitmq/rabbitmq.module';
 import { RedisModule } from './redis/redis.module';
@@ -35,6 +36,7 @@ import { RedirecionamentosWebhooksModule } from './redirecionamentos-webhooks/re
     RabbitMQModule,
     RedisModule,
     ScheduleModule.forRoot(),
+    MetaTokenModule,
     HealthModule,
     AmbienteModule,
     InboxModule,

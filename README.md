@@ -28,7 +28,9 @@ Validadas no bootstrap (Joi). A ausência de qualquer obrigatória impede a apli
 | `DISPATCH_MAX_RETRIES` | não | `10` | Máximo de retentativas de re-envio |
 | `DISPATCH_BACKOFF_BASE_MS` | não | `1000` | Base do backoff exponencial (ms) |
 | `META_GRAPH_URL` | sim | — | Base URL da Meta Graph API com versão embutida (ex.: `https://graph.facebook.com/v20.0`) |
-| `META_ACCESS_TOKEN` | sim | — | Bearer token do app Meta; injetado automaticamente pelo adapter; nunca exposto ao caller |
+| `META_ACCESS_TOKEN` | sim | — | Bearer token do app Meta; usado como **fallback** quando a requisição não traz `X-Meta-Access-Token` (inboxes legados) e sempre no caminho de `subscribed_apps`; nunca exposto ao caller |
+
+> **Token por-inbox (WhatsApp Embedded Signup):** em modo gateway, o whiz server pode passar o header `X-Meta-Access-Token: <token de negócio do inbox>` em cada chamada de proxy `/wpp/*`. Quando presente, o gateway usa esse token no `Bearer`; senão, cai no `META_ACCESS_TOKEN` global. O header interno nunca é repassado à Meta. Ver [docs/implementation/2026-07-01-wpp-per-inbox-token.md](docs/implementation/2026-07-01-wpp-per-inbox-token.md).
 | `GATEWAY_PUBLIC_URL` | não | — | URL pública do gateway (ex.: `https://gateway.example.com`); necessário para `endpoint_uri` nas rotas dinâmicas de flows |
 | `FLOWS_PRIVATE_KEY` | não | — | Chave privada RSA-2048 PEM (com `\n` escapados); necessária para descriptografar payloads no endpoint de flows |
 

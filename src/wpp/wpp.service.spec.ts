@@ -14,6 +14,7 @@ import { BadGatewayException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AxiosResponse } from 'axios';
 import { of, throwError } from 'rxjs';
+import { MetaTokenStore } from '../meta-token/meta-token.store';
 import { WppService } from './wpp.service';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -58,14 +59,17 @@ describe('WppService — unit', () => {
   let svc: WppService;
   let httpService: ReturnType<typeof makeHttpService>;
   let configService: ReturnType<typeof makeConfigService>;
+  let metaTokenStore: MetaTokenStore;
 
   beforeEach(() => {
     jest.resetAllMocks();
     httpService = makeHttpService();
     configService = makeConfigService();
+    metaTokenStore = new MetaTokenStore();
     svc = new WppService(
       httpService as unknown as HttpService,
       configService as unknown as ConfigService,
+      metaTokenStore,
     );
   });
 
@@ -269,5 +273,65 @@ describe('WppService — unit', () => {
     >;
     // params should be undefined or empty
     expect(callArgs['params'] ?? undefined).toBeFalsy();
+  });
+
+  // ─── wpp-per-inbox-token ─────────────────────────────────────────────────────
+
+  it('AC-1: dado X-Meta-Access-Token no contexto, quando forward, então usa esse token no Bearer e não repassa o header à Meta', async () => {
+    // Arrange
+    httpService.request.mockReturnValue(of(makeAxiosResponse(200, {})));
+
+    // Act — token por-inbox presente no contexto assíncrono
+    await metaTokenStore.run('inbox-token-xyz', () =>
+      svc.forward('POST', '123456789/messages', { body: { a: 1 } }),
+    );
+
+    // Assert
+    const callArgs = httpService.request.mock.calls[0][0] as Record<
+      string,
+      unknown
+    >;
+    const headers = callArgs['headers'] as Record<string, string>;
+    expect(headers['Authorization']).toBe('Bearer inbox-token-xyz');
+    // Header interno não repassado à Meta
+    expect(headers['x-meta-access-token']).toBeUndefined();
+    expect(headers['X-Meta-Access-Token']).toBeUndefined();
+  });
+
+  it('AC-2: dado nenhum token no contexto, quando forward, então usa META_ACCESS_TOKEN global (fallback)', async () => {
+    // Arrange
+    httpService.request.mockReturnValue(of(makeAxiosResponse(200, {})));
+
+    // Act — sem run(): contexto vazio
+    await svc.forward('GET', 'debug_token', {});
+
+    // Assert
+    const callArgs = httpService.request.mock.calls[0][0] as Record<
+      string,
+      unknown
+    >;
+    const headers = callArgs['headers'] as Record<string, string>;
+    expect(headers['Authorization']).toBe(`Bearer ${META_ACCESS_TOKEN}`);
+  });
+
+  it('AC-3: dado forceAppToken=true com token por-inbox no contexto, quando forward, então usa sempre o token global', async () => {
+    // Arrange
+    httpService.request.mockReturnValue(of(makeAxiosResponse(200, {})));
+
+    // Act — mesmo com token no contexto, forceAppToken força o global
+    await metaTokenStore.run('inbox-token-xyz', () =>
+      svc.forward('POST', 'waba123/subscribed_apps', {
+        body: {},
+        forceAppToken: true,
+      }),
+    );
+
+    // Assert
+    const callArgs = httpService.request.mock.calls[0][0] as Record<
+      string,
+      unknown
+    >;
+    const headers = callArgs['headers'] as Record<string, string>;
+    expect(headers['Authorization']).toBe(`Bearer ${META_ACCESS_TOKEN}`);
   });
 });

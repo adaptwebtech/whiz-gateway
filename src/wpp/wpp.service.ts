@@ -5,12 +5,18 @@ import { BadGatewayException, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AxiosError } from 'axios';
 import { firstValueFrom } from 'rxjs';
+import { MetaTokenStore } from '../meta-token/meta-token.store';
 
 export interface WppForwardOptions {
   query?: Record<string, string | string[]>;
   body?: unknown;
   headers?: Record<string, string>;
   contentType?: string;
+  /**
+   * Força o `META_ACCESS_TOKEN` global, ignorando o token por-inbox do contexto.
+   * Usado em caminhos que identificam o **app**, não o cliente (ex.: `subscribed_apps`).
+   */
+  forceAppToken?: boolean;
 }
 
 export interface WppForwardResult {
@@ -25,7 +31,21 @@ export class WppService {
   constructor(
     private readonly httpService: HttpService,
     private readonly configService: ConfigService,
+    private readonly metaTokenStore: MetaTokenStore,
   ) {}
+
+  /**
+   * Resolve o Bearer: token por-inbox do contexto (`X-Meta-Access-Token`) →
+   * `META_ACCESS_TOKEN` global (fallback legado). `forceAppToken` sempre usa o global.
+   */
+  private resolveToken(forceAppToken?: boolean): string {
+    const perRequestToken = forceAppToken
+      ? undefined
+      : this.metaTokenStore.getToken();
+    return (
+      perRequestToken ?? this.configService.get<string>('META_ACCESS_TOKEN')!
+    );
+  }
 
   async forward(
     method: string,
@@ -33,7 +53,7 @@ export class WppService {
     opts: WppForwardOptions,
   ): Promise<WppForwardResult> {
     const baseUrl = this.configService.get<string>('META_GRAPH_URL')!;
-    const token = this.configService.get<string>('META_ACCESS_TOKEN')!;
+    const token = this.resolveToken(opts.forceAppToken);
 
     // Normalize: strip leading slash from path to avoid double-slash
     const normalizedPath = path.startsWith('/') ? path.slice(1) : path;
@@ -100,7 +120,7 @@ export class WppService {
     });
 
     const baseUrl = this.configService.get<string>('META_GRAPH_URL')!;
-    const token = this.configService.get<string>('META_ACCESS_TOKEN')!;
+    const token = this.resolveToken();
     const normalizedPath = subPath.startsWith('/') ? subPath.slice(1) : subPath;
     const url = `${baseUrl}/${normalizedPath}`;
 
@@ -149,7 +169,7 @@ export class WppService {
   ): Promise<WppForwardResult> {
     const fileBuffer = await fs.promises.readFile(tmpFilePath);
     const baseUrl = this.configService.get<string>('META_GRAPH_URL')!;
-    const token = this.configService.get<string>('META_ACCESS_TOKEN')!;
+    const token = this.resolveToken();
     const normalizedPath = subPath.startsWith('/') ? subPath.slice(1) : subPath;
     const url = `${baseUrl}/${normalizedPath}`;
 

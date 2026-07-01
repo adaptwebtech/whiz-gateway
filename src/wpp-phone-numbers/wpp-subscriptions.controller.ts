@@ -61,7 +61,11 @@ export class WppSubscriptionsController {
   ): Promise<void> {
     const path = `${wabaId}/subscribed_apps`;
     this.logger.log(`POST ${path}`);
-    const result = await this.wppService.forward('POST', path, { body: dto });
+    // Inscrição identifica o app, não o cliente → sempre token global (AC-3).
+    const result = await this.wppService.forward('POST', path, {
+      body: dto,
+      forceAppToken: true,
+    });
     this.logger.log(`POST ${path} → ${result.status}`);
     res.status(result.status).json(result.data);
   }
@@ -95,7 +99,10 @@ export class WppSubscriptionsController {
   ): Promise<void> {
     const path = `${wabaId}/subscribed_apps`;
     this.logger.log(`GET ${path}`);
-    const result = await this.wppService.forward('GET', path, { query });
+    const result = await this.wppService.forward('GET', path, {
+      query,
+      forceAppToken: true,
+    });
     this.logger.log(`GET ${path} → ${result.status}`);
     res.status(result.status).json(result.data);
   }
@@ -122,7 +129,9 @@ export class WppSubscriptionsController {
   ): Promise<void> {
     const path = `${wabaId}/subscribed_apps`;
     this.logger.log(`DELETE ${path}`);
-    const result = await this.wppService.forward('DELETE', path, {});
+    const result = await this.wppService.forward('DELETE', path, {
+      forceAppToken: true,
+    });
     this.logger.log(`DELETE ${path} → ${result.status}`);
     res.status(result.status).json(result.data);
   }

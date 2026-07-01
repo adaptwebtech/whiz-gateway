@@ -17,7 +17,7 @@ NestJS · Prisma (PostgreSQL) · RabbitMQ (`amqp-connection-manager`, DLQ only) 
 
 ## Módulos globais
 
-`AppConfigModule`, `LoggerModule`, `PrismaModule`, `RabbitMQModule` (DLQ only), `RedisModule`, `ScheduleModule.forRoot()`. Não-globais: `HealthModule`, `AppSwaggerModule`.
+`AppConfigModule`, `LoggerModule`, `PrismaModule`, `RabbitMQModule` (DLQ only), `RedisModule`, `ScheduleModule.forRoot()`, `MetaTokenModule` (token Meta por-inbox — `MetaTokenStore` + `MetaTokenMiddleware`). Não-globais: `HealthModule`, `AppSwaggerModule`.
 
 ## Variáveis de ambiente
 
@@ -40,6 +40,8 @@ Validadas via Joi (`src/config/config.validation.ts`); acesso somente via `Confi
 | `META_ACCESS_TOKEN` | sim | — |
 | `GATEWAY_PUBLIC_URL` | não | — |
 | `FLOWS_PRIVATE_KEY` | não | — |
+
+> `META_ACCESS_TOKEN` é **fallback**: o header `X-Meta-Access-Token` (token por-inbox, Embedded Signup) tem precedência em `/wpp/*` via `MetaTokenModule`. `subscribed_apps` sempre usa o global.
 
 ## §13 — Registry de features
 
@@ -64,3 +66,4 @@ Validadas via Joi (`src/config/config.validation.ts`); acesso somente via `Confi
 | 2026-06-08 | redirecionamentos-webhooks | [spec](specs/2026-06-08-redirecionamentos-webhooks.md) | [impl](implementation/2026-06-08-redirecionamentos-webhooks.md) | Implementada |
 | 2026-06-08 | api-key-guard-admin-routes | [spec](specs/2026-06-08-api-key-guard-admin-routes.md) | [impl](implementation/2026-06-08-api-key-guard-admin-routes.md) | Implementada |
 | 2026-06-08 | cache-ambientes-redis | [spec](specs/2026-06-08-cache-ambientes-redis.md) | [impl](implementation/2026-06-08-cache-ambientes-redis.md) | Implementada |
+| 2026-07-01 | wpp-per-inbox-token | [spec](specs/2026-07-01-wpp-per-inbox-token.md) | [impl](implementation/2026-07-01-wpp-per-inbox-token.md) | Implementada |

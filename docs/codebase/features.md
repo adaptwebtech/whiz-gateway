@@ -294,3 +294,17 @@ Mapa de cada feature para seus arquivos. Autoritativo para descoberta (evita `gr
 | Swagger | `src/swagger/swagger.document.ts` |
 | Controllers wpp-* (Swagger fix) | `src/wpp/wpp.controller.ts` · `src/wpp-flows/wpp-flows.controller.ts` · `src/wpp-flow-callbacks/wpp-flow-callbacks.controller.ts` · `src/redirecionamentos-webhooks/redirecionamentos-webhooks.controller.ts` · `src/wpp-messages/wpp-messages.controller.ts` · `src/wpp-templates/wpp-templates.controller.ts` · `src/wpp-phone-numbers/wpp-phone-numbers.controller.ts` · `src/wpp-media-business-profiles/wpp-media.controller.ts` · `src/wpp-media-business-profiles/wpp-business-profile.controller.ts` · `src/wpp-media-business-profiles/wpp-resumable-upload.controller.ts` · `src/wpp-misc/wpp-analytics.controller.ts` · `src/wpp-misc/wpp-billing.controller.ts` · `src/wpp-misc/wpp-block-users.controller.ts` · `src/wpp-misc/wpp-commerce.controller.ts` · `src/wpp-misc/wpp-compliance.controller.ts` · `src/wpp-misc/wpp-qrcode.controller.ts` |
 | Glossário | `src/api-keys/context.md` |
+
+## wpp-per-inbox-token
+
+> Feature 21. Token Meta **por-inbox** (WhatsApp Embedded Signup): header `X-Meta-Access-Token` resolvido por-requisição via `AsyncLocalStorage`, com fallback ao `META_ACCESS_TOKEN` global. Spec: [`docs/specs/2026-07-01-wpp-per-inbox-token.md`](../specs/2026-07-01-wpp-per-inbox-token.md) · Impl: [`docs/implementation/2026-07-01-wpp-per-inbox-token.md`](../implementation/2026-07-01-wpp-per-inbox-token.md)
+
+| Camada | Arquivos |
+|---|---|
+| Store (novo) | `src/meta-token/meta-token.store.ts` |
+| Middleware (novo) | `src/meta-token/meta-token.middleware.ts` |
+| Module (novo, `@Global`) | `src/meta-token/meta-token.module.ts` |
+| Service (modificado) | `src/wpp/wpp.service.ts` (injeta `MetaTokenStore`, `resolveToken`, `forceAppToken`) |
+| Controller (modificado) | `src/wpp-phone-numbers/wpp-subscriptions.controller.ts` (`forceAppToken: true`) |
+| Bootstrap (modificado) | `src/app.module.ts` · `src/main.ts` (registro global do middleware) |
+| Glossário | `src/meta-token/context.md` |
