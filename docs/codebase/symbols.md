@@ -228,6 +228,19 @@ Mapa de símbolos exportados → arquivo + assinatura. Autoritativo para descobe
 | `ResendRequestDto` | DTO | `src/resend/dto/resend-request.dto.ts` | `pid?: string (@IsOptional @IsString)`, `dataInicio?: string (@IsOptional @IsISO8601)`, `dataFim?: string (@IsOptional @IsISO8601)`, `forcarReenviadas: boolean = false (@IsBoolean @HasValidCriteria @Transform)`; validador customizado `HasValidCriteria` exige pid ou (dataInicio+dataFim) e rejeita dataInicio > dataFim |
 | `ResendResultDto` | DTO | `src/resend/dto/resend-result.dto.ts` | `total: number`, `reenviadas: number`, `falhas: number` — todos com `@Expose() @ApiProperty`; retornado via `plainToInstance` com `excludeExtraneousValues` |
 
+## instagram-webhook-redirect
+
+| Símbolo | Tipo | Arquivo | Assinatura / Notas |
+|---|---|---|---|
+| `InstagramWebhookModule` | módulo (não-global) | `src/instagram-webhook/instagram-webhook.module.ts` | importa `HttpModule`, `InboxModule`, `AmbienteModule`; provê `InstagramWebhookService`, `InstagramWebhookForwarderService` e binding `INSTAGRAM_FORWARDER` (`useExisting: InstagramWebhookForwarderService`); sem exports; registrado em `AppModule` |
+| `InstagramWebhookController` | controller | `src/instagram-webhook/instagram-webhook.controller.ts` | `@Controller('webhook')` `@ApiTags('Webhook Instagram')`; sem guards; `verifyInstagram` (GET `instagram`, valida `FB_VERIFY_TOKEN`, ecoa challenge/`403`) · `receiveInstagram` (POST `instagram`, `@HttpCode(200)`) · `verifyInstagramLogin` (GET `instagram-login`, valida `IG_VERIFY_TOKEN`) · `receiveInstagramLogin` (POST `instagram-login`, `@HttpCode(200)`); privado `dispatch(surface, req)` → fire-and-forget `void Promise.resolve(service.handleIncoming(...)).catch()` |
+| `InstagramWebhookService` | classe (`@Injectable`) | `src/instagram-webhook/instagram-webhook.service.ts` | injeta `INBOX_REPOSITORY`, `RABBITMQ_SERVICE`, `INSTAGRAM_FORWARDER`; `handleIncoming(surface, rawBody, signature, body): Promise<void>` — extrai pid, resolve inbox por `findByPid`, delega forward; PID/inbox ausente → `sendToQueue(DLQ_NAME, { message: body, id_inbox: null, INBOX_NAO_REGISTRADA })`; privado `extractPid(body): string \| null` (lê `body.entry[0].id`, string não-vazia) |
+| `InstagramWebhookForwarderService` | classe (`@Injectable`) | `src/instagram-webhook/instagram-webhook-forwarder.service.ts` | implementa `IInstagramForwarder`; injeta `AMBIENTE_REPOSITORY`, `HttpService`, `RABBITMQ_SERVICE`, `ConfigService`, `RedisService`; `forward(subPath, inbox, rawBody, signature): Promise<void>` — resolve ambiente cache-first (`getAmbiente`), normaliza `url`, `POST {url}{subPath}` com `rawBody` + headers `Content-Type: application/json`/`x-hub-signature-256`/`x-callback-secret`, retry exponencial `baseMs * 2^(attempt-1)` até `DISPATCH_MAX_RETRIES`; falha definitiva → DLQ `FALHA_ENVIO` (há `response.status`) ou `AMBIENTE_INDISPONIVEL` (transporte); privados `getAmbiente(id)`, `extractHttpStatus(err)`, `sleep(ms)` |
+| `InstagramSurface` | type | `src/instagram-webhook/instagram-webhook.service.ts` | `'instagram' \| 'instagram-login'` — sub-caminho fixado pela rota de ingestão |
+| `IInstagramForwarder` | interface | `src/instagram-webhook/interfaces/instagram-forwarder.interface.ts` | `forward(subPath: string, inbox: InboxResponseDto, rawBody: Buffer, signature: string \| undefined): Promise<void>` |
+| `INSTAGRAM_FORWARDER` | token (Symbol) | `src/instagram-webhook/constants/instagram-webhook-tokens.constants.ts` | `Symbol('INSTAGRAM_FORWARDER')` — token de injeção de `IInstagramForwarder` |
+| `QueueNameFactory` | const (objeto `as const`) | `src/rabbitmq/queue-name.factory.ts` | infra compartilhada; `inbox(id: string): string` → `` `inbox.${id}` `` · `deadLetter(): string` → `DLQ_NAME`; centraliza a convenção de nomes de fila RabbitMQ |
+
 ## redirecionamentos-webhooks
 
 | Símbolo | Tipo | Arquivo | Assinatura / Notas |

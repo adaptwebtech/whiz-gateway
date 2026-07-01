@@ -41,9 +41,9 @@ Hooks block phase skills outside pipeline; never call directly. `router-prompts`
 | ERD (per domain) | `docs/codebase/erd.md` → `erd/<domain>.md` |
 | Module glossary | `src/<module>/context.md` (ubiquitous language) |
 | Context relationships | `docs/codebase/context-map.md` (global) |
-| Tree | `docs/codebase/structure.md` |
+| Tree | `docs/codebase/structure.md` _(não gerado — usar `docs/codebase/features.md`)_ |
 | Module graph, env, conventions | `docs/CODEBASE.md` inline |
-| Skeletons | `docs/CODEBASE-SKELETONS.md` |
+| Skeletons | `docs/CODEBASE-SKELETONS.md` _(não gerado — usar módulos existentes como referência)_ |
 | Doc formats | `docs/conventions/{CONTEXT,CONTEXT-MAP,ADR}-FORMAT.md` |
 
 **Before any grep/find/ls:** check map first.

@@ -8,6 +8,7 @@ import { DispatchModule } from './dispatch/dispatch.module';
 import { HealthModule } from './health/health.module';
 import { ResendModule } from './resend/resend.module';
 import { WebhookModule } from './webhook/webhook.module';
+import { InstagramWebhookModule } from './instagram-webhook/instagram-webhook.module';
 import { InboxModule } from './inbox/inbox.module';
 import { LoggerModule } from './logger/logger.module';
 import { PrismaModule } from './prisma/prisma.module';
@@ -40,6 +41,7 @@ import { RedirecionamentosWebhooksModule } from './redirecionamentos-webhooks/re
     DeadLetterModule,
     DispatchModule,
     WebhookModule,
+    InstagramWebhookModule,
     ResendModule,
     ApiKeysModule,
     WppModule,

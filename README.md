@@ -22,8 +22,10 @@ Validadas no bootstrap (Joi). A ausência de qualquer obrigatória impede a apli
 | `PORT` | não | `3000` | Porta HTTP |
 | `META_VERIFY_TOKEN` | sim | — | Token de verificação do webhook da Meta |
 | `META_APP_SECRET` | sim | — | Segredo da app Meta (validação de assinatura) |
-| `CALLBACK_SECRET` | sim (produção) | — | Segredo enviado no header `x-callback-secret` em callbacks de saída (despacho de mensagens e callbacks de upload de mídia) |
-| `DISPATCH_MAX_RETRIES` | não | `5` | Máximo de retentativas de re-envio |
+| `CALLBACK_SECRET` | sim (produção) | — | Segredo enviado no header `x-callback-secret` em callbacks de saída (despacho de mensagens, callbacks de upload de mídia e forward de webhooks de Instagram) |
+| `FB_VERIFY_TOKEN` | sim (produção) | — | Token de verificação do handshake `GET /webhook/instagram` (Instagram via Facebook Login) |
+| `IG_VERIFY_TOKEN` | sim (produção) | — | Token de verificação do handshake `GET /webhook/instagram-login` (Instagram Login / OAuth direto) |
+| `DISPATCH_MAX_RETRIES` | não | `10` | Máximo de retentativas de re-envio |
 | `DISPATCH_BACKOFF_BASE_MS` | não | `1000` | Base do backoff exponencial (ms) |
 | `META_GRAPH_URL` | sim | — | Base URL da Meta Graph API com versão embutida (ex.: `https://graph.facebook.com/v20.0`) |
 | `META_ACCESS_TOKEN` | sim | — | Bearer token do app Meta; injetado automaticamente pelo adapter; nunca exposto ao caller |
@@ -75,6 +77,7 @@ npm run test:cov   # cobertura
 | wpp-flow-callbacks | [docs/specs/2026-06-05-wpp-flow-callbacks.md](docs/specs/2026-06-05-wpp-flow-callbacks.md) | [docs/implementation/2026-06-05-wpp-flow-callbacks.md](docs/implementation/2026-06-05-wpp-flow-callbacks.md) |
 | wpp-misc | [docs/specs/2026-06-03-wpp-misc.md](docs/specs/2026-06-03-wpp-misc.md) | [docs/implementation/2026-06-05-wpp-misc.md](docs/implementation/2026-06-05-wpp-misc.md) |
 | redirecionamentos-webhooks | [docs/specs/2026-06-08-redirecionamentos-webhooks.md](docs/specs/2026-06-08-redirecionamentos-webhooks.md) | [docs/implementation/2026-06-08-redirecionamentos-webhooks.md](docs/implementation/2026-06-08-redirecionamentos-webhooks.md) |
+| instagram-webhook-redirect | [docs/specs/2026-07-01-instagram-webhook-redirect.md](docs/specs/2026-07-01-instagram-webhook-redirect.md) | [docs/implementation/2026-07-01-instagram-webhook-redirect.md](docs/implementation/2026-07-01-instagram-webhook-redirect.md) |
 | api-key-guard-admin-routes | [docs/specs/2026-06-08-api-key-guard-admin-routes.md](docs/specs/2026-06-08-api-key-guard-admin-routes.md) | [docs/implementation/2026-06-08-api-key-guard-admin-routes.md](docs/implementation/2026-06-08-api-key-guard-admin-routes.md) |
 | cache-ambientes-redis | [docs/specs/2026-06-08-cache-ambientes-redis.md](docs/specs/2026-06-08-cache-ambientes-redis.md) | [docs/implementation/2026-06-08-cache-ambientes-redis.md](docs/implementation/2026-06-08-cache-ambientes-redis.md) |
 
