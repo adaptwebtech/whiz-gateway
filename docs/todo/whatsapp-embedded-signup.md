@@ -1,3 +1,9 @@
+# IMPLEMENTED BY COMMIT #8cb69b8. TODO FILE PRESERVED FOR DOCUMENTATION PURPOSES.
+
+---
+---
+---
+
 # TODO — Suporte a token por-inbox (WhatsApp Embedded Signup)
 
 > Handoff do repo `whiz` (server + front). Este documento descreve **o que o gateway precisa implementar** para que a feature de *Embedded Signup* do WhatsApp Meta funcione em **modo gateway** (`USE_GATEWAY=true` no whiz server).
