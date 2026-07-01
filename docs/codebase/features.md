@@ -253,6 +253,23 @@ Mapa de cada feature para seus arquivos. Autoritativo para descoberta (evita `gr
 | Schema | `prisma/schema.prisma` (modelo `redirecionamentos_webhooks`) |
 | Glossário | `src/redirecionamentos-webhooks/context.md` |
 
+## instagram-webhook-redirect
+
+> Feature 13. Recebe webhooks de Instagram da Meta em rotas dedicadas (`GET/POST /webhook/instagram` e `/webhook/instagram-login`) e faz passthrough cru (byte-idêntico, preservando `x-hub-signature-256`) para o servidor whiz-v2 do ambiente correto, com retry exponencial e DLQ em falha. Sem verificação de HMAC no gateway (passthrough-only). Sem alteração de schema (`pid` = IGID). Spec: [`docs/specs/2026-07-01-instagram-webhook-redirect.md`](../specs/2026-07-01-instagram-webhook-redirect.md) · Impl: [`docs/implementation/2026-07-01-instagram-webhook-redirect.md`](../implementation/2026-07-01-instagram-webhook-redirect.md) · ADR: [`docs/adr/0001-instagram-webhook-passthrough.md`](../adr/0001-instagram-webhook-passthrough.md) · Status: Implementada
+
+| Camada | Arquivos |
+|---|---|
+| Module | `src/instagram-webhook/instagram-webhook.module.ts` |
+| Controller | `src/instagram-webhook/instagram-webhook.controller.ts` |
+| Service | `src/instagram-webhook/instagram-webhook.service.ts` |
+| Forwarder | `src/instagram-webhook/instagram-webhook-forwarder.service.ts` |
+| Token | `src/instagram-webhook/constants/instagram-webhook-tokens.constants.ts` |
+| Interface | `src/instagram-webhook/interfaces/instagram-forwarder.interface.ts` |
+| Config | `src/config/config.validation.ts` (`FB_VERIFY_TOKEN`, `IG_VERIFY_TOKEN` adicionados) |
+| Glossário | `src/instagram-webhook/context.md` |
+
+> Infra compartilhada nova: `src/rabbitmq/queue-name.factory.ts` (`QueueNameFactory`) — fábrica de nomes de fila RabbitMQ (`inbox.<id>` + DLQ estática), centraliza a convenção de nomenclatura.
+
 ## api-key-guard-admin-routes
 
 > Feature 11. Proteção de rotas administrativas com guards + correção de decoradores Swagger. Spec: [`docs/specs/2026-06-08-api-key-guard-admin-routes.md`](../specs/2026-06-08-api-key-guard-admin-routes.md) · Impl: [`docs/implementation/2026-06-08-api-key-guard-admin-routes.md`](../implementation/2026-06-08-api-key-guard-admin-routes.md)
