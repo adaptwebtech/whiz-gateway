@@ -21,11 +21,6 @@ export const configValidationSchema = Joi.object({
     then: Joi.string().required(),
     otherwise: Joi.string().allow('').optional(),
   }),
-  FB_VERIFY_TOKEN: Joi.when('ENV', {
-    is: 'production',
-    then: Joi.string().required(),
-    otherwise: Joi.string().allow('').optional(),
-  }),
   IG_VERIFY_TOKEN: Joi.when('ENV', {
     is: 'production',
     then: Joi.string().required(),

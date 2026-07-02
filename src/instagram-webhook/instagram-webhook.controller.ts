@@ -50,8 +50,8 @@ export class InstagramWebhookController {
   })
   @ApiQuery({
     name: 'hub.verify_token',
-    description: 'Token de verificação (FB_VERIFY_TOKEN).',
-    example: 'meu_token_fb',
+    description: 'Token de verificação (META_VERIFY_TOKEN).',
+    example: 'meu_token_meta',
   })
   @ApiQuery({
     name: 'hub.challenge',
@@ -69,7 +69,7 @@ export class InstagramWebhookController {
     @Query('hub.challenge') challenge: string,
     @Res() res: Response,
   ): void {
-    const expectedToken = this.config.get<string>('FB_VERIFY_TOKEN');
+    const expectedToken = this.config.get<string>('META_VERIFY_TOKEN');
     if (mode !== 'subscribe' || verifyToken !== expectedToken) {
       throw new ForbiddenException('Token de verificação inválido');
     }

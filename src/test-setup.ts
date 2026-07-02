@@ -14,7 +14,5 @@ process.env.META_ACCESS_TOKEN =
   process.env.META_ACCESS_TOKEN || 'test-meta-token';
 process.env.CALLBACK_SECRET =
   process.env.CALLBACK_SECRET || 'test-callback-secret';
-process.env.FB_VERIFY_TOKEN =
-  process.env.FB_VERIFY_TOKEN || 'test-fb-verify-token';
 process.env.IG_VERIFY_TOKEN =
   process.env.IG_VERIFY_TOKEN || 'test-ig-verify-token';
