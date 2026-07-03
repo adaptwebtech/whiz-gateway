@@ -39,7 +39,7 @@ Mapa global dos contextos (módulos de domínio) do whiz-gateway e como se relac
 - **RedirecionamentosWebhooks → Inbox**: resolve PID para `id_ambiente` via `IInboxRepository.findByPid` (mesmo mecanismo de `WebhookService.extractPid`)
 - **RedirecionamentosWebhooks → Ambiente**: FK `id_ambiente` filtra redirecionamentos elegíveis por ambiente; `null` = todos os ambientes
 - **RedirecionamentosWebhooks → ApiKeys**: `RedirecionamentosWebhooksController` usa `ApiKeyGuard` para autenticar todas as rotas via header `X-API-KEY`
-- **Meta → InstagramWebhook**: Meta faz handshake `GET /webhook/instagram[-login]` (validado por `FB_VERIFY_TOKEN`/`IG_VERIFY_TOKEN`) e POSTa o evento em `POST /webhook/instagram[-login]`; o gateway não verifica HMAC (passthrough-only, ADR-0001)
+- **Meta → InstagramWebhook**: Meta faz handshake `GET /webhook/instagram[-login]` (validado por `META_VERIFY_TOKEN`/`IG_VERIFY_TOKEN`) e POSTa o evento em `POST /webhook/instagram[-login]`; o gateway não verifica HMAC (passthrough-only, ADR-0001)
 - **InstagramWebhook → Inbox**: `InstagramWebhookService` extrai `pid = entry[0].id` (IGID) e resolve a inbox via `IInboxRepository.findByPid`
 - **InstagramWebhook → Ambiente**: `InstagramWebhookForwarderService` resolve o ambiente de destino por `inbox.id_ambiente` via `IAmbienteRepository.findById`, cache-first em Redis
 - **InstagramWebhook → Redis**: cache-first do ambiente na chave `ambiente:<id>` (TTL 3600 s), mesmo mecanismo do Dispatch

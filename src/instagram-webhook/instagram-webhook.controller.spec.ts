@@ -18,7 +18,7 @@ import { InstagramWebhookService } from './instagram-webhook.service';
 
 // ─── Mocks ────────────────────────────────────────────────────────────────────
 
-const FB_VERIFY_TOKEN = 'fb-verify-token';
+const META_VERIFY_TOKEN = 'fb-verify-token';
 const IG_VERIFY_TOKEN = 'ig-verify-token';
 
 const makeServiceMock = () => ({
@@ -27,7 +27,7 @@ const makeServiceMock = () => ({
 
 const makeConfigServiceMock = () => ({
   get: jest.fn().mockImplementation((key: string) => {
-    if (key === 'FB_VERIFY_TOKEN') return FB_VERIFY_TOKEN;
+    if (key === 'META_VERIFY_TOKEN') return META_VERIFY_TOKEN;
     if (key === 'IG_VERIFY_TOKEN') return IG_VERIFY_TOKEN;
     return undefined;
   }),
@@ -68,13 +68,13 @@ describe('InstagramWebhookController — integration', () => {
 
   // ─── AC-1 ──────────────────────────────────────────────────────────────────
 
-  it('AC-1: GET /webhook/instagram com hub.mode=subscribe e FB_VERIFY_TOKEN correto retorna 200 text/plain com o challenge', async () => {
+  it('AC-1: GET /webhook/instagram com hub.mode=subscribe e META_VERIFY_TOKEN correto retorna 200 text/plain com o challenge', async () => {
     // Act
     const res = await request(app.getHttpServer())
       .get('/webhook/instagram')
       .query({
         'hub.mode': 'subscribe',
-        'hub.verify_token': FB_VERIFY_TOKEN,
+        'hub.verify_token': META_VERIFY_TOKEN,
         'hub.challenge': 'challenge-ig-123',
       })
       .expect(200);
@@ -104,7 +104,7 @@ describe('InstagramWebhookController — integration', () => {
       .get('/webhook/instagram')
       .query({
         'hub.mode': 'unsubscribe',
-        'hub.verify_token': FB_VERIFY_TOKEN,
+        'hub.verify_token': META_VERIFY_TOKEN,
         'hub.challenge': 'challenge-ig-123',
       })
       .expect(403);

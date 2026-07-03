@@ -265,7 +265,7 @@ Mapa de cada feature para seus arquivos. Autoritativo para descoberta (evita `gr
 | Forwarder | `src/instagram-webhook/instagram-webhook-forwarder.service.ts` |
 | Token | `src/instagram-webhook/constants/instagram-webhook-tokens.constants.ts` |
 | Interface | `src/instagram-webhook/interfaces/instagram-forwarder.interface.ts` |
-| Config | `src/config/config.validation.ts` (`FB_VERIFY_TOKEN`, `IG_VERIFY_TOKEN` adicionados) |
+| Config | `src/config/config.validation.ts` (`META_VERIFY_TOKEN` compartilhado, `IG_VERIFY_TOKEN` separado) |
 | Glossário | `src/instagram-webhook/context.md` |
 
 > Infra compartilhada nova: `src/rabbitmq/queue-name.factory.ts` (`QueueNameFactory`) — fábrica de nomes de fila RabbitMQ (`inbox.<id>` + DLQ estática), centraliza a convenção de nomenclatura.
