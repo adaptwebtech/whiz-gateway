@@ -1,0 +1,521 @@
+<!doctype html>
+<html lang="pt-BR" data-theme="light">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Whiz Gateway — Painel</title>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css"
+    />
+    <script
+      defer
+      src="https://cdn.jsdelivr.net/npm/alpinejs@3/dist/cdn.min.js"
+    ></script>
+    <style>
+      :root {
+        --pico-font-size: 15px;
+      }
+      main {
+        padding-block: 1.5rem;
+      }
+      .creds-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+      }
+      @media (max-width: 640px) {
+        .creds-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+      nav.tabs a {
+        cursor: pointer;
+      }
+      nav.tabs a.active {
+        font-weight: 700;
+        text-decoration: underline;
+      }
+      .table-wrap {
+        overflow-x: auto;
+      }
+      table {
+        font-size: 0.85rem;
+      }
+      td.cell {
+        max-width: 22rem;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .msg {
+        padding: 0.5rem 0.75rem;
+        border-radius: var(--pico-border-radius);
+        margin-bottom: 1rem;
+      }
+      .msg.ok {
+        background: #d1e7dd;
+        color: #0f5132;
+      }
+      .msg.err {
+        background: #f8d7da;
+        color: #842029;
+      }
+      .row-actions button {
+        padding: 0.15rem 0.5rem;
+        margin: 0;
+        font-size: 0.75rem;
+        width: auto;
+        display: inline-block;
+      }
+      code.reveal {
+        display: block;
+        word-break: break-all;
+        padding: 0.5rem;
+        background: var(--pico-code-background-color);
+      }
+    </style>
+  </head>
+  <body>
+    <main class="container" x-data="app()" x-init="init()">
+      <hgroup>
+        <h1>Whiz Gateway — Painel administrativo</h1>
+        <p>
+          CRUD dos recursos do gateway. Swagger completo em
+          <a href="/docs" target="_blank">/docs</a>.
+        </p>
+      </hgroup>
+
+      <!-- Credenciais -->
+      <details open>
+        <summary><strong>Credenciais</strong></summary>
+        <div class="creds-grid">
+          <label
+            >Admin Bearer (<code>ADMIN_API_KEY</code>)
+            <input
+              type="password"
+              x-model="creds.admin"
+              @change="saveCreds()"
+              placeholder="usado em Ambientes, Inboxes, Chaves de API"
+            />
+          </label>
+          <label
+            >x-api-key
+            <input
+              type="password"
+              x-model="creds.apiKey"
+              @change="saveCreds()"
+              placeholder="usado em Flow Callbacks, Redirecionamentos, Mensagens Mortas"
+            />
+          </label>
+        </div>
+        <small
+          >Guardadas apenas no <code>localStorage</code> deste navegador. Enviadas
+          em toda requisição; cada recurso usa a que seu guard exige.</small
+        >
+      </details>
+
+      <!-- Tabs -->
+      <nav class="tabs">
+        <ul>
+          <template x-for="r in resources" :key="r.name">
+            <li>
+              <a
+                :class="{ active: active === r.name }"
+                @click="select(r.name)"
+                x-text="r.label"
+              ></a>
+            </li>
+          </template>
+        </ul>
+      </nav>
+
+      <template x-if="current">
+        <section>
+          <p x-show="current.note"><small x-text="current.note"></small></p>
+
+          <!-- Mensagem -->
+          <template x-if="message.text">
+            <div class="msg" :class="message.ok ? 'ok' : 'err'">
+              <span x-text="message.text"></span>
+            </div>
+          </template>
+
+          <!-- Chave crua recém-criada (api-keys) -->
+          <template x-if="createdSecret">
+            <article>
+              <strong>Chave criada — copie agora (exibida só uma vez):</strong>
+              <code class="reveal" x-text="createdSecret"></code>
+            </article>
+          </template>
+
+          <!-- Formulário create/update -->
+          <template x-if="current.createFields || current.updateFields">
+            <article>
+              <header>
+                <strong
+                  x-text="editingId ? ('Editar ' + editingId) : ('Novo ' + current.label)"
+                ></strong>
+              </header>
+              <form @submit.prevent="submitForm()">
+                <template x-for="f in formFields()" :key="f.key">
+                  <label>
+                    <span x-text="f.label + (f.required ? ' *' : '')"></span>
+                    <input
+                      :type="inputType(f)"
+                      x-model="form[f.key]"
+                      :required="f.required && !editingId"
+                      :placeholder="f.placeholder || ''"
+                    />
+                  </label>
+                </template>
+                <div class="grid">
+                  <button type="submit" x-text="editingId ? 'Salvar' : 'Criar'"></button>
+                  <button
+                    type="button"
+                    class="secondary"
+                    x-show="editingId"
+                    @click="cancelEdit()"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </form>
+            </article>
+          </template>
+
+          <!-- Lista -->
+          <div class="grid">
+            <button class="outline" @click="load()" x-text="loading ? 'Carregando…' : 'Recarregar lista'"></button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <template x-for="c in columns" :key="c">
+                    <th x-text="c"></th>
+                  </template>
+                  <th>ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                <template x-for="(row, i) in items" :key="rowKey(row, i)">
+                  <tr>
+                    <template x-for="c in columns" :key="c">
+                      <td class="cell" :title="fmt(row[c])" x-text="fmt(row[c])"></td>
+                    </template>
+                    <td class="row-actions">
+                      <button
+                        x-show="current.updateFields"
+                        class="secondary"
+                        @click="startEdit(row)"
+                      >
+                        editar
+                      </button>
+                      <button
+                        x-show="current.canDelete"
+                        class="contrast"
+                        @click="remove(row)"
+                      >
+                        excluir
+                      </button>
+                    </td>
+                  </tr>
+                </template>
+                <template x-if="!items.length">
+                  <tr>
+                    <td :colspan="columns.length + 1"><em>Sem registros.</em></td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </template>
+    </main>
+
+    <script>
+      // ============================================================
+      // Definição dos recursos. AO ALTERAR SCHEMA/ROTAS/DTOS DO GATEWAY,
+      // ATUALIZE ESTA LISTA (ver README.md / .claude/CLAUDE.md).
+      //  auth: 'admin'   -> Authorization: Bearer <ADMIN_API_KEY>
+      //  auth: 'apikey'  -> x-api-key
+      //  auth: 'both'    -> aceita admin OU api-key (AdminOrApiKeyGuard)
+      //  field.type: text | url | number | datetime
+      // ============================================================
+      const RESOURCES = [
+        {
+          name: 'ambientes',
+          label: 'Ambientes',
+          base: '/ambientes',
+          idField: 'id',
+          auth: 'admin',
+          canDelete: true,
+          createFields: [
+            { key: 'id', label: 'id (fixo)', type: 'number', required: true },
+            { key: 'nome', label: 'nome', type: 'text', required: true },
+            { key: 'url', label: 'url', type: 'url', required: true },
+          ],
+          updateFields: [
+            { key: 'nome', label: 'nome', type: 'text' },
+            { key: 'url', label: 'url', type: 'url' },
+          ],
+        },
+        {
+          name: 'inboxes',
+          label: 'Inboxes',
+          base: '/inboxes',
+          idField: 'id',
+          auth: 'both',
+          canDelete: true,
+          createFields: [
+            { key: 'id_ambiente', label: 'id_ambiente', type: 'number', required: true },
+            { key: 'pid', label: 'pid', type: 'text', required: true },
+            { key: 'nome', label: 'nome', type: 'text', required: true },
+          ],
+          updateFields: [
+            { key: 'nome', label: 'nome', type: 'text' },
+            { key: 'id_ambiente', label: 'id_ambiente', type: 'number' },
+          ],
+        },
+        {
+          name: 'api-keys',
+          label: 'Chaves de API',
+          base: '/api-keys',
+          idField: 'uid',
+          auth: 'admin',
+          canDelete: true,
+          note: 'A chave crua é exibida apenas na criação. Sem edição.',
+          secretField: 'apiKey',
+          createFields: [
+            { key: 'name', label: 'name', type: 'text', required: true },
+          ],
+          updateFields: null,
+        },
+        {
+          name: 'flow-callbacks',
+          label: 'Flow Callbacks',
+          base: '/wpp-flow-callbacks',
+          idField: 'uid',
+          auth: 'apikey',
+          canDelete: true,
+          createFields: [
+            { key: 'url', label: 'url', type: 'url', required: true },
+          ],
+          updateFields: [{ key: 'url', label: 'url', type: 'url' }],
+        },
+        {
+          name: 'redirecionamentos',
+          label: 'Redirecionamentos',
+          base: '/redirecionamentos-webhooks',
+          idField: 'uid',
+          auth: 'apikey',
+          canDelete: true,
+          createFields: [
+            { key: 'url', label: 'url', type: 'url', required: true },
+            { key: 'id_ambiente', label: 'id_ambiente (opcional)', type: 'number' },
+            { key: 'data_expiracao', label: 'data_expiracao (opcional)', type: 'datetime' },
+          ],
+          updateFields: [
+            { key: 'url', label: 'url', type: 'url' },
+            { key: 'id_ambiente', label: 'id_ambiente', type: 'number' },
+            { key: 'data_expiracao', label: 'data_expiracao', type: 'datetime' },
+          ],
+        },
+        {
+          name: 'dead-letter',
+          label: 'Mensagens Mortas',
+          base: '/dead-letter',
+          idField: 'id',
+          auth: 'apikey',
+          canDelete: true,
+          note: 'Somente listagem e exclusão (soft-delete).',
+          createFields: null,
+          updateFields: null,
+        },
+      ];
+
+      function app() {
+        return {
+          resources: RESOURCES,
+          active: RESOURCES[0].name,
+          creds: { admin: '', apiKey: '' },
+          items: [],
+          columns: [],
+          form: {},
+          editingId: null,
+          loading: false,
+          message: { text: '', ok: true },
+          createdSecret: '',
+
+          get current() {
+            return this.resources.find((r) => r.name === this.active);
+          },
+
+          init() {
+            try {
+              const s = JSON.parse(localStorage.getItem('whizGwCreds') || '{}');
+              this.creds.admin = s.admin || '';
+              this.creds.apiKey = s.apiKey || '';
+            } catch (e) {}
+            this.load();
+          },
+          saveCreds() {
+            localStorage.setItem('whizGwCreds', JSON.stringify(this.creds));
+          },
+
+          select(name) {
+            this.active = name;
+            this.cancelEdit();
+            this.createdSecret = '';
+            this.message.text = '';
+            this.load();
+          },
+
+          headers() {
+            const h = { 'Content-Type': 'application/json' };
+            if (this.creds.admin) h['Authorization'] = 'Bearer ' + this.creds.admin;
+            if (this.creds.apiKey) h['x-api-key'] = this.creds.apiKey;
+            return h;
+          },
+
+          async req(method, path, body) {
+            const opts = { method, headers: this.headers() };
+            if (body !== undefined) opts.body = JSON.stringify(body);
+            const res = await fetch(path, opts);
+            const text = await res.text();
+            let data = null;
+            try {
+              data = text ? JSON.parse(text) : null;
+            } catch (e) {
+              data = text;
+            }
+            if (!res.ok) {
+              const detail =
+                data && data.message
+                  ? Array.isArray(data.message)
+                    ? data.message.join('; ')
+                    : data.message
+                  : res.statusText;
+              throw new Error(res.status + ' — ' + detail);
+            }
+            return data;
+          },
+
+          async load() {
+            this.loading = true;
+            this.message.text = '';
+            try {
+              const data = await this.req('GET', this.current.base);
+              this.items = Array.isArray(data) ? data : data ? [data] : [];
+              this.columns = this.deriveColumns();
+            } catch (e) {
+              this.items = [];
+              this.columns = [];
+              this.setMsg(e.message, false);
+            } finally {
+              this.loading = false;
+            }
+          },
+
+          deriveColumns() {
+            const set = [];
+            for (const row of this.items) {
+              for (const k of Object.keys(row || {})) {
+                if (k === 'del') continue;
+                if (!set.includes(k)) set.push(k);
+              }
+            }
+            return set;
+          },
+
+          formFields() {
+            return (
+              (this.editingId ? this.current.updateFields : this.current.createFields) ||
+              []
+            );
+          },
+          inputType(f) {
+            if (f.type === 'number') return 'number';
+            if (f.type === 'url') return 'url';
+            if (f.type === 'datetime') return 'datetime-local';
+            return 'text';
+          },
+
+          buildBody() {
+            const body = {};
+            for (const f of this.formFields()) {
+              let v = this.form[f.key];
+              if (v === undefined || v === null || v === '') continue;
+              if (f.type === 'number') v = Number(v);
+              else if (f.type === 'datetime') v = new Date(v).toISOString();
+              body[f.key] = v;
+            }
+            return body;
+          },
+
+          async submitForm() {
+            try {
+              const body = this.buildBody();
+              if (this.editingId) {
+                await this.req('PATCH', this.current.base + '/' + this.editingId, body);
+                this.setMsg('Atualizado.', true);
+              } else {
+                const created = await this.req('POST', this.current.base, body);
+                const sf = this.current.secretField;
+                if (sf && created && created[sf]) this.createdSecret = created[sf];
+                this.setMsg('Criado.', true);
+              }
+              this.cancelEdit();
+              await this.load();
+            } catch (e) {
+              this.setMsg(e.message, false);
+            }
+          },
+
+          startEdit(row) {
+            this.editingId = row[this.current.idField];
+            this.form = {};
+            for (const f of this.current.updateFields || []) {
+              let v = row[f.key];
+              if (f.type === 'datetime' && v) {
+                v = new Date(v).toISOString().slice(0, 16);
+              }
+              this.form[f.key] = v == null ? '' : v;
+            }
+            this.createdSecret = '';
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          },
+          cancelEdit() {
+            this.editingId = null;
+            this.form = {};
+          },
+
+          async remove(row) {
+            const id = row[this.current.idField];
+            if (!confirm('Excluir ' + id + ' ?')) return;
+            try {
+              await this.req('DELETE', this.current.base + '/' + id);
+              this.setMsg('Excluído.', true);
+              await this.load();
+            } catch (e) {
+              this.setMsg(e.message, false);
+            }
+          },
+
+          rowKey(row, i) {
+            return (this.current && row[this.current.idField]) || i;
+          },
+          fmt(v) {
+            if (v === null || v === undefined) return '';
+            if (typeof v === 'object') return JSON.stringify(v);
+            return String(v);
+          },
+          setMsg(text, ok) {
+            this.message = { text, ok };
+          },
+        };
+      }
+    </script>
+  </body>
+</html>

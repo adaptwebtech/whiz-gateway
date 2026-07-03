@@ -24,6 +24,7 @@ import { WppFlowCallbacksModule } from './wpp-flow-callbacks/wpp-flow-callbacks.
 import { WppFlowsModule } from './wpp-flows/wpp-flows.module';
 import { WppMiscModule } from './wpp-misc/wpp-misc.module';
 import { RedirecionamentosWebhooksModule } from './redirecionamentos-webhooks/redirecionamentos-webhooks.module';
+import { UiModule } from './ui/ui.module';
 
 /**
  * Módulo raiz. Agrega a infraestrutura base do gateway (FR-16, AC-14).
@@ -55,6 +56,7 @@ import { RedirecionamentosWebhooksModule } from './redirecionamentos-webhooks/re
     WppFlowsModule,
     WppMiscModule,
     RedirecionamentosWebhooksModule,
+    UiModule,
   ],
 })
 export class AppModule {}
