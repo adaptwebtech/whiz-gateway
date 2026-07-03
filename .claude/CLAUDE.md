@@ -108,6 +108,24 @@ Topology: one queue per inbox (created on demand) + one static DLQ.
 - Guarded class: `@ApiBearerAuth('bearer')` + `@ApiTags('PT-BR')`
 - Swagger UI `/docs` — never change path
 
+## Admin UI (`/ui`)
+
+Painel CRUD estático servido pelo próprio gateway. SPA autocontido: Alpine.js + Pico CSS via CDN, sem build/deps novas.
+
+- `src/ui/ui.controller.ts` — `@Controller('ui')`, `@ApiExcludeController()`, sem guard. `res.sendFile` de `public/index.html` (resolvido via `__dirname` → funciona em dev e `dist`).
+- `src/ui/public/index.html` — página única. Auth pelo navegador: anexa `Authorization: Bearer <ADMIN_API_KEY>` + `x-api-key` em toda chamada; cada recurso usa a que seu guard exige.
+- Cópia do asset em build: `nest-cli.json` → `compilerOptions.assets` inclui `ui/public/**/*`. Nunca remover.
+- Colunas da tabela são derivadas dinamicamente das chaves da resposta; formulários vêm da const `RESOURCES` no `<script>`.
+
+**REGRA DE SINCRONIA (obrigatória):** toda mudança em schema/rota/DTO/guard de um recurso exposto no painel DEVE atualizar `src/ui/public/index.html` no mesmo PR:
+
+- Campo novo/removido/renomeado em `Create*Dto`/`Update*Dto` → ajustar `createFields`/`updateFields` do recurso em `RESOURCES` (`key`, `label`, `type`, `required`).
+- Rota base ou verbo alterado → ajustar `base`/capacidades (`updateFields: null` desabilita editar, `canDelete: false` esconde excluir).
+- Guard alterado → ajustar `auth` (`'admin'` | `'apikey'` | `'both'`).
+- Recurso CRUD novo → adicionar entrada em `RESOURCES`. Recurso removido → remover a entrada.
+
+Considere o painel parte do contrato do recurso: DTO e UI andam juntos (item da fase 4 do pipeline). Divergência = bug.
+
 ## Language
 
 Docs PT-BR (`docs/specs/`, `docs/implementation/`, README). Mermaid labels PT-BR. Code identifiers/paths/CLI/constants English.

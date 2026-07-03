@@ -50,6 +50,34 @@ npm run start:dev
 
 - Healthcheck (readiness): `GET http://localhost:3000/` — `200` quando banco e broker estão saudáveis, `503` caso contrário.
 - Documentação Swagger: `http://localhost:3000/docs` (OpenAPI JSON em `/docs-json`).
+- Painel administrativo (CRUD): `http://localhost:3000/ui`.
+
+## Painel administrativo (`/ui`)
+
+Front-end mínimo de CRUD servido pelo próprio gateway — SPA autocontido (**Alpine.js** + **Pico CSS** via CDN, sem build nem dependências novas). Consome os endpoints REST do gateway.
+
+**Recursos expostos:** Ambientes, Inboxes, Chaves de API (criar/listar/revogar), Flow Callbacks, Redirecionamentos de Webhooks, Mensagens Mortas (listar/excluir).
+
+**Autenticação:** informe no topo da página o **Admin Bearer** (`ADMIN_API_KEY`) e/ou a **x-api-key**. Ficam no `localStorage` do navegador e são anexados (`Authorization: Bearer` + `x-api-key`) em toda requisição; cada recurso usa a credencial que seu guard exige.
+
+**Arquivos:**
+
+| Arquivo | Papel |
+|---|---|
+| `src/ui/ui.controller.ts` | Rota `GET /ui` (sem guard) que serve o HTML |
+| `src/ui/public/index.html` | SPA — definição dos recursos na const `RESOURCES` |
+| `nest-cli.json` (`compilerOptions.assets`) | Copia `ui/public/**/*` para `dist/` no build |
+
+### ⚠️ Manter o painel em sincronia com o schema/regras
+
+O painel faz parte do contrato de cada recurso. **Toda alteração em schema, rota, DTO ou guard de um recurso exposto DEVE atualizar `src/ui/public/index.html` no mesmo PR** (fase 4 do pipeline):
+
+- Campo em `Create*Dto`/`Update*Dto` adicionado/removido/renomeado → ajustar `createFields`/`updateFields` do recurso em `RESOURCES` (`key`, `label`, `type`, `required`).
+- Rota base ou verbo alterado → ajustar `base` e capacidades (`updateFields: null` remove edição; `canDelete: false` esconde exclusão).
+- Guard alterado → ajustar `auth`: `'admin'` (Bearer), `'apikey'` (x-api-key) ou `'both'`.
+- Recurso CRUD novo → nova entrada em `RESOURCES`; recurso removido → remover a entrada.
+
+As colunas da tabela são derivadas automaticamente das chaves da resposta, então adicionar campo apenas de leitura no `ResponseDto` não exige mudança no painel — mas campos de escrita, sim.
 
 ## Testes
 
