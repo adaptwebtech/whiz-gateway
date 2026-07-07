@@ -20,4 +20,9 @@ export class UiController {
   index(@Res() res: Response): void {
     res.sendFile(join(__dirname, 'public', 'index.html'));
   }
+
+  @Get('whiz-badge.png')
+  favicon(@Res() res: Response): void {
+    res.sendFile(join(__dirname, 'public', 'whiz-badge.png'));
+  }
 }
