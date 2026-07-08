@@ -45,6 +45,40 @@ export class InboxPrismaRepository implements IInboxRepository {
     );
   }
 
+  async reviveByPid(data: CreateInboxDto): Promise<InboxResponseDto | null> {
+    // O pid é @unique ignorando `del`, então uma linha soft-deletada continua
+    // ocupando o pid e um novo insert bateria em P2002 (500). Aqui revivemos essa
+    // linha em vez de inserir.
+    const record = await this.prisma.inboxes.findFirst({
+      where: { pid: data.pid, del: true },
+    });
+    if (!record) return null;
+
+    const ambiente = await this.prisma.ambiente.findUnique({
+      where: { id: data.id_ambiente, del: false },
+    });
+    if (!ambiente) {
+      throw new BadRequestException(
+        `Ambiente ${data.id_ambiente} não encontrado ou inativo.`,
+      );
+    }
+
+    const revived = await this.prisma.inboxes.update({
+      where: { id: record.id },
+      data: {
+        del: false,
+        id_ambiente: data.id_ambiente,
+        // Atualiza o nome registrado quando informado; senão mantém o anterior.
+        ...(data.nome ? { nome: data.nome } : {}),
+      },
+    });
+    return plainToInstance(
+      InboxResponseDto,
+      { ...revived, data: revived.data.toISOString() },
+      { excludeExtraneousValues: true },
+    );
+  }
+
   async create(data: CreateInboxDto): Promise<InboxResponseDto> {
     const ambiente = await this.prisma.ambiente.findUnique({
       where: { id: data.id_ambiente, del: false },

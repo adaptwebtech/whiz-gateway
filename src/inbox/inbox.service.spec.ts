@@ -22,6 +22,7 @@ const makeRepo = (): jest.Mocked<IInboxRepository> => ({
   findAll: jest.fn(),
   findById: jest.fn(),
   findByPid: jest.fn(),
+  reviveByPid: jest.fn(),
   create: jest.fn(),
   update: jest.fn(),
   softDelete: jest.fn(),
@@ -81,6 +82,38 @@ describe('InboxService — unit', () => {
     // Assert
     expect(thrown).toBeInstanceOf(ConflictException);
     expect(thrown?.getStatus()).toBe(409);
+  });
+
+  // ─── Revive (re-onboarding do mesmo pid soft-deletado) ──────────────────────
+
+  it('revive: pid livre mas existe linha soft-deletada → revive e NÃO insere', async () => {
+    repo.findByPid.mockResolvedValueOnce(null);
+    repo.reviveByPid.mockResolvedValueOnce({
+      ...INBOX_FIXTURE,
+      nome: 'Novo Nome',
+    });
+
+    const result = await service.create({ ...CREATE_DTO, nome: 'Novo Nome' });
+
+    expect(repo.reviveByPid).toHaveBeenCalledWith({
+      ...CREATE_DTO,
+      nome: 'Novo Nome',
+    });
+    expect(repo.create).not.toHaveBeenCalled();
+    // nome registrado é atualizado a partir do dto revivido
+    expect(result.nome).toBe('Novo Nome');
+    expect(result.del).toBe(false);
+  });
+
+  it('revive: sem linha soft-deletada (reviveByPid null) → cai no create normal', async () => {
+    repo.findByPid.mockResolvedValueOnce(null);
+    repo.reviveByPid.mockResolvedValueOnce(null);
+    repo.create.mockResolvedValueOnce(INBOX_FIXTURE);
+
+    await service.create(CREATE_DTO);
+
+    expect(repo.reviveByPid).toHaveBeenCalledTimes(1);
+    expect(repo.create).toHaveBeenCalledTimes(1);
   });
 
   // ─── AC-4 ──────────────────────────────────────────────────────────────────

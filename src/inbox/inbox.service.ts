@@ -39,6 +39,15 @@ export class InboxService {
     if (existing) {
       throw new ConflictException(`Inbox com pid '${dto.pid}' já existe.`);
     }
+    // Reaproveita uma inbox soft-deletada com o mesmo pid (re-onboarding do mesmo
+    // número): revive + atualiza ambiente/nome, em vez de inserir e bater no
+    // @unique (P2002 → 500). O nome registrado é atualizado quando vem no dto.
+    const revived = await this.repo.reviveByPid(dto);
+    if (revived) {
+      return plainToInstance(InboxResponseDto, revived, {
+        excludeExtraneousValues: true,
+      });
+    }
     const inbox = await this.repo.create(dto);
     return plainToInstance(InboxResponseDto, inbox, {
       excludeExtraneousValues: true,
