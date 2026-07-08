@@ -58,6 +58,7 @@ const mockInboxRepo: jest.Mocked<IInboxRepository> = {
   findAll: jest.fn(),
   findById: jest.fn(),
   findByPid: jest.fn(),
+  reviveByPid: jest.fn(),
   create: jest.fn(),
   update: jest.fn(),
   softDelete: jest.fn(),
