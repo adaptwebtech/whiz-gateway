@@ -213,6 +213,21 @@ describe('MetaSignatureGuard — unit', () => {
     expect(logged).toContain('metaAppSecretConfigurado=true');
   });
 
+  it('AC-4: log de HMAC divergente inclui dica de causa-raiz Instagram Login / rota correta', () => {
+    // Arrange
+    const rawBody = Buffer.from('{"object":"instagram"}');
+    const invalidSig = 'sha256=invalidsignaturehex';
+    const ctx = makeExecutionContext(rawBody, invalidSig);
+
+    // Act
+    expect(() => guard.canActivate(ctx)).toThrow(UnauthorizedException);
+
+    // Assert
+    const logged = logger.warn.mock.calls[0][0] as string;
+    expect(logged).toContain('Instagram Login');
+    expect(logged).toContain('POST /webhook/instagram-login');
+  });
+
   it('AC-8: o valor de META_APP_SECRET nunca aparece no log', () => {
     // Arrange
     const rawBody = Buffer.from('{"object":"test"}');

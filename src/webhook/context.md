@@ -23,3 +23,7 @@ _Avoid_: proxy, encaminhamento, parse
 **PID**:
 `phone_number_id` extraído de `entry[].changes[].value.metadata.phone_number_id`; correlaciona o webhook a um inbox.
 _Avoid_: phone, número
+
+**HMAC divergente**:
+`X-Hub-Signature-256` presente mas o HMAC do corpo cru com `META_APP_SECRET` não confere. Causa provável: entrega de um app Meta diferente (ex.: Instagram Login, app separado, deve ir a `POST /webhook/instagram-login`).
+_Avoid_: assinatura ausente (causa distinta)

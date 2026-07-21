@@ -64,7 +64,9 @@ export class MetaSignatureGuard implements CanActivate {
   /**
    * Monta o log de diagnóstico de HMAC divergente sem vazar o secret (AC-3/AC-8):
    * expõe apenas o prefixo da assinatura recebida, o tamanho do corpo cru e se
-   * o `META_APP_SECRET` está configurado.
+   * o `META_APP_SECRET` está configurado. Inclui a dica de causa-raiz mais
+   * provável (AC-4): entrega assinada por um app Meta diferente do configurado
+   * — tipicamente Instagram Login, que deve chegar em outra rota.
    */
   private buildMismatchLog(
     signature: string,
@@ -76,7 +78,12 @@ export class MetaSignatureGuard implements CanActivate {
       'Falha de assinatura no webhook Meta (POST /webhook): causa=hmac-divergente. ' +
       `rawBodyBytes=${rawBody.length} ` +
       `assinaturaPrefix=${signaturePrefix} ` +
-      `metaAppSecretConfigurado=${secret.length > 0}.`
+      `metaAppSecretConfigurado=${secret.length > 0}. ` +
+      'Causa provável: a entrega foi assinada por um app Meta diferente do ' +
+      'configurado em META_APP_SECRET. Instagram Login é um app Meta separado ' +
+      '(app secret próprio) e deve chegar em POST /webhook/instagram-login ' +
+      '(passthrough, sem este guard — o servidor re-verifica a assinatura), ' +
+      'não em POST /webhook. Verifique o Callback URL do app no painel Meta.'
     );
   }
 }
