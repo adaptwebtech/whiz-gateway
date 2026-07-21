@@ -8,8 +8,13 @@
 import * as crypto from 'crypto';
 import { ExecutionContext, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { StatusFalhaMensagem } from '@prisma/client';
 import { LoggerService } from '../../logger/logger.service';
+import { DLQ_NAME } from '../../rabbitmq/constants/rabbitmq-queue.constants';
+import type { IRabbitMQService } from '../../rabbitmq/interfaces/rabbitmq-service.interface';
 import { MetaSignatureGuard } from './meta-signature.guard';
+
+const flushPromises = () => new Promise((resolve) => setImmediate(resolve));
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -42,6 +47,17 @@ function makeLoggerService(): jest.Mocked<LoggerService> {
   } as unknown as jest.Mocked<LoggerService>;
 }
 
+function makeRabbitMQService(): jest.Mocked<IRabbitMQService> {
+  return {
+    assertQueue: jest.fn().mockResolvedValue(undefined),
+    deleteQueue: jest.fn().mockResolvedValue(undefined),
+    startConsuming: jest.fn().mockResolvedValue(undefined),
+    stopConsuming: jest.fn().mockResolvedValue(undefined),
+    sendToQueue: jest.fn().mockResolvedValue(undefined),
+    publish: jest.fn().mockResolvedValue(undefined),
+  } as unknown as jest.Mocked<IRabbitMQService>;
+}
+
 function makeExecutionContext(
   rawBody: Buffer,
   signature: string,
@@ -66,12 +82,14 @@ describe('MetaSignatureGuard — unit', () => {
   let guard: MetaSignatureGuard;
   let configService: jest.Mocked<ConfigService>;
   let logger: jest.Mocked<LoggerService>;
+  let mq: jest.Mocked<IRabbitMQService>;
 
   beforeEach(() => {
     jest.resetAllMocks();
     configService = makeConfigService(META_APP_SECRET);
     logger = makeLoggerService();
-    guard = new MetaSignatureGuard(configService, logger);
+    mq = makeRabbitMQService();
+    guard = new MetaSignatureGuard(configService, logger, mq);
   });
 
   // ─── AC-9 ──────────────────────────────────────────────────────────────────
@@ -240,5 +258,74 @@ describe('MetaSignatureGuard — unit', () => {
     // Assert
     const logged = logger.warn.mock.calls[0][0] as string;
     expect(logged).not.toContain(META_APP_SECRET);
+  });
+
+  // ─── AC-5/6/7 — persistência em mensagens mortas ───────────────────────────
+
+  it('AC-5: corpo com forma de webhook Meta é enfileirado na DLQ com status ASSINATURA_INVALIDA', async () => {
+    // Arrange — object + entry[], assinatura inválida
+    const rawBody = Buffer.from(
+      '{"object":"instagram","entry":[{"id":"123"}]}',
+    );
+    const invalidSig = 'sha256=invalidsignaturehex';
+    const ctx = makeExecutionContext(rawBody, invalidSig);
+
+    // Act
+    expect(() => guard.canActivate(ctx)).toThrow(UnauthorizedException);
+    await flushPromises();
+
+    // Assert
+    expect(mq.sendToQueue).toHaveBeenCalledTimes(1);
+    expect(mq.sendToQueue).toHaveBeenCalledWith(DLQ_NAME, {
+      message: { object: 'instagram', entry: [{ id: '123' }] },
+      id_inbox: null,
+      status: StatusFalhaMensagem.ASSINATURA_INVALIDA,
+    });
+  });
+
+  it('AC-6: corpo sem forma de webhook Meta não é enfileirado (anti-ruído)', async () => {
+    // Arrange — sem entry[]
+    const rawBody = Buffer.from('{"object":"instagram"}');
+    const invalidSig = 'sha256=invalidsignaturehex';
+    const ctx = makeExecutionContext(rawBody, invalidSig);
+
+    // Act
+    expect(() => guard.canActivate(ctx)).toThrow(UnauthorizedException);
+    await flushPromises();
+
+    // Assert
+    expect(mq.sendToQueue).not.toHaveBeenCalled();
+  });
+
+  it('AC-6: corpo não-JSON não é enfileirado', async () => {
+    // Arrange
+    const rawBody = Buffer.from('não é json <<<');
+    const invalidSig = 'sha256=invalidsignaturehex';
+    const ctx = makeExecutionContext(rawBody, invalidSig);
+
+    // Act
+    expect(() => guard.canActivate(ctx)).toThrow(UnauthorizedException);
+    await flushPromises();
+
+    // Assert
+    expect(mq.sendToQueue).not.toHaveBeenCalled();
+  });
+
+  it('AC-7: falha de enfileiramento na DLQ não impede o 401 e é logada', async () => {
+    // Arrange
+    mq.sendToQueue.mockRejectedValueOnce(new Error('DLQ indisponível'));
+    const rawBody = Buffer.from(
+      '{"object":"instagram","entry":[{"id":"123"}]}',
+    );
+    const invalidSig = 'sha256=invalidsignaturehex';
+    const ctx = makeExecutionContext(rawBody, invalidSig);
+
+    // Act & Assert — o 401 é lançado mesmo com a DLQ falhando
+    expect(() => guard.canActivate(ctx)).toThrow(UnauthorizedException);
+    await flushPromises();
+
+    expect(mq.sendToQueue).toHaveBeenCalledTimes(1);
+    expect(logger.error).toHaveBeenCalledTimes(1);
+    expect(logger.error.mock.calls[0][0]).toContain('DLQ');
   });
 });

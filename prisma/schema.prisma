@@ -17,6 +17,7 @@ enum StatusFalhaMensagem {
   NACK_RECEBIDO
   FALHA_ENVIO
   AMBIENTE_INDISPONIVEL
+  ASSINATURA_INVALIDA
 }
 
 /// Destino lógico do re-envio. IDs fixos (1/2/3), sem autoincrement.
