@@ -139,6 +139,57 @@ describe('InstagramWebhookController — integration', () => {
       .expect(403);
   });
 
+  // ─── Messenger (object=page) ─────────────────────────────────────────────────
+
+  it('Messenger: GET /webhook/messenger com META_VERIFY_TOKEN correto retorna 200 com o challenge', async () => {
+    // Act
+    const res = await request(app.getHttpServer())
+      .get('/webhook/messenger')
+      .query({
+        'hub.mode': 'subscribe',
+        'hub.verify_token': META_VERIFY_TOKEN,
+        'hub.challenge': 'challenge-msgr-789',
+      })
+      .expect(200);
+
+    // Assert
+    expect(res.text).toBe('challenge-msgr-789');
+    expect(res.headers['content-type']).toMatch(/text\/plain/);
+  });
+
+  it('Messenger: GET /webhook/messenger com verify_token inválido retorna 403', async () => {
+    // Act
+    await request(app.getHttpServer())
+      .get('/webhook/messenger')
+      .query({
+        'hub.mode': 'subscribe',
+        'hub.verify_token': 'wrong-token',
+        'hub.challenge': 'challenge-msgr-789',
+      })
+      .expect(403);
+  });
+
+  it('Messenger: POST /webhook/messenger responde 200 imediato e chama handleIncoming com surface=messenger (fire-and-forget)', async () => {
+    // Arrange — Messenger: entry[0].id é o pageId
+    const payload = { object: 'page', entry: [{ id: 'page-1' }] };
+
+    // Act
+    await request(app.getHttpServer())
+      .post('/webhook/messenger')
+      .set('X-Hub-Signature-256', 'sha256=anysig')
+      .set('Content-Type', 'application/json')
+      .send(JSON.stringify(payload))
+      .expect(200);
+
+    // Assert
+    expect(service.handleIncoming).toHaveBeenCalledWith(
+      'messenger',
+      expect.any(Buffer),
+      'sha256=anysig',
+      expect.objectContaining({ object: 'page' }),
+    );
+  });
+
   // ─── AC-10 ─────────────────────────────────────────────────────────────────
 
   it('AC-10: POST /webhook/instagram responde 200 imediato e chama handleIncoming (fire-and-forget)', async () => {

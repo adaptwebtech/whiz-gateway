@@ -207,4 +207,27 @@ describe('InstagramWebhookService — unit', () => {
       SIGNATURE,
     );
   });
+
+  it('pid extraction: surface messenger extrai pageId de entry[0].id e delega forward para /webhooks/messenger', async () => {
+    // Arrange — Messenger (object=page): entry[0].id é o pageId
+    const PAGE_ID = 'fb-page-987';
+    const messengerInbox = { ...INBOX_FIXTURE, pid: PAGE_ID };
+    inboxRepo.findByPid.mockResolvedValueOnce(messengerInbox);
+    const body = { object: 'page', entry: [{ id: PAGE_ID }] };
+    const rawBody = Buffer.from(JSON.stringify(body));
+
+    // Act
+    await service.handleIncoming('messenger', rawBody, SIGNATURE, body);
+    await new Promise((r) => setImmediate(r));
+
+    // Assert
+    expect(inboxRepo.findByPid).toHaveBeenCalledWith(PAGE_ID);
+    expect(forwarder.forward).toHaveBeenCalledWith(
+      '/webhooks/messenger',
+      messengerInbox,
+      rawBody,
+      SIGNATURE,
+    );
+    expect(rabbitMQ.sendToQueue).not.toHaveBeenCalled();
+  });
 });
