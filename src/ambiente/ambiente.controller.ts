@@ -21,6 +21,7 @@ import {
 import { AdminKeyGuard } from '../api-keys/guards/admin-key.guard';
 import { AmbienteService } from './ambiente.service';
 import { AmbienteResponseDto } from './dto/ambiente-response.dto';
+import { AmbienteTestResponseDto } from './dto/ambiente-test-response.dto';
 import { CreateAmbienteDto } from './dto/create-ambiente.dto';
 import { UpdateAmbienteDto } from './dto/update-ambiente.dto';
 
@@ -68,6 +69,31 @@ export class AmbienteController {
     @Param('id', ParseIntPipe) id: number,
   ): Promise<AmbienteResponseDto> {
     return this.service.findById(id);
+  }
+
+  @Get(':id/test')
+  @ApiOperation({
+    summary: 'Testa a alcançabilidade do endpoint (url) do ambiente.',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Identificador numérico do ambiente.',
+    example: 1,
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Resultado do teste (reachable, status, elapsedMs).',
+    type: AmbienteTestResponseDto,
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Chave de administrador ausente ou inválida.',
+  })
+  @ApiResponse({ status: 404, description: 'Ambiente não encontrado.' })
+  testEndpoint(
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<AmbienteTestResponseDto> {
+    return this.service.testEndpoint(id);
   }
 
   @Post()

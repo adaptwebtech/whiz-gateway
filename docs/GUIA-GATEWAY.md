@@ -75,6 +75,11 @@ curl -X PATCH https://gateway.exemplo.com/ambientes/1 \
 
 # Soft-delete (del=true; para de resolver, não apaga)
 curl -X DELETE https://gateway.exemplo.com/ambientes/1 -H "Authorization: Bearer $ADMIN_API_KEY"
+
+# Testar o endpoint (verifica se a url do ambiente está de pé)
+# reachable=true se respondeu qualquer HTTP (mesmo 4xx/5xx); false em rede/timeout
+curl https://gateway.exemplo.com/ambientes/1/test -H "Authorization: Bearer $ADMIN_API_KEY"
+# → {"url":"...","reachable":true,"status":200,"elapsedMs":143,"error":null}
 ```
 
 ### 3.2 Apontar uma inbox para o ambiente
@@ -205,7 +210,20 @@ Falhas caem na tabela `fila_mensagens_mortas` (via fila RabbitMQ
 | `NACK_RECEBIDO`         | inbox some entre resolução e despacho                         |
 | `ASSINATURA_INVALIDA`   | HMAC divergente em `POST /webhook` com corpo em forma Meta     |
 
-Consultar / reenviar: `GET /dead-letter` (ver Swagger `/docs`).
+Operações (auth `x-api-key`):
+
+```bash
+# Listar mensagens mortas
+curl https://gateway.exemplo.com/dead-letter -H "x-api-key: $API_KEY"
+
+# Reenviar: re-posta o payload persistido ao ambiente resolvido pela inbox e
+# marca reenviado=true. Destino = url base do ambiente (não reconstrói o subPath
+# de Instagram/Messenger). 400 se faltar payload/inbox/ambiente.
+curl -X POST https://gateway.exemplo.com/dead-letter/<id>/resend -H "x-api-key: $API_KEY"
+
+# Excluir (soft-delete)
+curl -X DELETE https://gateway.exemplo.com/dead-letter/<id> -H "x-api-key: $API_KEY"
+```
 
 ---
 

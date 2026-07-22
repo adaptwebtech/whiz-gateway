@@ -6,6 +6,7 @@
  */
 
 import { ConflictException, NotFoundException } from '@nestjs/common';
+import { of, throwError } from 'rxjs';
 import { RedisService } from '../redis/redis.service';
 import { AmbienteService } from './ambiente.service';
 import { IAmbienteRepository } from './interfaces/ambiente-repository.interface';
@@ -29,10 +30,13 @@ const makeRedis = (): jest.Mocked<
   del: jest.fn().mockResolvedValue(undefined),
 });
 
+const makeHttp = () => ({ get: jest.fn() });
+
 describe('AmbienteService — unit', () => {
   let service: AmbienteService;
   let repo: jest.Mocked<IAmbienteRepository>;
   let redis: jest.Mocked<Pick<RedisService, 'get' | 'set' | 'del'>>;
+  let http: ReturnType<typeof makeHttp>;
 
   const ambienteFixture: AmbienteResponseDto = {
     id: 1,
@@ -42,14 +46,15 @@ describe('AmbienteService — unit', () => {
   };
 
   beforeEach(() => {
-    repo = makeRepo();
-    redis = makeRedis();
-    service = new AmbienteService(repo, redis as unknown as RedisService);
     jest.resetAllMocks();
-    // Re-assign after reset so mock references stay valid
     repo = makeRepo();
     redis = makeRedis();
-    service = new AmbienteService(repo, redis as unknown as RedisService);
+    http = makeHttp();
+    service = new AmbienteService(
+      repo,
+      redis as unknown as RedisService,
+      http as never,
+    );
   });
 
   // ─── AC-5 ─────────────────────────────────────────────────────────────────
@@ -292,5 +297,52 @@ describe('AmbienteService — unit', () => {
 
     // Act & Assert
     await expect(service.softDelete(99)).rejects.toThrow(NotFoundException);
+  });
+
+  // ─── testEndpoint ──────────────────────────────────────────────────────────
+
+  it('testEndpoint: reachable=true com status quando o endpoint responde', async () => {
+    // Arrange
+    repo.findById.mockResolvedValueOnce(ambienteFixture);
+    http.get.mockReturnValueOnce(of({ status: 200 }));
+
+    // Act
+    const res = await service.testEndpoint(1);
+
+    // Assert
+    expect(res.reachable).toBe(true);
+    expect(res.status).toBe(200);
+    expect(res.url).toBe(ambienteFixture.url);
+    expect(res.error).toBeNull();
+    expect(typeof res.elapsedMs).toBe('number');
+  });
+
+  it('testEndpoint: 4xx/5xx ainda contam como reachable (host de pé)', async () => {
+    repo.findById.mockResolvedValueOnce(ambienteFixture);
+    http.get.mockReturnValueOnce(of({ status: 503 }));
+
+    const res = await service.testEndpoint(1);
+
+    expect(res.reachable).toBe(true);
+    expect(res.status).toBe(503);
+  });
+
+  it('testEndpoint: reachable=false em erro de rede/timeout', async () => {
+    repo.findById.mockResolvedValueOnce(ambienteFixture);
+    http.get.mockReturnValueOnce(
+      throwError(() => new Error('timeout of 5000ms exceeded')),
+    );
+
+    const res = await service.testEndpoint(1);
+
+    expect(res.reachable).toBe(false);
+    expect(res.status).toBeNull();
+    expect(res.error).toContain('timeout');
+  });
+
+  it('testEndpoint: 404 quando o ambiente não existe', async () => {
+    repo.findById.mockResolvedValueOnce(null);
+    await expect(service.testEndpoint(99)).rejects.toThrow(NotFoundException);
+    expect(http.get).not.toHaveBeenCalled();
   });
 });
