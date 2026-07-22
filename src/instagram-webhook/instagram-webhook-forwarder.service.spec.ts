@@ -249,8 +249,49 @@ it('AC-9: dado servidor 5xx em todas as tentativas, então após DISPATCH_MAX_RE
     expect.objectContaining({
       status: StatusFalhaMensagem.FALHA_ENVIO,
       id_inbox: inbox.id,
+      // regressão: o payload inteiro deve ficar inspecionável (não null)
+      message: { object: 'instagram', entry: [{ id: 'ig-business-account-123' }] },
     }),
   );
 
   jest.useRealTimers();
+});
+
+it('DLQ FALHA_ENVIO persiste o payload parseado (corpo JSON), não null', async () => {
+  // Arrange
+  jest.useFakeTimers();
+  const inbox = makeInbox();
+  ambienteRepo.findById.mockResolvedValue(makeAmbiente());
+  httpService.post.mockReturnValue(
+    throwError(() =>
+      Object.assign(new Error('HTTP 500'), { response: { status: 500 } }),
+    ),
+  );
+
+  // Act
+  const p = service.forward('/webhooks/instagram', inbox, RAW_BODY, SIGNATURE);
+  await jest.runAllTimersAsync();
+  await p;
+
+  // Assert
+  const dlqPayload = mq.sendToQueue.mock.calls[0][1] as { message: unknown };
+  expect(dlqPayload.message).not.toBeNull();
+  expect(dlqPayload.message).toEqual(
+    JSON.parse(RAW_BODY.toString('utf8')) as unknown,
+  );
+  jest.useRealTimers();
+});
+
+it('DLQ persiste o corpo cru como string quando não é JSON válido', async () => {
+  // Arrange
+  const inbox = makeInbox();
+  ambienteRepo.findById.mockResolvedValue(makeAmbiente({ del: true }));
+  const nonJson = Buffer.from('corpo <<< não json');
+
+  // Act
+  await service.forward('/webhooks/instagram', inbox, nonJson, SIGNATURE);
+
+  // Assert
+  const dlqPayload = mq.sendToQueue.mock.calls[0][1] as { message: unknown };
+  expect(dlqPayload.message).toBe('corpo <<< não json');
 });
