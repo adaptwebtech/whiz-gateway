@@ -216,6 +216,13 @@
                     </template>
                     <td class="row-actions">
                       <button
+                        x-show="current.canTest"
+                        class="outline"
+                        @click="testEndpoint(row)"
+                      >
+                        testar
+                      </button>
+                      <button
                         x-show="current.canResend"
                         @click="resend(row)"
                       >
@@ -267,6 +274,7 @@
           idField: 'id',
           auth: 'admin',
           canDelete: true,
+          canTest: true,
           createFields: [
             { key: 'id', label: 'id (fixo)', type: 'number', required: true },
             { key: 'nome', label: 'nome', type: 'text', required: true },
@@ -528,6 +536,19 @@
               await this.req('POST', this.current.base + '/' + id + '/resend');
               this.setMsg('Reenviada.', true);
               await this.load();
+            } catch (e) {
+              this.setMsg(e.message, false);
+            }
+          },
+
+          async testEndpoint(row) {
+            const id = row[this.current.idField];
+            try {
+              const r = await this.req('GET', this.current.base + '/' + id + '/test');
+              const label = r.reachable
+                ? 'alcançável (HTTP ' + r.status + ', ' + r.elapsedMs + 'ms)'
+                : 'inalcançável: ' + (r.error || 'sem resposta');
+              this.setMsg(r.url + ' — ' + label, r.reachable);
             } catch (e) {
               this.setMsg(e.message, false);
             }
