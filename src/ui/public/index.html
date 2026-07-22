@@ -216,6 +216,12 @@
                     </template>
                     <td class="row-actions">
                       <button
+                        x-show="current.canResend"
+                        @click="resend(row)"
+                      >
+                        reenviar
+                      </button>
+                      <button
                         x-show="current.updateFields"
                         class="secondary"
                         @click="startEdit(row)"
@@ -339,7 +345,8 @@
           idField: 'id',
           auth: 'apikey',
           canDelete: true,
-          note: 'Somente listagem e exclusão (soft-delete).',
+          canResend: true,
+          note: 'Listagem, reenvio e exclusão (soft-delete). Reenvio re-posta o payload ao ambiente da inbox.',
           createFields: null,
           updateFields: null,
         },
@@ -507,6 +514,19 @@
             try {
               await this.req('DELETE', this.current.base + '/' + id);
               this.setMsg('Excluído.', true);
+              await this.load();
+            } catch (e) {
+              this.setMsg(e.message, false);
+            }
+          },
+
+          async resend(row) {
+            const id = row[this.current.idField];
+            if (!confirm('Reenviar a mensagem ' + id + ' ao ambiente da inbox?'))
+              return;
+            try {
+              await this.req('POST', this.current.base + '/' + id + '/resend');
+              this.setMsg('Reenviada.', true);
               await this.load();
             } catch (e) {
               this.setMsg(e.message, false);
