@@ -4,6 +4,7 @@ import {
   Get,
   HttpCode,
   Param,
+  Post,
   Query,
   UseGuards,
 } from '@nestjs/common';
@@ -102,5 +103,33 @@ export class DeadLetterController {
   })
   async softDelete(@Param('id') id: string): Promise<void> {
     await this.service.softDelete(id);
+  }
+
+  @Post(':id/resend')
+  @HttpCode(200)
+  @ApiOperation({
+    summary: 'Reenviar mensagem morta',
+    description:
+      'Re-posta o payload persistido ao ambiente de destino resolvido pela ' +
+      'inbox e marca reenviado=true em caso de sucesso. Destino = url base do ' +
+      'ambiente (não reconstrói subPath de Instagram/Messenger).',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Identificador único (UUID) da mensagem morta.',
+    example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+  })
+  @ApiResponse({ status: 200, description: 'Mensagem reenviada com sucesso.' })
+  @ApiResponse({
+    status: 400,
+    description: 'Sem payload/inbox/ambiente para reenviar.',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Chave de API ausente ou inválida.',
+  })
+  @ApiResponse({ status: 404, description: 'Mensagem morta não encontrada.' })
+  async resend(@Param('id') id: string): Promise<void> {
+    await this.service.resend(id);
   }
 }
