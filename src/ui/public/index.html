@@ -49,6 +49,15 @@
         text-overflow: ellipsis;
         white-space: nowrap;
       }
+      /* Realce da linha sob o cursor em todas as tabelas.
+         Pico v2 não realça linhas por padrão; usamos a var de hover de dropdown
+         (segue o tema claro/escuro) com fallback neutro. */
+      tbody tr:hover td {
+        background-color: var(
+          --pico-dropdown-hover-background-color,
+          rgba(128, 128, 128, 0.14)
+        );
+      }
       .msg {
         padding: 0.5rem 0.75rem;
         border-radius: var(--pico-border-radius);
