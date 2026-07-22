@@ -58,6 +58,9 @@
           rgba(128, 128, 128, 0.14)
         );
       }
+      tbody tr.clickable {
+        cursor: pointer;
+      }
       .msg {
         padding: 0.5rem 0.75rem;
         border-radius: var(--pico-border-radius);
@@ -210,11 +213,14 @@
               </thead>
               <tbody>
                 <template x-for="(row, i) in items" :key="rowKey(row, i)">
-                  <tr>
+                  <tr
+                    :class="{ clickable: current.updateFields }"
+                    @click="onRowClick(row)"
+                  >
                     <template x-for="c in columns" :key="c">
                       <td class="cell" :title="fmt(row[c])" x-text="fmt(row[c])"></td>
                     </template>
-                    <td class="row-actions">
+                    <td class="row-actions" @click.stop>
                       <button
                         x-show="current.canTest"
                         class="outline"
@@ -496,6 +502,12 @@
             } catch (e) {
               this.setMsg(e.message, false);
             }
+          },
+
+          onRowClick(row) {
+            // Clicar na linha (fora dos botões de ação) abre o editor in-place.
+            // Sem updateFields (ex.: Mensagens Mortas, Chaves) a linha é inerte.
+            if (this.current.updateFields) this.startEdit(row);
           },
 
           startEdit(row) {
