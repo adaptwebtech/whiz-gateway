@@ -45,8 +45,31 @@ Hooks block phase skills outside pipeline; never call directly. `router-prompts`
 | Module graph, env, conventions | `docs/CODEBASE.md` inline |
 | Skeletons | `docs/CODEBASE-SKELETONS.md` _(não gerado — usar módulos existentes como referência)_ |
 | Doc formats | `docs/conventions/{CONTEXT,CONTEXT-MAP,ADR}-FORMAT.md` |
+| **Guia de uso (como operar o gateway)** | **`docs/GUIA-GATEWAY.md`** |
 
 **Before any grep/find/ls:** check map first.
+
+## Guia de uso (`docs/GUIA-GATEWAY.md`)
+
+Documento operacional voltado ao usuário: o que o gateway faz, autenticação,
+**como definir ambiente** (`POST /ambientes` + `POST /inboxes`, com exemplos
+curl), **como as rotas são resolvidas** após o ambiente estar definido
+(`pid → inbox → id_ambiente → ambiente.url`; WhatsApp posta na url base,
+Instagram/Messenger posta em `ambiente.url + subPath`), cache de ambiente,
+mensagens mortas (DLQ) e variáveis de ambiente.
+
+**REGRA DE UPKEEP (obrigatória):** qualquer mudança que altere o comportamento
+descrito ali DEVE atualizar `docs/GUIA-GATEWAY.md` no mesmo PR. Gatilhos:
+
+- Nova/alterada rota de ingestão (`/webhook*`) ou mudança no destino/subPath.
+- Mudança na resolução `pid → inbox → ambiente` ou no cache de ambiente.
+- Novo/alterado endpoint ou DTO de `/ambientes`, `/inboxes`, `/dead-letter`.
+- Novo valor de `StatusFalhaMensagem` ou nova causa de mensagem morta.
+- Nova variável de ambiente relevante à operação.
+- Mudança de guard/auth de um recurso operacional.
+
+Considere o guia parte do contrato operacional: código e guia andam juntos
+(item da fase 4 do pipeline).
 
 **Forbidden discovery:**
 - `ls`/`find`/`grep`/`Glob` to locate files/symbols/features
