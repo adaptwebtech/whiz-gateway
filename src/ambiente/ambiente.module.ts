@@ -1,3 +1,4 @@
+import { HttpModule } from '@nestjs/axios';
 import { Module } from '@nestjs/common';
 import { ApiKeysModule } from '../api-keys/api-keys.module';
 import { PrismaModule } from '../prisma/prisma.module';
@@ -7,7 +8,7 @@ import { AMBIENTE_REPOSITORY } from './constants/ambiente-tokens.constants';
 import { AmbientePrismaRepository } from './repositories/ambiente.prisma.repository';
 
 @Module({
-  imports: [PrismaModule, ApiKeysModule],
+  imports: [PrismaModule, ApiKeysModule, HttpModule],
   providers: [
     AmbientePrismaRepository,
     { provide: AMBIENTE_REPOSITORY, useExisting: AmbientePrismaRepository },

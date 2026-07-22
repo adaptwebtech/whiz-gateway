@@ -43,7 +43,7 @@ export class InstagramWebhookForwarderService implements IInstagramForwarder {
         `Ambiente ${inbox.id_ambiente} indisponível para inbox ${inbox.id} — enviando para DLQ`,
       );
       await this.mq.sendToQueue(DLQ_NAME, {
-        message: null,
+        message: this.payloadForDlq(rawBody),
         id_inbox: inbox.id,
         status: StatusFalhaMensagem.AMBIENTE_INDISPONIVEL,
       });
@@ -94,12 +94,27 @@ export class InstagramWebhookForwarderService implements IInstagramForwarder {
               ? StatusFalhaMensagem.FALHA_ENVIO
               : StatusFalhaMensagem.AMBIENTE_INDISPONIVEL;
           await this.mq.sendToQueue(DLQ_NAME, {
-            message: null,
+            message: this.payloadForDlq(rawBody),
             id_inbox: inbox.id,
             status,
           });
         }
       }
+    }
+  }
+
+  /**
+   * Serializa o corpo cru para persistir em `fila_mensagens_mortas`. Preferimos
+   * o JSON parseado (inspecionável na tabela `Json`); se o corpo não for JSON,
+   * guardamos a string crua. Nunca retorna `null` quando há bytes — o payload
+   * inteiro deve ficar inspecionável.
+   */
+  private payloadForDlq(rawBody: Buffer): unknown {
+    const text = rawBody.toString('utf8');
+    try {
+      return JSON.parse(text);
+    } catch {
+      return text;
     }
   }
 

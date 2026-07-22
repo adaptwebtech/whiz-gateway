@@ -49,6 +49,18 @@
         text-overflow: ellipsis;
         white-space: nowrap;
       }
+      /* Realce da linha sob o cursor em todas as tabelas.
+         Pico v2 não realça linhas por padrão; usamos a var de hover de dropdown
+         (segue o tema claro/escuro) com fallback neutro. */
+      tbody tr:hover td {
+        background-color: var(
+          --pico-dropdown-hover-background-color,
+          rgba(128, 128, 128, 0.14)
+        );
+      }
+      tbody tr.clickable {
+        cursor: pointer;
+      }
       .msg {
         padding: 0.5rem 0.75rem;
         border-radius: var(--pico-border-radius);
@@ -74,6 +86,20 @@
         word-break: break-all;
         padding: 0.5rem;
         background: var(--pico-code-background-color);
+      }
+      .toast {
+        position: fixed;
+        bottom: 1.25rem;
+        right: 1.25rem;
+        z-index: 1000;
+        max-width: min(28rem, 90vw);
+        padding: 0.6rem 0.9rem;
+        border-radius: var(--pico-border-radius);
+        background: var(--pico-contrast-background, #333);
+        color: var(--pico-contrast-inverse, #fff);
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.28);
+        cursor: pointer;
+        font-size: 0.85rem;
       }
     </style>
   </head>
@@ -201,11 +227,32 @@
               </thead>
               <tbody>
                 <template x-for="(row, i) in items" :key="rowKey(row, i)">
-                  <tr>
+                  <tr
+                    :class="{ clickable: current.updateFields }"
+                    @click="onRowClick(row)"
+                  >
                     <template x-for="c in columns" :key="c">
-                      <td class="cell" :title="fmt(row[c])" x-text="fmt(row[c])"></td>
+                      <td
+                        class="cell"
+                        :title="fmt(row[c])"
+                        x-text="fmt(row[c])"
+                        @click="copyCell($event, row[c])"
+                      ></td>
                     </template>
-                    <td class="row-actions">
+                    <td class="row-actions" @click.stop>
+                      <button
+                        x-show="current.canTest"
+                        class="outline"
+                        @click="testEndpoint(row)"
+                      >
+                        testar
+                      </button>
+                      <button
+                        x-show="current.canResend"
+                        @click="resend(row)"
+                      >
+                        reenviar
+                      </button>
                       <button
                         x-show="current.updateFields"
                         class="secondary"
@@ -233,6 +280,16 @@
           </div>
         </section>
       </template>
+
+      <!-- Toast mínimo (sem deps): clique para dispensar, expira em 5s -->
+      <div
+        class="toast"
+        x-show="toast.show"
+        @click="hideToast()"
+        x-text="toast.text"
+        x-transition.opacity
+        role="status"
+      ></div>
     </main>
 
     <script>
@@ -252,6 +309,7 @@
           idField: 'id',
           auth: 'admin',
           canDelete: true,
+          canTest: true,
           createFields: [
             { key: 'id', label: 'id (fixo)', type: 'number', required: true },
             { key: 'nome', label: 'nome', type: 'text', required: true },
@@ -330,7 +388,8 @@
           idField: 'id',
           auth: 'apikey',
           canDelete: true,
-          note: 'Somente listagem e exclusão (soft-delete).',
+          canResend: true,
+          note: 'Listagem, reenvio e exclusão (soft-delete). Reenvio re-posta o payload ao ambiente da inbox.',
           createFields: null,
           updateFields: null,
         },
@@ -348,6 +407,8 @@
           loading: false,
           message: { text: '', ok: true },
           createdSecret: '',
+          toast: { show: false, text: '' },
+          toastTimer: null,
 
           get current() {
             return this.resources.find((r) => r.name === this.active);
@@ -474,6 +535,12 @@
             }
           },
 
+          onRowClick(row) {
+            // Clicar na linha (fora dos botões de ação) abre o editor in-place.
+            // Sem updateFields (ex.: Mensagens Mortas, Chaves) a linha é inerte.
+            if (this.current.updateFields) this.startEdit(row);
+          },
+
           startEdit(row) {
             this.editingId = row[this.current.idField];
             this.form = {};
@@ -501,6 +568,80 @@
               await this.load();
             } catch (e) {
               this.setMsg(e.message, false);
+            }
+          },
+
+          async resend(row) {
+            const id = row[this.current.idField];
+            if (!confirm('Reenviar a mensagem ' + id + ' ao ambiente da inbox?'))
+              return;
+            try {
+              await this.req('POST', this.current.base + '/' + id + '/resend');
+              this.setMsg('Reenviada.', true);
+              await this.load();
+            } catch (e) {
+              this.setMsg(e.message, false);
+            }
+          },
+
+          async testEndpoint(row) {
+            const id = row[this.current.idField];
+            try {
+              const r = await this.req('GET', this.current.base + '/' + id + '/test');
+              const label = r.reachable
+                ? 'alcançável (HTTP ' + r.status + ', ' + r.elapsedMs + 'ms)'
+                : 'inalcançável: ' + (r.error || 'sem resposta');
+              this.setMsg(r.url + ' — ' + label, r.reachable);
+            } catch (e) {
+              this.setMsg(e.message, false);
+            }
+          },
+
+          // Copia o conteúdo da célula SÓ quando o texto está truncado
+          // (ellipsis). Se couber inteiro, deixa o clique subir para abrir o
+          // editor da linha.
+          copyCell(event, value) {
+            const el = event.currentTarget;
+            const truncated = el && el.scrollWidth > el.clientWidth;
+            if (!truncated) return;
+            event.stopPropagation();
+            const text = this.fmt(value);
+            if (!text) return;
+            this.copyText(text);
+            this.showToast('Copiado: ' + this.ellipsize(text, 60));
+          },
+          copyText(text) {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+              navigator.clipboard.writeText(text).catch(() => this.fallbackCopy(text));
+            } else {
+              this.fallbackCopy(text);
+            }
+          },
+          fallbackCopy(text) {
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            ta.style.position = 'fixed';
+            ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.select();
+            try {
+              document.execCommand('copy');
+            } catch (e) {}
+            document.body.removeChild(ta);
+          },
+          ellipsize(s, n) {
+            return s.length > n ? s.slice(0, n) + '…' : s;
+          },
+          showToast(text) {
+            this.toast = { show: true, text };
+            if (this.toastTimer) clearTimeout(this.toastTimer);
+            this.toastTimer = setTimeout(() => this.hideToast(), 5000);
+          },
+          hideToast() {
+            this.toast.show = false;
+            if (this.toastTimer) {
+              clearTimeout(this.toastTimer);
+              this.toastTimer = null;
             }
           },
 

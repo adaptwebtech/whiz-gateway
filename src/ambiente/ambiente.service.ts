@@ -1,3 +1,4 @@
+import { HttpService } from '@nestjs/axios';
 import {
   ConflictException,
   Inject,
@@ -7,14 +8,17 @@ import {
   OnModuleInit,
 } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
+import { firstValueFrom } from 'rxjs';
 import { RedisService } from '../redis/redis.service';
 import { AMBIENTE_REPOSITORY } from './constants/ambiente-tokens.constants';
 import { AmbienteResponseDto } from './dto/ambiente-response.dto';
+import { AmbienteTestResponseDto } from './dto/ambiente-test-response.dto';
 import { CreateAmbienteDto } from './dto/create-ambiente.dto';
 import { UpdateAmbienteDto } from './dto/update-ambiente.dto';
 import type { IAmbienteRepository } from './interfaces/ambiente-repository.interface';
 
 const CACHE_TTL = 3600;
+const TEST_TIMEOUT_MS = 5000;
 const cacheKey = (id: number) => `ambiente:${id}`;
 
 @Injectable()
@@ -25,6 +29,7 @@ export class AmbienteService implements OnModuleInit {
     @Inject(AMBIENTE_REPOSITORY)
     private readonly repo: IAmbienteRepository,
     private readonly redis: RedisService,
+    private readonly http: HttpService,
   ) {}
 
   async onModuleInit(): Promise<void> {
@@ -99,5 +104,38 @@ export class AmbienteService implements OnModuleInit {
     await this.findById(id);
     await this.repo.softDelete(id);
     await this.redis.del(cacheKey(id));
+  }
+
+  /**
+   * Testa a alcançabilidade do endpoint (`url`) do ambiente com um GET de
+   * timeout curto. `reachable=true` se o endpoint respondeu qualquer HTTP
+   * (mesmo 4xx/5xx — o host está de pé); `false` em erro de rede/timeout.
+   */
+  async testEndpoint(id: number): Promise<AmbienteTestResponseDto> {
+    const ambiente = await this.findById(id);
+    const started = Date.now();
+    try {
+      const response = await firstValueFrom(
+        this.http.get(ambiente.url, {
+          timeout: TEST_TIMEOUT_MS,
+          validateStatus: () => true,
+        }),
+      );
+      return {
+        url: ambiente.url,
+        reachable: true,
+        status: response.status,
+        elapsedMs: Date.now() - started,
+        error: null,
+      };
+    } catch (err: unknown) {
+      return {
+        url: ambiente.url,
+        reachable: false,
+        status: null,
+        elapsedMs: Date.now() - started,
+        error: err instanceof Error ? err.message : String(err),
+      };
+    }
   }
 }
