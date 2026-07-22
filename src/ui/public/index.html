@@ -87,6 +87,20 @@
         padding: 0.5rem;
         background: var(--pico-code-background-color);
       }
+      .toast {
+        position: fixed;
+        bottom: 1.25rem;
+        right: 1.25rem;
+        z-index: 1000;
+        max-width: min(28rem, 90vw);
+        padding: 0.6rem 0.9rem;
+        border-radius: var(--pico-border-radius);
+        background: var(--pico-contrast-background, #333);
+        color: var(--pico-contrast-inverse, #fff);
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.28);
+        cursor: pointer;
+        font-size: 0.85rem;
+      }
     </style>
   </head>
   <body>
@@ -218,7 +232,12 @@
                     @click="onRowClick(row)"
                   >
                     <template x-for="c in columns" :key="c">
-                      <td class="cell" :title="fmt(row[c])" x-text="fmt(row[c])"></td>
+                      <td
+                        class="cell"
+                        :title="fmt(row[c])"
+                        x-text="fmt(row[c])"
+                        @click="copyCell($event, row[c])"
+                      ></td>
                     </template>
                     <td class="row-actions" @click.stop>
                       <button
@@ -261,6 +280,16 @@
           </div>
         </section>
       </template>
+
+      <!-- Toast mínimo (sem deps): clique para dispensar, expira em 5s -->
+      <div
+        class="toast"
+        x-show="toast.show"
+        @click="hideToast()"
+        x-text="toast.text"
+        x-transition.opacity
+        role="status"
+      ></div>
     </main>
 
     <script>
@@ -378,6 +407,8 @@
           loading: false,
           message: { text: '', ok: true },
           createdSecret: '',
+          toast: { show: false, text: '' },
+          toastTimer: null,
 
           get current() {
             return this.resources.find((r) => r.name === this.active);
@@ -563,6 +594,54 @@
               this.setMsg(r.url + ' — ' + label, r.reachable);
             } catch (e) {
               this.setMsg(e.message, false);
+            }
+          },
+
+          // Copia o conteúdo da célula SÓ quando o texto está truncado
+          // (ellipsis). Se couber inteiro, deixa o clique subir para abrir o
+          // editor da linha.
+          copyCell(event, value) {
+            const el = event.currentTarget;
+            const truncated = el && el.scrollWidth > el.clientWidth;
+            if (!truncated) return;
+            event.stopPropagation();
+            const text = this.fmt(value);
+            if (!text) return;
+            this.copyText(text);
+            this.showToast('Copiado: ' + this.ellipsize(text, 60));
+          },
+          copyText(text) {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+              navigator.clipboard.writeText(text).catch(() => this.fallbackCopy(text));
+            } else {
+              this.fallbackCopy(text);
+            }
+          },
+          fallbackCopy(text) {
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            ta.style.position = 'fixed';
+            ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.select();
+            try {
+              document.execCommand('copy');
+            } catch (e) {}
+            document.body.removeChild(ta);
+          },
+          ellipsize(s, n) {
+            return s.length > n ? s.slice(0, n) + '…' : s;
+          },
+          showToast(text) {
+            this.toast = { show: true, text };
+            if (this.toastTimer) clearTimeout(this.toastTimer);
+            this.toastTimer = setTimeout(() => this.hideToast(), 5000);
+          },
+          hideToast() {
+            this.toast.show = false;
+            if (this.toastTimer) {
+              clearTimeout(this.toastTimer);
+              this.toastTimer = null;
             }
           },
 
