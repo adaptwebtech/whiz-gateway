@@ -26,12 +26,14 @@ _Avoid_: proxy, encaminhar JSON parseado
 
 **Sub-caminho de destino**:
 Sufixo anexado à `ambiente.url` no forward — `/webhooks/instagram`,
-`/webhooks/instagram-login` ou `/webhooks/messenger` — fixado pela rota de
-ingestão (map `SURFACE_SUBPATH`).
+`/webhooks/instagram-login`, `/webhooks/messenger` ou `/webhooks/messenger-login`
+— fixado pela rota de ingestão (map `SURFACE_SUBPATH`).
 _Avoid_: rota do servidor
 
 **Surface**:
-Qual rota/tipo recebeu o evento (`instagram` · `instagram-login` · `messenger`);
-determina o verify token do handshake e o sub-caminho. `instagram` e `messenger`
-usam `META_VERIFY_TOKEN`; `instagram-login` usa `IG_VERIFY_TOKEN`.
+Qual rota/tipo recebeu o evento (`instagram` · `instagram-login` · `messenger` ·
+`messenger-login`); determina o verify token do handshake e o sub-caminho.
+`instagram` e `messenger` usam `META_VERIFY_TOKEN`; `instagram-login` usa
+`IG_VERIFY_TOKEN`; `messenger-login` (app Meta dedicado) usa
+`MESSENGER_LOGIN_VERIFY_TOKEN`.
 _Avoid_: canal, provider
