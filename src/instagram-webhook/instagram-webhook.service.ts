@@ -10,23 +10,17 @@ import type { IInstagramForwarder } from './interfaces/instagram-forwarder.inter
 
 /**
  * Sub-caminho de destino Meta, fixado pela rota de ingestão.
- * `instagram`/`instagram-login` = DMs de Instagram; `messenger`/`messenger-login`
- * = Página Facebook (object=page). Todas correlacionam a inbox por `entry[0].id`
- * (IGID para Instagram, pageId para Messenger). `messenger-login` usa app Meta
- * dedicado (verify token/app secret próprios), análogo a `instagram-login`.
+ * `instagram`/`instagram-login` = DMs de Instagram; `messenger` = Página
+ * Facebook (object=page). Todas correlacionam a inbox por `entry[0].id`
+ * (IGID para Instagram, pageId para Messenger).
  */
-export type InstagramSurface =
-  | 'instagram'
-  | 'instagram-login'
-  | 'messenger'
-  | 'messenger-login';
+export type InstagramSurface = 'instagram' | 'instagram-login' | 'messenger';
 
 /** Sub-caminho de destino no server por surface de ingestão. */
 const SURFACE_SUBPATH: Record<InstagramSurface, string> = {
   instagram: '/webhooks/instagram',
   'instagram-login': '/webhooks/instagram-login',
   messenger: '/webhooks/messenger',
-  'messenger-login': '/webhooks/messenger-login',
 };
 
 /**

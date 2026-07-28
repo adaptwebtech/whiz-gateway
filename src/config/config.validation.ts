@@ -26,11 +26,6 @@ export const configValidationSchema = Joi.object({
     then: Joi.string().required(),
     otherwise: Joi.string().allow('').optional(),
   }),
-  MESSENGER_LOGIN_VERIFY_TOKEN: Joi.when('ENV', {
-    is: 'production',
-    then: Joi.string().required(),
-    otherwise: Joi.string().allow('').optional(),
-  }),
   CALLBACK_SECRET: Joi.when('ENV', {
     is: 'production',
     then: Joi.string().required(),
