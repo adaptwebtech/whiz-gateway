@@ -230,4 +230,27 @@ describe('InstagramWebhookService — unit', () => {
     );
     expect(rabbitMQ.sendToQueue).not.toHaveBeenCalled();
   });
+
+  it('pid extraction: surface messenger-login extrai pageId de entry[0].id e delega forward para /webhooks/messenger-login', async () => {
+    // Arrange — Messenger Login (app dedicado, object=page): entry[0].id é o pageId
+    const PAGE_ID = 'fb-page-dedicated-555';
+    const messengerLoginInbox = { ...INBOX_FIXTURE, pid: PAGE_ID };
+    inboxRepo.findByPid.mockResolvedValueOnce(messengerLoginInbox);
+    const body = { object: 'page', entry: [{ id: PAGE_ID }] };
+    const rawBody = Buffer.from(JSON.stringify(body));
+
+    // Act
+    await service.handleIncoming('messenger-login', rawBody, SIGNATURE, body);
+    await new Promise((r) => setImmediate(r));
+
+    // Assert
+    expect(inboxRepo.findByPid).toHaveBeenCalledWith(PAGE_ID);
+    expect(forwarder.forward).toHaveBeenCalledWith(
+      '/webhooks/messenger-login',
+      messengerLoginInbox,
+      rawBody,
+      SIGNATURE,
+    );
+    expect(rabbitMQ.sendToQueue).not.toHaveBeenCalled();
+  });
 });

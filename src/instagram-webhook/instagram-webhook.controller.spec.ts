@@ -20,6 +20,7 @@ import { InstagramWebhookService } from './instagram-webhook.service';
 
 const META_VERIFY_TOKEN = 'fb-verify-token';
 const IG_VERIFY_TOKEN = 'ig-verify-token';
+const MESSENGER_LOGIN_VERIFY_TOKEN = 'msgr-login-verify-token';
 
 const makeServiceMock = () => ({
   handleIncoming: jest.fn().mockResolvedValue(undefined),
@@ -29,6 +30,8 @@ const makeConfigServiceMock = () => ({
   get: jest.fn().mockImplementation((key: string) => {
     if (key === 'META_VERIFY_TOKEN') return META_VERIFY_TOKEN;
     if (key === 'IG_VERIFY_TOKEN') return IG_VERIFY_TOKEN;
+    if (key === 'MESSENGER_LOGIN_VERIFY_TOKEN')
+      return MESSENGER_LOGIN_VERIFY_TOKEN;
     return undefined;
   }),
 });
@@ -184,6 +187,57 @@ describe('InstagramWebhookController — integration', () => {
     // Assert
     expect(service.handleIncoming).toHaveBeenCalledWith(
       'messenger',
+      expect.any(Buffer),
+      'sha256=anysig',
+      expect.objectContaining({ object: 'page' }),
+    );
+  });
+
+  // ─── Messenger Login (app Meta dedicado) ─────────────────────────────────────
+
+  it('Messenger Login: GET /webhook/messenger-login com MESSENGER_LOGIN_VERIFY_TOKEN correto retorna 200 com o challenge', async () => {
+    // Act
+    const res = await request(app.getHttpServer())
+      .get('/webhook/messenger-login')
+      .query({
+        'hub.mode': 'subscribe',
+        'hub.verify_token': MESSENGER_LOGIN_VERIFY_TOKEN,
+        'hub.challenge': 'challenge-msgrlogin-321',
+      })
+      .expect(200);
+
+    // Assert
+    expect(res.text).toBe('challenge-msgrlogin-321');
+    expect(res.headers['content-type']).toMatch(/text\/plain/);
+  });
+
+  it('Messenger Login: GET /webhook/messenger-login com o token do app compartilhado (META_VERIFY_TOKEN) retorna 403', async () => {
+    // Act — app dedicado tem verify token próprio; token do app compartilhado não vale
+    await request(app.getHttpServer())
+      .get('/webhook/messenger-login')
+      .query({
+        'hub.mode': 'subscribe',
+        'hub.verify_token': META_VERIFY_TOKEN,
+        'hub.challenge': 'challenge-msgrlogin-321',
+      })
+      .expect(403);
+  });
+
+  it('Messenger Login: POST /webhook/messenger-login responde 200 e chama handleIncoming com surface=messenger-login (fire-and-forget)', async () => {
+    // Arrange — Messenger: entry[0].id é o pageId
+    const payload = { object: 'page', entry: [{ id: 'page-9' }] };
+
+    // Act
+    await request(app.getHttpServer())
+      .post('/webhook/messenger-login')
+      .set('X-Hub-Signature-256', 'sha256=anysig')
+      .set('Content-Type', 'application/json')
+      .send(JSON.stringify(payload))
+      .expect(200);
+
+    // Assert
+    expect(service.handleIncoming).toHaveBeenCalledWith(
+      'messenger-login',
       expect.any(Buffer),
       'sha256=anysig',
       expect.objectContaining({ object: 'page' }),

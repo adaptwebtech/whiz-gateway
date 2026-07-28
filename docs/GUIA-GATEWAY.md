@@ -123,6 +123,7 @@ Todas em `POST` (evento) + `GET` (handshake de verificação). **Sem prefixo.**
 | `/webhook/instagram`        | Instagram (Facebook Login)    | ❌ (passthrough)   | `META_VERIFY_TOKEN`|
 | `/webhook/instagram-login`  | **Instagram Login** (OAuth)   | ❌ (passthrough)   | `IG_VERIFY_TOKEN`  |
 | `/webhook/messenger`        | Messenger (página FB)         | ❌ (passthrough)   | `META_VERIFY_TOKEN`|
+| `/webhook/messenger-login`  | **Messenger Login** (app dedicado) | ❌ (passthrough) | `MESSENGER_LOGIN_VERIFY_TOKEN` |
 
 > ⚠️ **`/webhook` (raiz) é SÓ WhatsApp.** Ele valida a assinatura com
 > `META_APP_SECRET`. Se um app Meta **diferente** (ex.: Instagram Login, que é
@@ -170,6 +171,7 @@ Dois fluxos, com uma diferença crucial no **destino**.
      | `/webhook/instagram`        | `/webhooks/instagram`         |
      | `/webhook/instagram-login`  | `/webhooks/instagram-login`   |
      | `/webhook/messenger`        | `/webhooks/messenger`         |
+     | `/webhook/messenger-login`  | `/webhooks/messenger-login`   |
 
    - Repassa o **corpo cru** (bytes originais, sem reserializar) + os headers
      `x-hub-signature-256` (original) e `x-callback-secret`. Preservar os bytes
@@ -185,6 +187,7 @@ Dois fluxos, com uma diferença crucial no **destino**.
 | `POST /webhook/instagram`   | `entry[0].id`                                     | `{ambiente.url}/webhooks/instagram`    | ❌ passthrough |
 | `POST /webhook/instagram-login` | `entry[0].id`                                 | `{ambiente.url}/webhooks/instagram-login` | ❌ passthrough |
 | `POST /webhook/messenger`   | `entry[0].id`                                     | `{ambiente.url}/webhooks/messenger`    | ❌ passthrough |
+| `POST /webhook/messenger-login` | `entry[0].id`                                 | `{ambiente.url}/webhooks/messenger-login` | ❌ passthrough |
 
 ---
 
@@ -265,6 +268,7 @@ e o verify token é `IG_VERIFY_TOKEN` (app Instagram separado).
 | `META_APP_SECRET`          | HMAC de `POST /webhook` (WhatsApp)                         |
 | `META_VERIFY_TOKEN`        | handshake GET de `/webhook`, `/webhook/instagram`, `/webhook/messenger` |
 | `IG_VERIFY_TOKEN`          | handshake GET de `/webhook/instagram-login`               |
+| `MESSENGER_LOGIN_VERIFY_TOKEN` | handshake GET de `/webhook/messenger-login` (app Messenger dedicado) |
 | `CALLBACK_SECRET`          | header `x-callback-secret` enviado ao servidor destino     |
 | `DISPATCH_MAX_RETRIES`     | tentativas de forward (default 10)                         |
 | `DISPATCH_BACKOFF_BASE_MS` | base do backoff exponencial (default 1000ms)              |

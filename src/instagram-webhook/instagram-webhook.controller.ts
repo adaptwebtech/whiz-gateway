@@ -179,11 +179,66 @@ export class InstagramWebhookController {
   @ApiOperation({ summary: 'Recebe webhook de Messenger (Página Facebook)' })
   @ApiBody({
     schema: { type: 'object' },
-    description: 'Payload de evento de Messenger (object=page) enviado pela Meta.',
+    description:
+      'Payload de evento de Messenger (object=page) enviado pela Meta.',
   })
   @ApiResponse({ status: 200, description: 'Evento aceito para forward' })
   receiveMessenger(@Req() req: RawBodyRequest): void {
     this.dispatch('messenger', req);
+  }
+
+  @Get('messenger-login')
+  @ApiOperation({
+    summary: 'Verificação do webhook de Messenger Login (handshake Meta)',
+  })
+  @ApiQuery({
+    name: 'hub.mode',
+    description: 'Modo de verificação enviado pela Meta.',
+    example: 'subscribe',
+  })
+  @ApiQuery({
+    name: 'hub.verify_token',
+    description: 'Token de verificação (MESSENGER_LOGIN_VERIFY_TOKEN).',
+    example: 'meu_token_messenger_login',
+  })
+  @ApiQuery({
+    name: 'hub.challenge',
+    description: 'Desafio a ser retornado para confirmar o endpoint.',
+    example: '1234567890',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Hub challenge retornado em text/plain',
+  })
+  @ApiResponse({ status: 403, description: 'Token inválido' })
+  verifyMessengerLogin(
+    @Query('hub.mode') mode: string,
+    @Query('hub.verify_token') verifyToken: string,
+    @Query('hub.challenge') challenge: string,
+    @Res() res: Response,
+  ): void {
+    const expectedToken = this.config.get<string>(
+      'MESSENGER_LOGIN_VERIFY_TOKEN',
+    );
+    if (mode !== 'subscribe' || verifyToken !== expectedToken) {
+      throw new ForbiddenException('Token de verificação inválido');
+    }
+    res.setHeader('Content-Type', 'text/plain').status(200).send(challenge);
+  }
+
+  @Post('messenger-login')
+  @HttpCode(200)
+  @ApiOperation({
+    summary: 'Recebe webhook de Messenger Login (app Meta dedicado)',
+  })
+  @ApiBody({
+    schema: { type: 'object' },
+    description:
+      'Payload de evento de Messenger (object=page) do app Meta dedicado.',
+  })
+  @ApiResponse({ status: 200, description: 'Evento aceito para forward' })
+  receiveMessengerLogin(@Req() req: RawBodyRequest): void {
+    this.dispatch('messenger-login', req);
   }
 
   /**
