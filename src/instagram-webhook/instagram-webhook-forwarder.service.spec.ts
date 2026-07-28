@@ -250,10 +250,7 @@ it('AC-9: dado servidor 5xx em todas as tentativas, então após DISPATCH_MAX_RE
       status: StatusFalhaMensagem.FALHA_ENVIO,
       id_inbox: inbox.id,
       // regressão: o payload inteiro deve ficar inspecionável (não null)
-      message: {
-        object: 'instagram',
-        entry: [{ id: 'ig-business-account-123' }],
-      },
+      message: { object: 'instagram', entry: [{ id: 'ig-business-account-123' }] },
     }),
   );
 
