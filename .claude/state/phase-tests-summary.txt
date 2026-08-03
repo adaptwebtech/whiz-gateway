@@ -1,0 +1,5 @@
+UNIT: src/sentry/{sentry-options,sentry.service,sentry-metrics.service,sentry-http-metrics.interceptor,sentry-winston.transport,sentry.module}.spec.ts + src/config/config.spec.ts + src/common/filters/global-exception.filter.spec.ts + src/dispatch/dispatch-handler.service.spec.ts
+E2E: NONE
+ACS_COVERED: AC-1..AC-18
+MOCKS: @sentry/nestjs (captureException/captureMessage/addBreadcrumb/flush/getClient/startSpan/startNewTrace/metrics/httpIntegration), SentryMetricsService, SentryService, ExecutionContext/CallHandler, HttpService/RabbitMQ/Redis/repos no dispatch
+STATUS: RED confirmed
