@@ -13,11 +13,11 @@ Mapa autoritativo do código. Antes de qualquer `grep`/`find`/`ls`, consulte aqu
 
 ## Stack
 
-NestJS · Prisma (PostgreSQL) · RabbitMQ (`amqp-connection-manager`, DLQ only) · Redis (`ioredis`) · Winston · `@nestjs/terminus` · Swagger.
+NestJS · Prisma (PostgreSQL) · RabbitMQ (`amqp-connection-manager`, DLQ only) · Redis (`ioredis`) · Winston · `@nestjs/terminus` · Swagger · Sentry (`@sentry/nestjs`, backend GlitchTip).
 
 ## Módulos globais
 
-`AppConfigModule`, `LoggerModule`, `PrismaModule`, `RabbitMQModule` (DLQ only), `RedisModule`, `ScheduleModule.forRoot()`, `MetaTokenModule` (token Meta por-inbox — `MetaTokenStore` + `MetaTokenMiddleware`). Não-globais: `HealthModule`, `AppSwaggerModule`.
+`AppConfigModule`, `LoggerModule`, `PrismaModule`, `RabbitMQModule` (DLQ only), `RedisModule`, `ScheduleModule.forRoot()`, `MetaTokenModule` (token Meta por-inbox — `MetaTokenStore` + `MetaTokenMiddleware`), `SentryModule` (observabilidade — `SentryService` + `SentryMetricsService` + interceptor global de métricas HTTP). Não-globais: `HealthModule`, `AppSwaggerModule`.
 
 ## Variáveis de ambiente
 
@@ -40,6 +40,14 @@ Validadas via Joi (`src/config/config.validation.ts`); acesso somente via `Confi
 | `META_ACCESS_TOKEN` | sim | — |
 | `GATEWAY_PUBLIC_URL` | não | — |
 | `FLOWS_PRIVATE_KEY` | não | — |
+| `SENTRY_DSN` | não | DSN GlitchTip do projeto |
+| `SENTRY_ENABLED` | não | `true` |
+| `SENTRY_TRACES_SAMPLE_RATE` | não | `0.01` |
+| `SENTRY_ENABLE_LOGS` | não | `false` |
+| `SENTRY_ENABLE_METRICS` | não | `false` |
+| `SENTRY_RELEASE` | não | — |
+
+> As envs `SENTRY_*` são a **única** exceção à regra "somente via `ConfigService`": `src/instrument.ts` roda antes do `ConfigModule` e lê `process.env` direto (a auto-instrumentação precisa ser instalada antes do `AppModule`). O schema Joi as valida e documenta.
 
 > `META_ACCESS_TOKEN` é **fallback**: o header `X-Meta-Access-Token` (token por-inbox, Embedded Signup) tem precedência em `/wpp/*` via `MetaTokenModule`. `subscribed_apps` sempre usa o global.
 
@@ -67,3 +75,5 @@ Validadas via Joi (`src/config/config.validation.ts`); acesso somente via `Confi
 | 2026-06-08 | api-key-guard-admin-routes | [spec](specs/2026-06-08-api-key-guard-admin-routes.md) | [impl](implementation/2026-06-08-api-key-guard-admin-routes.md) | Implementada |
 | 2026-06-08 | cache-ambientes-redis | [spec](specs/2026-06-08-cache-ambientes-redis.md) | [impl](implementation/2026-06-08-cache-ambientes-redis.md) | Implementada |
 | 2026-07-01 | wpp-per-inbox-token | [spec](specs/2026-07-01-wpp-per-inbox-token.md) | [impl](implementation/2026-07-01-wpp-per-inbox-token.md) | Implementada |
+| 2026-07-21 | webhook-401-diagnostics | [spec](specs/2026-07-21-webhook-401-diagnostics.md) | [impl](implementation/2026-07-21-webhook-401-diagnostics.md) | Implementada |
+| 2026-08-03 | sentry | [spec](specs/2026-08-03-sentry.md) | [impl](implementation/sentry.md) | Implementada |
