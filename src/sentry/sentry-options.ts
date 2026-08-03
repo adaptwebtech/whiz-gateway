@@ -130,7 +130,8 @@ export function construirOpcoesSentry(env: MapaEnv): NodeOptions {
     dsn: dsn === '' ? undefined : dsn,
     enabled: habilitado,
     environment: env.ENV ?? 'development',
-    release: env.SENTRY_RELEASE,
+    // String vazia (comum em ConfigMap) equivale a não definir release.
+    release: env.SENTRY_RELEASE === '' ? undefined : env.SENTRY_RELEASE,
     // GlitchTip não suporta sessões, logs nem trace metrics.
     enableLogs: ehVerdadeiro(env.SENTRY_ENABLE_LOGS),
     enableMetrics: ehVerdadeiro(env.SENTRY_ENABLE_METRICS),

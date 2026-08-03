@@ -63,6 +63,18 @@ describe('construirOpcoesSentry (DSN e habilitação)', () => {
     expect(opcoes.dsn).toBe('http://chave@glitchtip.interno/9');
   });
 
+  it('AC-1: Given SENTRY_RELEASE set or empty, when building options, then only a non-empty value becomes the release', () => {
+    // Arrange / Act
+    const comRelease = construirOpcoesSentry({
+      SENTRY_RELEASE: 'gateway@1.2.3',
+    });
+    const releaseVazia = construirOpcoesSentry({ SENTRY_RELEASE: '' });
+
+    // Assert
+    expect(comRelease.release).toBe('gateway@1.2.3');
+    expect(releaseVazia.release).toBeUndefined();
+  });
+
   it('AC-3: Given SENTRY_ENABLED=false or an empty SENTRY_DSN, when building options, then the SDK is disabled', () => {
     // Arrange / Act
     const desligadoPorFlag = construirOpcoesSentry({ SENTRY_ENABLED: 'false' });
