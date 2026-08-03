@@ -311,7 +311,7 @@ Mapa de cada feature para seus arquivos. Autoritativo para descoberta (evita `gr
 
 ## sentry
 
-> Feature 23. Observabilidade Sentry/GlitchTip: erros, rastros (1% das transações, com spans automáticos de Postgres/Redis/AMQP/HTTP) e métricas agregadas em snapshot de 60s. Spec: [`docs/specs/2026-08-03-sentry.md`](../specs/2026-08-03-sentry.md) · Impl: [`docs/implementation/sentry.md`](../implementation/sentry.md)
+> Feature 23. Observabilidade Sentry/GlitchTip: erros, rastros (1% das transações, com spans automáticos de Postgres/Redis/AMQP/HTTP) e métricas agregadas em snapshot de 60s. Spec: [`docs/specs/2026-08-03-sentry.md`](../specs/2026-08-03-sentry.md) · Impl: [`docs/implementation/2026-08-03-sentry.md`](../implementation/2026-08-03-sentry.md)
 
 | Camada | Arquivos |
 |---|---|

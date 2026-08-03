@@ -40,7 +40,7 @@ Validadas no bootstrap (Joi). A ausência de qualquer obrigatória impede a apli
 | `SENTRY_ENABLE_METRICS` | não | `false` | Trace metrics — GlitchTip não ingere |
 | `SENTRY_RELEASE` | não | — | Tag de release nos eventos |
 
-> **Observabilidade:** erros (5xx e `401`/`403` de rotas de ingestão), rastros (1% das transações, com spans automáticos de Postgres/Redis/RabbitMQ/HTTP) e métricas de domínio agregadas a cada 60s na transação `whiz.metrics.snapshot`. Detalhes de operação em [docs/GUIA-GATEWAY.md](docs/GUIA-GATEWAY.md) §10; implementação em [docs/implementation/sentry.md](docs/implementation/sentry.md).
+> **Observabilidade:** erros (5xx e `401`/`403` de rotas de ingestão), rastros (1% das transações, com spans automáticos de Postgres/Redis/RabbitMQ/HTTP) e métricas de domínio agregadas a cada 60s na transação `whiz.metrics.snapshot`. Detalhes de operação em [docs/GUIA-GATEWAY.md](docs/GUIA-GATEWAY.md) §10; implementação em [docs/implementation/2026-08-03-sentry.md](docs/implementation/2026-08-03-sentry.md).
 
 ## Como rodar
 
@@ -119,6 +119,6 @@ npm run test:cov   # cobertura
 | api-key-guard-admin-routes | [docs/specs/2026-06-08-api-key-guard-admin-routes.md](docs/specs/2026-06-08-api-key-guard-admin-routes.md) | [docs/implementation/2026-06-08-api-key-guard-admin-routes.md](docs/implementation/2026-06-08-api-key-guard-admin-routes.md) |
 | cache-ambientes-redis | [docs/specs/2026-06-08-cache-ambientes-redis.md](docs/specs/2026-06-08-cache-ambientes-redis.md) | [docs/implementation/2026-06-08-cache-ambientes-redis.md](docs/implementation/2026-06-08-cache-ambientes-redis.md) |
 | webhook-401-diagnostics | [docs/specs/2026-07-21-webhook-401-diagnostics.md](docs/specs/2026-07-21-webhook-401-diagnostics.md) | [docs/implementation/2026-07-21-webhook-401-diagnostics.md](docs/implementation/2026-07-21-webhook-401-diagnostics.md) |
-| sentry (observabilidade) | [docs/specs/2026-08-03-sentry.md](docs/specs/2026-08-03-sentry.md) | [docs/implementation/sentry.md](docs/implementation/sentry.md) |
+| sentry (observabilidade) | [docs/specs/2026-08-03-sentry.md](docs/specs/2026-08-03-sentry.md) | [docs/implementation/2026-08-03-sentry.md](docs/implementation/2026-08-03-sentry.md) |
 
 Mapa do código: [docs/CODEBASE.md](docs/CODEBASE.md).

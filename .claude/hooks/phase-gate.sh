@@ -100,10 +100,22 @@ if [[ "$REL" =~ ^src/([^/]+)/.+\.ts$ ]] && [[ "$REL" != *.spec.ts ]]; then
 fi
 
 # Gate C: impl doc → tests required
-if [[ "$REL" =~ ^docs/implementation/([^/]+)\.md$ ]]; then
-  F="${BASH_REMATCH[1]}"
-  tests_exist "$F" || block "phase 4 needs tests for '$F'."
-  spec_exists "$F" || echo "WARN [phase-gate]: docs/specs/$F.md absent — drift section empty." >&2
+if [[ "$REL" =~ ^docs/implementation/([0-9]{4}-[0-9]{2}-[0-9]{2}-)?([^/]+)\.md$ ]]; then
+  # docs/implementation follows the dated convention; the feature name is what
+  # follows the <YYYY-MM-DD>- prefix.
+  F="${BASH_REMATCH[2]}"
+  OWNER=$(resolve_owner "$F") || OWNER="$F"
+  if ! tests_exist "$OWNER"; then
+    # Feature transversal: os testes moram nos módulos já existentes que ela
+    # toca, não em src/<feature>/. Gate A já exigiu spec+ACs quando eles foram
+    # escritos, então a spec da feature ativa basta aqui.
+    if [ "$(active_feature || echo none)" = "$F" ] && spec_has_acs "$F"; then
+      echo "NOTE [phase-gate]: '$F' sem src/$F/*.spec.ts — liberado como feature transversal (spec ativa com ACs)." >&2
+    else
+      block "phase 4 needs tests for '$F' (nenhum src/$F/*.spec.ts e '$F' não é a feature do pipeline ativo)."
+    fi
+  fi
+  spec_exists "$OWNER" || echo "WARN [phase-gate]: docs/specs/[<data>-]$F.md absent — drift section empty." >&2
   echo "NOTE [phase-gate]: doc phase — sync src/<module>/context.md glossary + docs/codebase/context-map.md for touched modules." >&2
   exit 0
 fi

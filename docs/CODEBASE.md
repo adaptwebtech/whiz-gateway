@@ -76,4 +76,4 @@ Validadas via Joi (`src/config/config.validation.ts`); acesso somente via `Confi
 | 2026-06-08 | cache-ambientes-redis | [spec](specs/2026-06-08-cache-ambientes-redis.md) | [impl](implementation/2026-06-08-cache-ambientes-redis.md) | Implementada |
 | 2026-07-01 | wpp-per-inbox-token | [spec](specs/2026-07-01-wpp-per-inbox-token.md) | [impl](implementation/2026-07-01-wpp-per-inbox-token.md) | Implementada |
 | 2026-07-21 | webhook-401-diagnostics | [spec](specs/2026-07-21-webhook-401-diagnostics.md) | [impl](implementation/2026-07-21-webhook-401-diagnostics.md) | Implementada |
-| 2026-08-03 | sentry | [spec](specs/2026-08-03-sentry.md) | [impl](implementation/sentry.md) | Implementada |
+| 2026-08-03 | sentry | [spec](specs/2026-08-03-sentry.md) | [impl](implementation/2026-08-03-sentry.md) | Implementada |
