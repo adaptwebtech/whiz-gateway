@@ -308,3 +308,24 @@ Mapa de cada feature para seus arquivos. Autoritativo para descoberta (evita `gr
 | Controller (modificado) | `src/wpp-phone-numbers/wpp-subscriptions.controller.ts` (`forceAppToken: true`) |
 | Bootstrap (modificado) | `src/app.module.ts` · `src/main.ts` (registro global do middleware) |
 | Glossário | `src/meta-token/context.md` |
+
+## sentry
+
+> Feature 23. Observabilidade Sentry/GlitchTip: erros, rastros (1% das transações, com spans automáticos de Postgres/Redis/AMQP/HTTP) e métricas agregadas em snapshot de 60s. Spec: [`docs/specs/2026-08-03-sentry.md`](../specs/2026-08-03-sentry.md) · Impl: [`docs/implementation/2026-08-03-sentry.md`](../implementation/2026-08-03-sentry.md)
+
+| Camada | Arquivos |
+|---|---|
+| Bootstrap do SDK (novo) | `src/instrument.ts` (primeiro import de `src/main.ts`) |
+| Opções puras (novo) | `src/sentry/sentry-options.ts` · `src/sentry/sentry-options.spec.ts` |
+| Constantes (novo) | `src/sentry/sentry.constants.ts` |
+| Fachada de captura (novo) | `src/sentry/sentry.service.ts` · `src/sentry/sentry.service.spec.ts` |
+| Métricas (novo) | `src/sentry/sentry-metrics.service.ts` · `src/sentry/sentry-metrics.service.spec.ts` |
+| Interceptor HTTP (novo) | `src/sentry/sentry-http-metrics.interceptor.ts` · `src/sentry/sentry-http-metrics.interceptor.spec.ts` |
+| Ponte Winston (novo) | `src/sentry/sentry-winston.transport.ts` · `src/sentry/sentry-winston.transport.spec.ts` |
+| Module `@Global` (novo) | `src/sentry/sentry.module.ts` · `src/sentry/sentry.module.spec.ts` |
+| Glossário | `src/sentry/context.md` |
+| Logger (modificado) | `src/logger/logger.service.ts` (transport Sentry) |
+| Filtro global (modificado) | `src/common/filters/global-exception.filter.ts` (captura + marcador anti-duplicação) |
+| Config (modificado) | `src/config/config.validation.ts` (envs `SENTRY_*`) |
+| Despacho (modificado) | `src/dispatch/dispatch-handler.service.ts` (métricas de despacho/DLQ) |
+| Bootstrap (modificado) | `src/app.module.ts` · `src/main.ts` |

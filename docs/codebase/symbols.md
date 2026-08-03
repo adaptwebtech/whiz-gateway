@@ -256,3 +256,28 @@ Mapa de símbolos exportados → arquivo + assinatura. Autoritativo para descobe
 | `UpdateRedirecionamentoWebhookDto` | DTO | `src/redirecionamentos-webhooks/dto/update-redirecionamento-webhook.dto.ts` | `extends PartialType(CreateRedirecionamentoWebhookDto)` — todos os campos opcionais |
 | `RedirecionamentoWebhookResponseDto` | DTO | `src/redirecionamentos-webhooks/dto/redirecionamento-webhook-response.dto.ts` | `uid, url, data_expiracao (string\|null), id_ambiente (number\|null), data (string ISO 8601), del` — todos com `@Expose()` |
 | `DispatchResultDto` | DTO | `src/redirecionamentos-webhooks/dto/dispatch-result.dto.ts` | `dispatched: number` com `@Expose()` — número de URLs para as quais o dispatch foi iniciado |
+
+## sentry
+
+| Símbolo | Tipo | Arquivo | Assinatura / Notas |
+|---|---|---|---|
+| `construirOpcoesSentry` | função pura | `src/sentry/sentry-options.ts` | `(env: MapaEnv) => NodeOptions`; DSN/enabled/environment/release, `tracesSampler`, `beforeSend`, integrações e `initialScope` (tags `servico`, `instancia`) |
+| `construirAmostradorDeRastros` | função pura | `src/sentry/sentry-options.ts` | `(taxaBase: number) => (contexto: ContextoAmostragem) => number`; `1` para `whiz.metrics.snapshot`, `0` para rota de ruído, `taxaBase` no resto |
+| `criarIntegracoesSentry` | função pura | `src/sentry/sentry-options.ts` | `(padroes: Integracao[], fabricaHttp = httpIntegration) => Integracao[]`; remove `ProcessSession`/`Http` e reinstala `httpIntegration({ trackIncomingRequestsAsSessions: false })` |
+| `escrubarEventoSentry` | função pura | `src/sentry/sentry-options.ts` | `(evento: ErrorEvent) => ErrorEvent`; substitui `HEADERS_SENSIVEIS` por `[Filtered]` (case-insensitive) |
+| `Integracao` / `ContextoAmostragem` / `MapaEnv` | types | `src/sentry/sentry-options.ts` | derivados de `NodeOptions` (evita depender de `@sentry/core`) |
+| `SentryService` | classe (`@Injectable`) | `src/sentry/sentry.service.ts` | `estaHabilitado()` · `capturarExcecaoHttp(excecao, { statusCode, metodo, rota })` · `capturarMensagem(msg, nivel?, tags?)` · `adicionarBreadcrumb(msg, nivel?, categoria?)` · `descarregar(timeoutMs)`; toda chamada ao SDK protegida por try/catch |
+| `ContextoExcecaoHttp` | interface | `src/sentry/sentry.service.ts` | `{ statusCode: number; metodo: string; rota: string }` |
+| `SentryMetricsService` | classe (`@Injectable`) | `src/sentry/sentry-metrics.service.ts` | `contar(nome, atributos?, valor?)` · `registrarDuracao(nome, ms, atributos?)` · `definirGauge(nome, valor, unidade?, atributos?)` · `@Cron(EVERY_MINUTE) emitirSnapshot()`; janela in-memory (cap de 500 amostras/distribuição), percentil por rank |
+| `AtributosMetrica` | type | `src/sentry/sentry-metrics.service.ts` | `Record<string, string \| number>` |
+| `SentryHttpMetricsInterceptor` | classe (`@Injectable`) | `src/sentry/sentry-http-metrics.interceptor.ts` | `APP_INTERCEPTOR`; conta `gateway.http.requisicao` (`rota`, `metodo`, `classe_status`) e registra `gateway.http.duracao`; rota via `req.route.path` com fallback à URL sem query |
+| `SentryWinstonTransport` | classe (`extends Transport`) | `src/sentry/sentry-winston.transport.ts` | `log(entrada, proximo)`; breadcrumb sempre + `captureMessage(level='error')` para logs `error` sem `MARCADOR_SENTRY_IGNORAR` |
+| `SentryModule` | módulo (`@Global`) | `src/sentry/sentry.module.ts` | importa `SentryModule.forRoot()` do `@sentry/nestjs/setup`; provê/exporta `SentryService` + `SentryMetricsService`; `onApplicationShutdown` → `descarregar(TIMEOUT_FLUSH_MS)` |
+| `DSN_GLITCHTIP_PADRAO` | const | `src/sentry/sentry.constants.ts` | DSN padrão do projeto GlitchTip |
+| `TAXA_AMOSTRAGEM_PADRAO` | const | `src/sentry/sentry.constants.ts` | `0.01` |
+| `NOME_TRANSACAO_SNAPSHOT` | const | `src/sentry/sentry.constants.ts` | `'whiz.metrics.snapshot'` |
+| `ROTAS_DE_RUIDO` / `ROTAS_DE_INGESTAO` | const | `src/sentry/sentry.constants.ts` | `['/health','/docs','/ui']` · `['/webhook']` |
+| `HEADERS_SENSIVEIS` / `VALOR_FILTRADO` | const | `src/sentry/sentry.constants.ts` | 5 headers de auth/assinatura · `'[Filtered]'` |
+| `MARCADOR_SENTRY_IGNORAR` | const | `src/sentry/sentry.constants.ts` | `'__sentry_ignorado__'`; usado pelo `GlobalExceptionFilter` |
+| `MAX_AMOSTRAS_POR_DISTRIBUICAO` / `TIMEOUT_FLUSH_MS` | const | `src/sentry/sentry.constants.ts` | `500` · `2000` |
+| `METRICAS` | const (`as const`) | `src/sentry/sentry.constants.ts` | nomes: `httpRequisicao`, `httpDuracao`, `despachoTentativa`, `despachoSucesso`, `despachoFalha`, `despachoDuracao`, `dlqEnfileiramento` |

@@ -1,3 +1,6 @@
+// Precisa ser o primeiro import: instala a instrumentação Sentry/OpenTelemetry
+// antes de qualquer módulo da aplicação ser carregado.
+import './instrument';
 import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
@@ -7,6 +10,7 @@ import { AppModule } from './app.module';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
 import { LoggerService } from './logger/logger.service';
 import { MetaTokenMiddleware } from './meta-token/meta-token.middleware';
+import { SentryService } from './sentry/sentry.service';
 import { buildSwaggerConfig } from './swagger/swagger.document';
 
 async function bootstrap(): Promise<void> {
@@ -17,7 +21,10 @@ async function bootstrap(): Promise<void> {
 
   const configService = app.get(ConfigService);
   const loggerService = app.get(LoggerService);
+  const sentryService = app.get(SentryService);
   app.useLogger(loggerService);
+  // Necessário para o flush de eventos Sentry no encerramento (FR-17).
+  app.enableShutdownHooks();
 
   app.useGlobalPipes(
     new ValidationPipe({
@@ -26,7 +33,9 @@ async function bootstrap(): Promise<void> {
       transform: true,
     }),
   );
-  app.useGlobalFilters(new GlobalExceptionFilter(configService, loggerService));
+  app.useGlobalFilters(
+    new GlobalExceptionFilter(configService, loggerService, sentryService),
+  );
 
   // Captura X-Meta-Access-Token (token por-inbox) no contexto assíncrono antes
   // do pipeline Nest, para WppService resolver o Bearer por-requisição.

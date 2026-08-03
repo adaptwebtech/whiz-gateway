@@ -12,6 +12,8 @@ import { DLQ_NAME } from '../rabbitmq/constants/rabbitmq-queue.constants';
 import { RABBITMQ_SERVICE } from '../rabbitmq/constants/rabbitmq-tokens.constants';
 import type { IRabbitMQService } from '../rabbitmq/interfaces/rabbitmq-service.interface';
 import { RedisService } from '../redis/redis.service';
+import { METRICAS } from '../sentry/sentry.constants';
+import { SentryMetricsService } from '../sentry/sentry-metrics.service';
 import type { IDispatchHandler } from './interfaces/dispatch-handler.interface';
 import { RedirecionamentosWebhooksService } from '../redirecionamentos-webhooks/redirecionamentos-webhooks.service';
 
@@ -28,10 +30,13 @@ export class DispatchHandlerService implements IDispatchHandler {
     private readonly config: ConfigService,
     private readonly redis: RedisService,
     private readonly redirecionamentosWebhooksService: RedirecionamentosWebhooksService,
+    private readonly metrics: SentryMetricsService,
   ) {}
 
   async handle(inboxId: string, payload: unknown): Promise<void> {
     try {
+      this.metrics.contar(METRICAS.despachoTentativa, { id_inbox: inboxId });
+      const inicioDespacho = Date.now();
       this.redirecionamentosWebhooksService
         .dispatch(payload as Record<string, unknown>)
         .catch((err) => {
@@ -46,7 +51,7 @@ export class DispatchHandlerService implements IDispatchHandler {
         this.logger.warn(
           `Inbox ${inboxId} não encontrada ou deletada — enviando para DLQ`,
         );
-        await this.mq.sendToQueue(DLQ_NAME, {
+        await this.enviarParaDlq({
           message: payload,
           id_inbox: inbox?.id ?? inboxId,
           status: StatusFalhaMensagem.NACK_RECEBIDO,
@@ -60,7 +65,7 @@ export class DispatchHandlerService implements IDispatchHandler {
         this.logger.warn(
           `Ambiente ${inbox.id_ambiente} indisponível para inbox ${inboxId} — enviando para DLQ`,
         );
-        await this.mq.sendToQueue(DLQ_NAME, {
+        await this.enviarParaDlq({
           message: payload,
           id_inbox: inbox.id,
           status: StatusFalhaMensagem.AMBIENTE_INDISPONIVEL,
@@ -90,6 +95,15 @@ export class DispatchHandlerService implements IDispatchHandler {
           );
           this.logger.log(
             `Dispatched inbox ${inboxId} → ${ambiente.url}: ${response.status}`,
+          );
+          this.metrics.contar(METRICAS.despachoSucesso, {
+            id_inbox: inbox.id,
+            tentativa: String(attempt),
+          });
+          this.metrics.registrarDuracao(
+            METRICAS.despachoDuracao,
+            Date.now() - inicioDespacho,
+            { id_inbox: inbox.id },
           );
           return;
         } catch (err: unknown) {
@@ -121,7 +135,16 @@ export class DispatchHandlerService implements IDispatchHandler {
                 ? StatusFalhaMensagem.FALHA_ENVIO
                 : StatusFalhaMensagem.AMBIENTE_INDISPONIVEL;
 
-            await this.mq.sendToQueue(DLQ_NAME, {
+            this.metrics.contar(METRICAS.despachoFalha, {
+              id_inbox: inbox.id,
+              status_dlq: status,
+            });
+            this.metrics.registrarDuracao(
+              METRICAS.despachoDuracao,
+              Date.now() - inicioDespacho,
+              { id_inbox: inbox.id },
+            );
+            await this.enviarParaDlq({
               message: payload,
               id_inbox: inbox.id,
               status,
@@ -134,6 +157,18 @@ export class DispatchHandlerService implements IDispatchHandler {
         `Erro inesperado em handle() para inbox ${inboxId}: ${String(err)}`,
       );
     }
+  }
+
+  /** Enfileira na DLQ contabilizando a mensagem morta por status (FR-14). */
+  private async enviarParaDlq(mensagem: {
+    message: unknown;
+    id_inbox: string;
+    status: StatusFalhaMensagem;
+  }): Promise<void> {
+    this.metrics.contar(METRICAS.dlqEnfileiramento, {
+      status: mensagem.status,
+    });
+    await this.mq.sendToQueue(DLQ_NAME, mensagem);
   }
 
   private async getAmbiente(id: number): Promise<AmbienteResponseDto | null> {

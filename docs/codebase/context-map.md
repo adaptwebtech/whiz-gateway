@@ -45,3 +45,7 @@ Mapa global dos contextos (módulos de domínio) do whiz-gateway e como se relac
 - **InstagramWebhook → Redis**: cache-first do ambiente na chave `ambiente:<id>` (TTL 3600 s), mesmo mecanismo do Dispatch
 - **InstagramWebhook → DeadLetter**: PID/inbox ausente, ambiente indisponível ou forward esgotado → `sendToQueue('inbox.dead-letter', ...)` com `INBOX_NAO_REGISTRADA` / `AMBIENTE_INDISPONIVEL` / `FALHA_ENVIO`
 - **InstagramWebhook → whiz-v2 server**: forward `POST {ambiente.url}/webhooks/instagram[-login]` do corpo cru (byte-idêntico) + `x-hub-signature-256` original + `x-callback-secret`; o servidor é o único verificador do HMAC
+- **Sentry → todos os módulos**: `SentryModule` é `@Global`; `LoggerService` escreve no `SentryWinstonTransport` (breadcrumb de todo log, evento para nível `error`) e o `SentryHttpMetricsInterceptor` (APP_INTERCEPTOR) mede toda requisição HTTP
+- **GlobalExceptionFilter → Sentry**: delega a `SentryService.capturarExcecaoHttp` (5xx = exceção, 401/403 de `/webhook*` = aviso) e marca seu próprio log com `MARCADOR_SENTRY_IGNORAR` para não duplicar o evento
+- **Dispatch → Sentry**: `DispatchHandlerService` registra tentativa/sucesso/falha/latência do forward e cada enfileiramento na DLQ por status
+- **Sentry → GlitchTip**: envelopes assíncronos para `SENTRY_DSN`; sessões, Sentry Logs e trace metrics ficam desligados porque o GlitchTip não os ingere — os números chegam na transação `whiz.metrics.snapshot`

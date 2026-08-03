@@ -79,6 +79,7 @@ let mq: jest.Mocked<IRabbitMQService>;
 let configService: jest.Mocked<Pick<ConfigService, 'get'>>;
 let redis: jest.Mocked<Pick<RedisService, 'get' | 'set'>>;
 let redirecionamentosWebhooksService: { dispatch: jest.Mock };
+let metrics: { contar: jest.Mock; registrarDuracao: jest.Mock };
 
 let service: DispatchHandlerService;
 
@@ -129,6 +130,11 @@ beforeEach(() => {
     dispatch: jest.fn().mockResolvedValue(undefined),
   };
 
+  metrics = {
+    contar: jest.fn(),
+    registrarDuracao: jest.fn(),
+  };
+
   service = new DispatchHandlerService(
     inboxRepo as any,
     ambienteRepo as any,
@@ -137,6 +143,7 @@ beforeEach(() => {
     configService as any,
     redis as unknown as RedisService,
     redirecionamentosWebhooksService as any,
+    metrics as any,
   );
 });
 
@@ -693,4 +700,86 @@ it('AC-7: dado despacho HTTP bem-sucedido, quando handle completa, então logger
   expect(logMessage).toContain(inbox.id);
   expect(logMessage).toContain(ambiente.url);
   expect(logMessage).toContain('200');
+});
+
+// ---------------------------------------------------------------------------
+// AC-14 (sentry): dispatch metrics
+// ---------------------------------------------------------------------------
+
+it('AC-14: Given a dispatch succeeding on the first attempt, when handle completes, then attempt/success counters and the duration are recorded', async () => {
+  // Arrange
+  const inbox = makeInbox();
+  const ambiente = makeAmbiente();
+
+  inboxRepo.findById.mockResolvedValue(inbox);
+  ambienteRepo.findById.mockResolvedValue(ambiente);
+  httpService.post.mockReturnValue(of(makeAxiosResponse(200)));
+
+  // Act
+  await service.handle(inbox.id, { data: 'metrics-payload' });
+
+  // Assert
+  expect(metrics.contar).toHaveBeenCalledWith('gateway.despacho.tentativa', {
+    id_inbox: inbox.id,
+  });
+  expect(metrics.contar).toHaveBeenCalledWith('gateway.despacho.sucesso', {
+    id_inbox: inbox.id,
+    tentativa: '1',
+  });
+  expect(metrics.registrarDuracao).toHaveBeenCalledWith(
+    'gateway.despacho.duracao',
+    expect.any(Number),
+    { id_inbox: inbox.id },
+  );
+});
+
+it('AC-14: Given a dispatch exhausting the retries, when it dead-letters, then the failure and DLQ counters carry the dead-letter status', async () => {
+  // Arrange
+  jest.useFakeTimers();
+
+  const inbox = makeInbox();
+  const ambiente = makeAmbiente();
+
+  inboxRepo.findById.mockResolvedValue(inbox);
+  ambienteRepo.findById.mockResolvedValue(ambiente);
+  httpService.post.mockReturnValue(
+    throwError(() =>
+      Object.assign(new Error('HTTP 500'), { response: { status: 500 } }),
+    ),
+  );
+
+  configService.get.mockImplementation((key: string) => {
+    if (key === 'DISPATCH_MAX_RETRIES') return '2';
+    if (key === 'DISPATCH_BACKOFF_BASE_MS') return '10';
+    return undefined;
+  });
+
+  // Act
+  const handlePromise = service.handle(inbox.id, { data: 'falha' });
+  await jest.runAllTimersAsync();
+  await handlePromise;
+
+  // Assert
+  expect(metrics.contar).toHaveBeenCalledWith('gateway.despacho.falha', {
+    id_inbox: inbox.id,
+    status_dlq: StatusFalhaMensagem.FALHA_ENVIO,
+  });
+  expect(metrics.contar).toHaveBeenCalledWith('gateway.dlq.enfileiramento', {
+    status: StatusFalhaMensagem.FALHA_ENVIO,
+  });
+
+  jest.useRealTimers();
+});
+
+it('AC-14: Given an unavailable inbox, when it dead-letters, then the DLQ counter carries NACK_RECEBIDO', async () => {
+  // Arrange
+  inboxRepo.findById.mockResolvedValue(null);
+
+  // Act
+  await service.handle('inbox-inexistente', { data: 'sem inbox' });
+
+  // Assert
+  expect(metrics.contar).toHaveBeenCalledWith('gateway.dlq.enfileiramento', {
+    status: StatusFalhaMensagem.NACK_RECEBIDO,
+  });
 });

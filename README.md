@@ -6,7 +6,7 @@ O gateway recebe webhooks da Meta, identifica o inbox de destino pelo **PID** (`
 
 ## Stack
 
-NestJS · Prisma (PostgreSQL) · RabbitMQ (`amqp-connection-manager`) · Redis (`ioredis`) · Winston · `@nestjs/terminus` · Swagger.
+NestJS · Prisma (PostgreSQL) · RabbitMQ (`amqp-connection-manager`) · Redis (`ioredis`) · Winston · `@nestjs/terminus` · Swagger · Sentry (`@sentry/nestjs`, backend GlitchTip).
 
 ## Variáveis de ambiente
 
@@ -33,6 +33,14 @@ Validadas no bootstrap (Joi). A ausência de qualquer obrigatória impede a apli
 > **Token por-inbox (WhatsApp Embedded Signup):** em modo gateway, o whiz server pode passar o header `X-Meta-Access-Token: <token de negócio do inbox>` em cada chamada de proxy `/wpp/*`. Quando presente, o gateway usa esse token no `Bearer`; senão, cai no `META_ACCESS_TOKEN` global. O header interno nunca é repassado à Meta. Ver [docs/implementation/2026-07-01-wpp-per-inbox-token.md](docs/implementation/2026-07-01-wpp-per-inbox-token.md).
 | `GATEWAY_PUBLIC_URL` | não | — | URL pública do gateway (ex.: `https://gateway.example.com`); necessário para `endpoint_uri` nas rotas dinâmicas de flows |
 | `FLOWS_PRIVATE_KEY` | não | — | Chave privada RSA-2048 PEM (com `\n` escapados); necessária para descriptografar payloads no endpoint de flows |
+| `SENTRY_DSN` | não | DSN GlitchTip do projeto | DSN de ingestão; string vazia desliga o SDK |
+| `SENTRY_ENABLED` | não | `true` | `false` desliga a instrumentação por completo |
+| `SENTRY_TRACES_SAMPLE_RATE` | não | `0.01` | Fração de transações enviadas (0..1) |
+| `SENTRY_ENABLE_LOGS` | não | `false` | API de Logs do Sentry — GlitchTip não ingere |
+| `SENTRY_ENABLE_METRICS` | não | `false` | Trace metrics — GlitchTip não ingere |
+| `SENTRY_RELEASE` | não | — | Tag de release nos eventos |
+
+> **Observabilidade:** erros (5xx e `401`/`403` de rotas de ingestão), rastros (1% das transações, com spans automáticos de Postgres/Redis/RabbitMQ/HTTP) e métricas de domínio agregadas a cada 60s na transação `whiz.metrics.snapshot`. Detalhes de operação em [docs/GUIA-GATEWAY.md](docs/GUIA-GATEWAY.md) §10; implementação em [docs/implementation/2026-08-03-sentry.md](docs/implementation/2026-08-03-sentry.md).
 
 ## Como rodar
 
@@ -110,5 +118,7 @@ npm run test:cov   # cobertura
 | instagram-webhook-redirect | [docs/specs/2026-07-01-instagram-webhook-redirect.md](docs/specs/2026-07-01-instagram-webhook-redirect.md) | [docs/implementation/2026-07-01-instagram-webhook-redirect.md](docs/implementation/2026-07-01-instagram-webhook-redirect.md) |
 | api-key-guard-admin-routes | [docs/specs/2026-06-08-api-key-guard-admin-routes.md](docs/specs/2026-06-08-api-key-guard-admin-routes.md) | [docs/implementation/2026-06-08-api-key-guard-admin-routes.md](docs/implementation/2026-06-08-api-key-guard-admin-routes.md) |
 | cache-ambientes-redis | [docs/specs/2026-06-08-cache-ambientes-redis.md](docs/specs/2026-06-08-cache-ambientes-redis.md) | [docs/implementation/2026-06-08-cache-ambientes-redis.md](docs/implementation/2026-06-08-cache-ambientes-redis.md) |
+| webhook-401-diagnostics | [docs/specs/2026-07-21-webhook-401-diagnostics.md](docs/specs/2026-07-21-webhook-401-diagnostics.md) | [docs/implementation/2026-07-21-webhook-401-diagnostics.md](docs/implementation/2026-07-21-webhook-401-diagnostics.md) |
+| sentry (observabilidade) | [docs/specs/2026-08-03-sentry.md](docs/specs/2026-08-03-sentry.md) | [docs/implementation/2026-08-03-sentry.md](docs/implementation/2026-08-03-sentry.md) |
 
 Mapa do código: [docs/CODEBASE.md](docs/CODEBASE.md).

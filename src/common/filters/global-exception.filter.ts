@@ -8,6 +8,8 @@ import {
 import { ConfigService } from '@nestjs/config';
 import type { Request, Response } from 'express';
 import { LoggerService } from '../../logger/logger.service';
+import { MARCADOR_SENTRY_IGNORAR } from '../../sentry/sentry.constants';
+import { SentryService } from '../../sentry/sentry.service';
 import { ErrorResponseDto } from '../dto/error-response.dto';
 
 const MAX_PAYLOAD_BODY_BYTES = 10240;
@@ -21,6 +23,10 @@ export class GlobalExceptionFilter implements ExceptionFilter {
   constructor(
     private readonly configService: ConfigService,
     private readonly loggerService: LoggerService,
+    // O filtro é instanciado à mão (main.ts e specs de integração). O default
+    // mantém a captura funcionando sem exigir injeção em todo call site —
+    // `SentryService` não tem dependências e é no-op sem SDK inicializado.
+    private readonly sentryService: SentryService = new SentryService(),
   ) {}
 
   catch(exception: unknown, host: ArgumentsHost): void {
@@ -43,8 +49,20 @@ export class GlobalExceptionFilter implements ExceptionFilter {
 
     const method = request?.method ?? 'UNKNOWN';
     const route = request?.url ?? 'UNKNOWN';
+
+    // Evento no Sentry conforme a política de captura (5xx e 401/403 de
+    // ingestão) antes de responder; nunca altera status ou corpo.
+    this.sentryService.capturarExcecaoHttp(exception, {
+      statusCode,
+      metodo: method,
+      rota: route,
+    });
+
+    // O marcador impede que o transport Winston emita um segundo evento para
+    // esta mesma falha.
     this.loggerService.error(
       `HTTP ${statusCode} ON ${method} | ${route} - ${message}`,
+      MARCADOR_SENTRY_IGNORAR,
     );
 
     response.status(statusCode).json(body);

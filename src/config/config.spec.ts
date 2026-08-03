@@ -51,3 +51,57 @@ describe('ConfigService (env loading)', () => {
     expect(Number(backoff)).toBe(1000);
   });
 });
+
+describe('configValidationSchema (envs do Sentry)', () => {
+  const envBase = {
+    DATABASE_URL: 'postgresql://user:pass@localhost:5432/db',
+    RABBITMQ_URL: 'amqp://localhost',
+    REDIS_URL: 'redis://localhost:6379',
+    ADMIN_API_KEY: 'admin',
+  };
+
+  it('AC-18: Given no SENTRY_* env, when validating, then it passes with documented defaults', () => {
+    // Arrange / Act
+    const { error, value } = configValidationSchema.validate(
+      { ...envBase },
+      { allowUnknown: true, abortEarly: false },
+    );
+
+    // Assert
+    expect(error).toBeUndefined();
+    const env = value as Record<string, unknown>;
+    expect(env.SENTRY_ENABLED).toBe(true);
+    expect(env.SENTRY_TRACES_SAMPLE_RATE).toBe(0.01);
+    expect(env.SENTRY_ENABLE_LOGS).toBe(false);
+    expect(env.SENTRY_ENABLE_METRICS).toBe(false);
+  });
+
+  it('AC-18: Given SENTRY_TRACES_SAMPLE_RATE outside 0..1, when validating, then it fails', () => {
+    // Arrange / Act
+    const { error } = configValidationSchema.validate(
+      { ...envBase, SENTRY_TRACES_SAMPLE_RATE: '2' },
+      { allowUnknown: true, abortEarly: false },
+    );
+
+    // Assert
+    expect(error?.message).toContain('SENTRY_TRACES_SAMPLE_RATE');
+  });
+
+  it('AC-18: Given a SENTRY_DSN and SENTRY_RELEASE, when validating, then both are accepted', () => {
+    // Arrange / Act
+    const { error, value } = configValidationSchema.validate(
+      {
+        ...envBase,
+        SENTRY_DSN: 'http://chave@glitchtip.interno/2',
+        SENTRY_RELEASE: 'gateway@1.2.3',
+      },
+      { allowUnknown: true, abortEarly: false },
+    );
+
+    // Assert
+    expect(error).toBeUndefined();
+    const env = value as Record<string, unknown>;
+    expect(env.SENTRY_DSN).toBe('http://chave@glitchtip.interno/2');
+    expect(env.SENTRY_RELEASE).toBe('gateway@1.2.3');
+  });
+});

@@ -269,10 +269,60 @@ e o verify token é `IG_VERIFY_TOKEN` (app Instagram separado).
 | `DISPATCH_MAX_RETRIES`     | tentativas de forward (default 10)                         |
 | `DISPATCH_BACKOFF_BASE_MS` | base do backoff exponencial (default 1000ms)              |
 | `DATABASE_URL` / `RABBITMQ_URL` / `REDIS_URL` | infra                                    |
+| `SENTRY_DSN`               | DSN do GlitchTip (default: projeto 2 em `31.97.27.185:30808`) |
+| `SENTRY_ENABLED`           | `false` desliga o SDK por completo (default `true`)   |
+| `SENTRY_TRACES_SAMPLE_RATE`| fração de transações enviadas (default `0.01` = 1%)   |
+| `SENTRY_ENABLE_LOGS`       | envia logs pela API de Logs do Sentry (default `false`; GlitchTip não suporta) |
+| `SENTRY_ENABLE_METRICS`    | envia trace metrics (default `false`; GlitchTip não suporta) |
+| `SENTRY_RELEASE`           | tag de release do evento (opcional)                   |
 
 ---
 
-## 10. Referências no código
+## 10. Observabilidade (Sentry/GlitchTip)
+
+O gateway envia três sinais para o GlitchTip (`http://31.97.27.185:30808`,
+projeto `2`):
+
+1. **Erros** — exceções 5xx viram issue; `401`/`403` nas rotas de ingestão
+   (`/webhook*`) viram issue de nível *warning* (é o sintoma típico de app Meta
+   errado ou Callback URL apontando para a rota errada); demais `4xx` não geram
+   issue, só contador. Logs de nível `error` também viram issue (com as
+   migalhas dos logs anteriores anexadas).
+2. **Rastros/performance** — 1% das transações HTTP, com spans automáticos de
+   Postgres, Redis, RabbitMQ e das chamadas de saída para `ambiente.url`.
+   `/health`, `/docs` e `/ui` são amostrados em 0.
+3. **Métricas** — contadores e latências agregados em janelas de 60s e
+   enviados como a transação `whiz.metrics.snapshot` (amostragem 100%), cujos
+   atributos trazem os números:
+
+| Métrica                        | Atributos                          |
+|--------------------------------|------------------------------------|
+| `gateway.http.requisicao`      | `rota`, `metodo`, `classe_status`  |
+| `gateway.http.duracao`         | `rota`, `metodo` (ms)              |
+| `gateway.despacho.tentativa`   | `id_inbox`                         |
+| `gateway.despacho.sucesso`     | `id_inbox`, `tentativa`            |
+| `gateway.despacho.falha`       | `id_inbox`, `status_dlq`           |
+| `gateway.despacho.duracao`     | `id_inbox` (ms)                    |
+| `gateway.dlq.enfileiramento`   | `status`                           |
+| `gauge.processo.*`             | `rss_bytes`, `heap_usado_bytes`, `uptime_s` |
+
+Onde olhar no GlitchTip: **Issues** para erros, **Performance** para as
+transações (inclusive o snapshot de métricas).
+
+Notas operacionais:
+
+- Sem `SENTRY_DSN` (ou com `SENTRY_ENABLED=false`) o SDK fica desligado e nada
+  é enviado — é o comportamento em testes.
+- GlitchTip fora do ar não afeta o gateway: todo envio é assíncrono e protegido.
+- Nenhum segredo vai no evento: `authorization`, `x-api-key`,
+  `x-hub-signature-256`, `x-meta-access-token` e `x-callback-secret` são
+  substituídos por `[Filtered]`, e `sendDefaultPii` é `false`.
+- Para aumentar a amostragem temporariamente em uma investigação, suba
+  `SENTRY_TRACES_SAMPLE_RATE` (ex.: `0.2`) e reinicie o pod.
+
+---
+
+## 11. Referências no código
 
 | Assunto                 | Arquivo                                              |
 |-------------------------|------------------------------------------------------|
@@ -284,3 +334,4 @@ e o verify token é `IG_VERIFY_TOKEN` (app Instagram separado).
 | Ambientes (CRUD)        | `src/ambiente/`                                       |
 | Inboxes (CRUD)          | `src/inbox/`                                          |
 | Mensagens mortas        | `src/dead-letter/`                                   |
+| Observabilidade Sentry  | `src/instrument.ts` · `src/sentry/`                  |
