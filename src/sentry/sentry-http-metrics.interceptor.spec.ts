@@ -22,7 +22,9 @@ function contextoHttp(
 }
 
 describe('SentryHttpMetricsInterceptor', () => {
-  let metrics: jest.Mocked<Pick<SentryMetricsService, 'contar' | 'registrarDuracao'>>;
+  let metrics: jest.Mocked<
+    Pick<SentryMetricsService, 'contar' | 'registrarDuracao'>
+  >;
   let interceptor: SentryHttpMetricsInterceptor;
 
   beforeEach(() => {

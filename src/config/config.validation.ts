@@ -49,4 +49,13 @@ export const configValidationSchema = Joi.object({
   }),
   GATEWAY_PUBLIC_URL: Joi.string().uri().optional(),
   FLOWS_PRIVATE_KEY: Joi.string().optional(),
+  // Observabilidade Sentry/GlitchTip (feature `sentry`). Todas opcionais: sem
+  // DSN o SDK fica desabilitado. O `Sentry.init` roda em src/instrument.ts,
+  // antes do ConfigModule; estas entradas validam e documentam o contrato.
+  SENTRY_DSN: Joi.string().allow('').optional(),
+  SENTRY_ENABLED: Joi.boolean().default(true),
+  SENTRY_TRACES_SAMPLE_RATE: Joi.number().min(0).max(1).default(0.01),
+  SENTRY_ENABLE_LOGS: Joi.boolean().default(false),
+  SENTRY_ENABLE_METRICS: Joi.boolean().default(false),
+  SENTRY_RELEASE: Joi.string().optional(),
 });

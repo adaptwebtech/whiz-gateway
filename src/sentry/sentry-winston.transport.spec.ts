@@ -7,9 +7,13 @@ const capturarMensagemSdk = jest.fn();
 const obterClienteSdk = jest.fn(() => ({}) as unknown);
 
 jest.mock('@sentry/nestjs', () => ({
-  addBreadcrumb: (...args: unknown[]) => adicionarBreadcrumbSdk(...args),
-  captureMessage: (...args: unknown[]) => capturarMensagemSdk(...args),
-  getClient: () => obterClienteSdk(),
+  addBreadcrumb: (...args: unknown[]): void => {
+    adicionarBreadcrumbSdk(...args);
+  },
+  captureMessage: (...args: unknown[]): void => {
+    capturarMensagemSdk(...args);
+  },
+  getClient: (): unknown => obterClienteSdk() as unknown,
 }));
 
 import { MARCADOR_SENTRY_IGNORAR } from './sentry.constants';
@@ -87,7 +91,10 @@ describe('SentryWinstonTransport', () => {
 
     // Assert
     expect(capturarMensagemSdk).not.toHaveBeenCalled();
-    expect(adicionarBreadcrumbSdk.mock.calls.map(([b]) => b)).toEqual([
+    const migalhas = adicionarBreadcrumbSdk.mock.calls.map(
+      (chamada) => chamada[0] as unknown,
+    );
+    expect(migalhas).toEqual([
       { category: 'log', level: 'warning', message: 'atenção' },
       { category: 'log', level: 'info', message: 'ok' },
       { category: 'log', level: 'debug', message: 'detalhe' },

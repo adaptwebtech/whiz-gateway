@@ -15,6 +15,7 @@ import { MetaTokenModule } from './meta-token/meta-token.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { RabbitMQModule } from './rabbitmq/rabbitmq.module';
 import { RedisModule } from './redis/redis.module';
+import { SentryModule } from './sentry/sentry.module';
 import { WppModule } from './wpp/wpp.module';
 import { WppMessagesModule } from './wpp-messages/wpp-messages.module';
 import { WppTemplatesModule } from './wpp-templates/wpp-templates.module';
@@ -32,6 +33,7 @@ import { UiModule } from './ui/ui.module';
 @Module({
   imports: [
     AppConfigModule,
+    SentryModule,
     LoggerModule,
     PrismaModule,
     RabbitMQModule,

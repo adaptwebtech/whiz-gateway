@@ -6,22 +6,29 @@
 const contarSdk = jest.fn();
 const gaugeSdk = jest.fn();
 const distribuicaoSdk = jest.fn();
-const iniciarSpanSdk = jest.fn(
-  (_opcoes: unknown, callback: () => unknown) => callback(),
+const iniciarSpanSdk = jest.fn((_opcoes: unknown, callback: () => unknown) =>
+  callback(),
 );
 const iniciarNovoRastroSdk = jest.fn((callback: () => unknown) => callback());
 const obterClienteSdk = jest.fn(() => ({}) as unknown);
 
 jest.mock('@sentry/nestjs', () => ({
   metrics: {
-    count: (...args: unknown[]) => contarSdk(...args),
-    gauge: (...args: unknown[]) => gaugeSdk(...args),
-    distribution: (...args: unknown[]) => distribuicaoSdk(...args),
+    count: (...args: unknown[]): void => {
+      contarSdk(...args);
+    },
+    gauge: (...args: unknown[]): void => {
+      gaugeSdk(...args);
+    },
+    distribution: (...args: unknown[]): void => {
+      distribuicaoSdk(...args);
+    },
   },
-  startSpan: (opcoes: unknown, callback: () => unknown) =>
-    iniciarSpanSdk(opcoes, callback),
-  startNewTrace: (callback: () => unknown) => iniciarNovoRastroSdk(callback),
-  getClient: () => obterClienteSdk(),
+  startSpan: (opcoes: unknown, callback: () => unknown): unknown =>
+    iniciarSpanSdk(opcoes, callback) as unknown,
+  startNewTrace: (callback: () => unknown): unknown =>
+    iniciarNovoRastroSdk(callback) as unknown,
+  getClient: (): unknown => obterClienteSdk() as unknown,
 }));
 
 import {
@@ -92,9 +99,7 @@ describe('SentryMetricsService', () => {
     expect(
       atributos['contador.gateway.http.requisicao|classe_status=2xx'],
     ).toBe(2);
-    expect(
-      atributos['dist.gateway.http.duracao|rota=/webhook.total'],
-    ).toBe(3);
+    expect(atributos['dist.gateway.http.duracao|rota=/webhook.total']).toBe(3);
     expect(atributos['dist.gateway.http.duracao|rota=/webhook.p50']).toBe(20);
     expect(atributos['dist.gateway.http.duracao|rota=/webhook.p95']).toBe(30);
     expect(atributos['dist.gateway.http.duracao|rota=/webhook.max']).toBe(30);

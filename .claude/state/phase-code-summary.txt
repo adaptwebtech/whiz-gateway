@@ -1,0 +1,7 @@
+FILES_NEW: src/instrument.ts, src/sentry/{sentry.constants,sentry-options,sentry.service,sentry-metrics.service,sentry-http-metrics.interceptor,sentry-winston.transport,sentry.module}.ts
+FILES_EDITED: src/main.ts, src/app.module.ts, src/logger/logger.service.ts, src/common/filters/global-exception.filter.ts, src/config/config.validation.ts, src/dispatch/dispatch-handler.service.ts, package.json
+TESTS: 57 suites / 482 tests GREEN (serial e maxWorkers=2)
+LINT: 0 novos erros (2 pre-existentes em instagram-webhook)
+BUILD: 0
+DEPS: @sentry/nestjs 10.69.0, winston-transport
+NOTAS: autoSessionTracking nao existe mais no SDK v10 — sessoes desligadas via httpIntegration({trackIncomingRequestsAsSessions:false}) + remocao da integracao ProcessSession

@@ -10,8 +10,9 @@ jest.mock('@sentry/nestjs', () => ({
   })),
 }));
 
-import type { ErrorEvent, Integration } from '@sentry/nestjs';
+import type { ErrorEvent } from '@sentry/nestjs';
 import { httpIntegration } from '@sentry/nestjs';
+import type { Integracao } from './sentry-options';
 import {
   construirAmostradorDeRastros,
   construirOpcoesSentry,
@@ -80,9 +81,7 @@ describe('tracesSampler', () => {
 
     // Act / Assert
     expect(amostrador).toBeDefined();
-    expect(amostrar(amostrador!, 'POST /webhook')).toBe(
-      TAXA_AMOSTRAGEM_PADRAO,
-    );
+    expect(amostrar(amostrador!, 'POST /webhook')).toBe(TAXA_AMOSTRAGEM_PADRAO);
     expect(amostrar(amostrador!, 'GET /health')).toBe(0);
     expect(amostrar(amostrador!, 'GET /docs')).toBe(0);
     expect(amostrar(amostrador!, 'GET /ui')).toBe(0);
@@ -122,7 +121,7 @@ describe('integrações e sinais não suportados pelo GlitchTip', () => {
       { name: 'ProcessSession' },
       { name: 'Http' },
       { name: 'Console' },
-    ] as unknown as Integration[];
+    ] as unknown as Integracao[];
 
     // Act
     const resolvidas = criarIntegracoesSentry(padroes);

@@ -9,11 +9,18 @@ const descarregarSdk = jest.fn().mockResolvedValue(true);
 const obterClienteSdk = jest.fn(() => ({}) as unknown);
 
 jest.mock('@sentry/nestjs', () => ({
-  captureException: (...args: unknown[]) => capturarExcecaoSdk(...args),
-  captureMessage: (...args: unknown[]) => capturarMensagemSdk(...args),
-  addBreadcrumb: (...args: unknown[]) => adicionarBreadcrumbSdk(...args),
-  flush: (...args: unknown[]) => descarregarSdk(...args),
-  getClient: () => obterClienteSdk(),
+  captureException: (...args: unknown[]): void => {
+    capturarExcecaoSdk(...args);
+  },
+  captureMessage: (...args: unknown[]): void => {
+    capturarMensagemSdk(...args);
+  },
+  addBreadcrumb: (...args: unknown[]): void => {
+    adicionarBreadcrumbSdk(...args);
+  },
+  flush: (...args: unknown[]): Promise<boolean> =>
+    descarregarSdk(...args) as Promise<boolean>,
+  getClient: (): unknown => obterClienteSdk() as unknown,
 }));
 
 import { HttpException, HttpStatus, NotFoundException } from '@nestjs/common';

@@ -1,9 +1,11 @@
 import { Injectable, LoggerService as NestLoggerService } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createLogger, format, Logger, transports } from 'winston';
+import { SentryWinstonTransport } from '../sentry/sentry-winston.transport';
 
 /**
- * LoggerService baseado em Winston, transport de console apenas (OQ-3).
+ * LoggerService baseado em Winston: console sempre, mais o transport Sentry
+ * (breadcrumbs de todo log e evento para nível `error` — feature `sentry`).
  * Colorido em desenvolvimento, JSON em produção.
  */
 @Injectable()
@@ -26,7 +28,7 @@ export class LoggerService implements NestLoggerService {
               return `${String(timestamp)} ${level}: ${text}`;
             }),
           ),
-      transports: [new transports.Console()],
+      transports: [new transports.Console(), new SentryWinstonTransport()],
     });
   }
 
