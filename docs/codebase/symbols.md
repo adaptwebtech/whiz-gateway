@@ -272,6 +272,8 @@ Mapa de símbolos exportados → arquivo + assinatura. Autoritativo para descobe
 | `AtributosMetrica` | type | `src/sentry/sentry-metrics.service.ts` | `Record<string, string \| number>` |
 | `SentryHttpMetricsInterceptor` | classe (`@Injectable`) | `src/sentry/sentry-http-metrics.interceptor.ts` | `APP_INTERCEPTOR`; conta `gateway.http.requisicao` (`rota`, `metodo`, `classe_status`) e registra `gateway.http.duracao`; rota via `req.route.path` com fallback à URL sem query |
 | `SentryWinstonTransport` | classe (`extends Transport`) | `src/sentry/sentry-winston.transport.ts` | `log(entrada, proximo)`; breadcrumb sempre + `captureMessage(level='error')` para logs `error` sem `MARCADOR_SENTRY_IGNORAR` |
+| `criarTransportDeLogsSentry` | função | `src/sentry/sentry-logs.transport.ts` | `() => Transport`; instancia `createSentryWinstonTransport(Transport, { levels })` — alimenta a página *Logs* do GlitchTip (só emite com `enableLogs`) |
+| `NIVEIS_LOG_SENTRY` | const (`as const`) | `src/sentry/sentry.constants.ts` | `['info','warn','error','fatal']` — níveis que sobem como log estruturado |
 | `SentryModule` | módulo (`@Global`) | `src/sentry/sentry.module.ts` | importa `SentryModule.forRoot()` do `@sentry/nestjs/setup`; provê/exporta `SentryService` + `SentryMetricsService`; `onApplicationShutdown` → `descarregar(TIMEOUT_FLUSH_MS)` |
 | `DSN_GLITCHTIP_PADRAO` | const | `src/sentry/sentry.constants.ts` | DSN padrão do projeto GlitchTip |
 | `TAXA_AMOSTRAGEM_PADRAO` | const | `src/sentry/sentry.constants.ts` | `0.01` |

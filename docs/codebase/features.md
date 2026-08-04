@@ -321,10 +321,11 @@ Mapa de cada feature para seus arquivos. Autoritativo para descoberta (evita `gr
 | Fachada de captura (novo) | `src/sentry/sentry.service.ts` · `src/sentry/sentry.service.spec.ts` |
 | Métricas (novo) | `src/sentry/sentry-metrics.service.ts` · `src/sentry/sentry-metrics.service.spec.ts` |
 | Interceptor HTTP (novo) | `src/sentry/sentry-http-metrics.interceptor.ts` · `src/sentry/sentry-http-metrics.interceptor.spec.ts` |
-| Ponte Winston (novo) | `src/sentry/sentry-winston.transport.ts` · `src/sentry/sentry-winston.transport.spec.ts` |
+| Ponte Winston → issues (novo) | `src/sentry/sentry-winston.transport.ts` · `src/sentry/sentry-winston.transport.spec.ts` |
+| Transport de logs estruturados (novo) | `src/sentry/sentry-logs.transport.ts` · `src/sentry/sentry-logs.transport.spec.ts` |
 | Module `@Global` (novo) | `src/sentry/sentry.module.ts` · `src/sentry/sentry.module.spec.ts` |
 | Glossário | `src/sentry/context.md` |
-| Logger (modificado) | `src/logger/logger.service.ts` (transport Sentry) |
+| Logger (modificado) | `src/logger/logger.service.ts` (transports Sentry de issues + logs, metadado enxuto) · `src/logger/logger.service.spec.ts` (novo) |
 | Filtro global (modificado) | `src/common/filters/global-exception.filter.ts` (captura + marcador anti-duplicação) |
 | Config (modificado) | `src/config/config.validation.ts` (envs `SENTRY_*`) |
 | Despacho (modificado) | `src/dispatch/dispatch-handler.service.ts` (métricas de despacho/DLQ) |

@@ -39,6 +39,12 @@ export const VALOR_FILTRADO = '[Filtered]';
  */
 export const MARCADOR_SENTRY_IGNORAR = '__sentry_ignorado__';
 
+/**
+ * Níveis que sobem como log estruturado para o Sentry/GlitchTip.
+ * `debug`/`verbose`/`silly` ficam só no console — volume alto, valor baixo.
+ */
+export const NIVEIS_LOG_SENTRY = ['info', 'warn', 'error', 'fatal'] as const;
+
 /** Teto de amostras guardadas por distribuição em uma janela (NFR-5). */
 export const MAX_AMOSTRAS_POR_DISTRIBUICAO = 500;
 

@@ -18,14 +18,18 @@ GlitchTip (backend compatível com o protocolo Sentry).
   (1%); o `tracesSampler` decide caso a caso.
 - **Snapshot de métricas**: transação sintética `whiz.metrics.snapshot`, emitida
   a cada 60s com os agregados da janela como atributos. É o caminho que entrega
-  números no GlitchTip. _Avoid_: trace metrics (a API `Sentry.metrics.*`, que o
-  GlitchTip descarta).
+  números no GlitchTip. _Avoid_: trace metrics (a API `Sentry.metrics.*`, cuja
+  ingestão o GlitchTip não documenta).
 - **Janela**: intervalo de agregação em memória (60s) de contadores e
   distribuições, por réplica.
 - **Rota de ruído**: rota sem valor de observabilidade (`/health`, `/docs`,
   `/ui`), amostrada em 0.
 - **Rota de ingestão**: `/webhook*`, onde um `401`/`403` indica configuração
   errada de app Meta e por isso vira evento de nível `warning`.
+- **Log estruturado**: entrada da página *Logs* do GlitchTip — nível, mensagem e
+  atributos, correlacionada ao rastro pelo `trace_id`. Vem do transport oficial
+  winston→Sentry. _Avoid_: breadcrumb (só existe anexada a um evento) e issue
+  (log `error` gera as duas coisas de propósito).
 - **Marcador de log ignorado**: `MARCADOR_SENTRY_IGNORAR`, passado nos
   `optionalParams` de um log `error` já capturado pelo filtro global, para a
   ponte Winston não duplicar o evento.
@@ -42,6 +46,7 @@ GlitchTip (backend compatível com o protocolo Sentry).
 | `SentryMetricsService` | `sentry-metrics.service.ts` | Janela de métricas + `emitirSnapshot()` (`@Cron` de 1 min). |
 | `SentryHttpMetricsInterceptor` | `sentry-http-metrics.interceptor.ts` | `APP_INTERCEPTOR`: contagem e latência por rota/método/classe de status. |
 | `SentryWinstonTransport` | `sentry-winston.transport.ts` | Transport Winston → breadcrumb + evento de nível `error`. |
+| `criarTransportDeLogsSentry` | `sentry-logs.transport.ts` | Transport Winston → Sentry Logs, níveis de `NIVEIS_LOG_SENTRY`. |
 | `SentryModule` | `sentry.module.ts` | `@Global`; importa `SentryModule.forRoot()` do SDK e faz o flush no shutdown. |
 | `METRICAS` | `sentry.constants.ts` | Nomes das métricas do gateway. |
 
@@ -49,9 +54,10 @@ GlitchTip (backend compatível com o protocolo Sentry).
 
 - `src/instrument.ts` chama `Sentry.init` como efeito de import, antes do
   `AppModule` — única exceção autorizada a ler `process.env` direto.
-- `LoggerService` (módulo `logger`) adiciona `SentryWinstonTransport` aos
-  transports do Winston.
+- `LoggerService` (módulo `logger`) adiciona `SentryWinstonTransport` (issues) e
+  `criarTransportDeLogsSentry()` (logs) aos transports do Winston, e só anexa
+  `optionalParams` ao metadado quando há parâmetros.
 - `GlobalExceptionFilter` (módulo `common`) injeta `SentryService`.
 - `DispatchHandlerService` (módulo `dispatch`) injeta `SentryMetricsService`.
-- Sinais que o GlitchTip não ingere (sessões, Sentry Logs, trace metrics) ficam
-  desligados por padrão.
+- Sessões nunca são enviadas (GlitchTip não as suporta). Logs e trace metrics
+  têm default `false` no código e ficam ligados em produção.
