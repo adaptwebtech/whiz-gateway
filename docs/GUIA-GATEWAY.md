@@ -272,8 +272,8 @@ e o verify token é `IG_VERIFY_TOKEN` (app Instagram separado).
 | `SENTRY_DSN`               | DSN do GlitchTip (default: projeto 2 em `31.97.27.185:30808`) |
 | `SENTRY_ENABLED`           | `false` desliga o SDK por completo (default `true`)   |
 | `SENTRY_TRACES_SAMPLE_RATE`| fração de transações enviadas (default `0.01` = 1%)   |
-| `SENTRY_ENABLE_LOGS`       | envia logs pela API de Logs do Sentry (default `false`; GlitchTip não suporta) |
-| `SENTRY_ENABLE_METRICS`    | envia trace metrics (default `false`; GlitchTip não suporta) |
+| `SENTRY_ENABLE_LOGS`       | envia logs estruturados (default `false` no código, `true` em produção) |
+| `SENTRY_ENABLE_METRICS`    | envia trace metrics (default `false` no código, `true` em produção — em avaliação) |
 | `SENTRY_RELEASE`           | tag de release do evento (opcional)                   |
 
 ---
@@ -306,8 +306,18 @@ projeto `2`):
 | `gateway.dlq.enfileiramento`   | `status`                           |
 | `gauge.processo.*`             | `rss_bytes`, `heap_usado_bytes`, `uptime_s` |
 
+4. **Logs estruturados** — a página **Logs** do projeto recebe todo log de nível
+   `info`, `warn`, `error` e `fatal` (o `debug`/`verbose` fica só no console).
+   Cada entrada leva nível, mensagem, o metadado do log como atributos e o
+   `trace_id` — clicar no `trace_id` abre a transação correspondente. Filtros
+   disponíveis: nível, serviço, ambiente e busca full-text na mensagem.
+
 Onde olhar no GlitchTip: **Issues** para erros, **Performance** para as
-transações (inclusive o snapshot de métricas).
+transações (inclusive o snapshot de métricas), **Logs** para o fluxo de log.
+
+Um log de nível `error` aparece nos dois lugares de propósito: como issue (que
+agrupa, deduplica e alerta) e como linha de log (contexto navegável). Não é
+duplicação acidental.
 
 Notas operacionais:
 
@@ -319,6 +329,11 @@ Notas operacionais:
   substituídos por `[Filtered]`, e `sendDefaultPii` é `false`.
 - Para aumentar a amostragem temporariamente em uma investigação, suba
   `SENTRY_TRACES_SAMPLE_RATE` (ex.: `0.2`) e reinicie o pod.
+- Log estruturado não substitui `kubectl logs`: o console segue igual (JSON em
+  produção). O GlitchTip é a visão pesquisável, com nível como campo próprio em
+  vez de texto cru.
+- Se o volume de log incomodar, restrinja os níveis em `NIVEIS_LOG_SENTRY`
+  (`src/sentry/sentry.constants.ts`) ou desligue com `SENTRY_ENABLE_LOGS=false`.
 
 ---
 

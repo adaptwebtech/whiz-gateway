@@ -20,11 +20,11 @@ interface JanelaMetricas {
 }
 
 /**
- * Agregador de métricas em memória. O GlitchTip não ingere a API de trace
- * metrics, então o caminho que realmente entrega números é a transação
- * sintética `whiz.metrics.snapshot`, emitida a cada minuto com os agregados da
- * janela (FR-15). As chamadas a `Sentry.metrics.*` são mantidas para quando o
- * backend passar a suportá-las (no-op enquanto `enableMetrics` é `false`).
+ * Agregador de métricas em memória. O GlitchTip não documenta ingestão da API
+ * de trace metrics, então o caminho garantido é a transação sintética
+ * `whiz.metrics.snapshot`, emitida a cada minuto com os agregados da janela
+ * (FR-15). As chamadas a `Sentry.metrics.*` seguem em paralelo (no-op quando
+ * `enableMetrics` é `false`) para o caso de o backend ingerir.
  */
 @Injectable()
 export class SentryMetricsService {

@@ -126,7 +126,7 @@ describe('tracesSampler', () => {
   });
 });
 
-describe('integrações e sinais não suportados pelo GlitchTip', () => {
+describe('integrações e sinais opcionais', () => {
   it('AC-6: Given the default integrations, when resolving them, then ProcessSession is dropped and httpIntegration is created without incoming-request sessions', () => {
     // Arrange
     const padroes = [
@@ -145,7 +145,7 @@ describe('integrações e sinais não suportados pelo GlitchTip', () => {
     });
   });
 
-  it('AC-6: Given no SENTRY_ENABLE_LOGS/SENTRY_ENABLE_METRICS, when building options, then logs, metrics and PII stay off', () => {
+  it('AC-6: Given no SENTRY_ENABLE_LOGS/SENTRY_ENABLE_METRICS, when building options, then logs, metrics and PII stay off by default', () => {
     // Arrange / Act
     const opcoes = construirOpcoesSentry({});
 

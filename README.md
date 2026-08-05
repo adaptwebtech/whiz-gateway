@@ -36,11 +36,11 @@ Validadas no bootstrap (Joi). A ausência de qualquer obrigatória impede a apli
 | `SENTRY_DSN` | não | DSN GlitchTip do projeto | DSN de ingestão; string vazia desliga o SDK |
 | `SENTRY_ENABLED` | não | `true` | `false` desliga a instrumentação por completo |
 | `SENTRY_TRACES_SAMPLE_RATE` | não | `0.01` | Fração de transações enviadas (0..1) |
-| `SENTRY_ENABLE_LOGS` | não | `false` | API de Logs do Sentry — GlitchTip não ingere |
-| `SENTRY_ENABLE_METRICS` | não | `false` | Trace metrics — GlitchTip não ingere |
+| `SENTRY_ENABLE_LOGS` | não | `false` | Logs estruturados (página *Logs* do GlitchTip); `true` em produção |
+| `SENTRY_ENABLE_METRICS` | não | `false` | Trace metrics; `true` em produção (ingestão pelo GlitchTip em avaliação) |
 | `SENTRY_RELEASE` | não | — | Tag de release nos eventos |
 
-> **Observabilidade:** erros (5xx e `401`/`403` de rotas de ingestão), rastros (1% das transações, com spans automáticos de Postgres/Redis/RabbitMQ/HTTP) e métricas de domínio agregadas a cada 60s na transação `whiz.metrics.snapshot`. Detalhes de operação em [docs/GUIA-GATEWAY.md](docs/GUIA-GATEWAY.md) §10; implementação em [docs/implementation/2026-08-03-sentry.md](docs/implementation/2026-08-03-sentry.md).
+> **Observabilidade:** erros (5xx e `401`/`403` de rotas de ingestão), rastros (1% das transações, com spans automáticos de Postgres/Redis/RabbitMQ/HTTP), métricas de domínio agregadas a cada 60s na transação `whiz.metrics.snapshot` e logs estruturados (níveis `info`+, via transport oficial winston→Sentry). Detalhes de operação em [docs/GUIA-GATEWAY.md](docs/GUIA-GATEWAY.md) §10; implementação em [docs/implementation/2026-08-03-sentry.md](docs/implementation/2026-08-03-sentry.md).
 
 ## Como rodar
 
