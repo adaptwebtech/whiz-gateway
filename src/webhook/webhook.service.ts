@@ -20,18 +20,7 @@ export class WebhookService {
   ) {}
 
   async handleIncoming(payload: Record<string, unknown>): Promise<void> {
-    const pid = this.extractPid(payload);
-
-    if (!pid) {
-      await this.mq.sendToQueue(DLQ_NAME, {
-        message: payload,
-        id_inbox: null,
-        status: StatusFalhaMensagem.INBOX_NAO_REGISTRADA,
-      });
-      return;
-    }
-
-    const inbox = await this.inboxRepo.findByPid(pid);
+    const inbox = await this.resolverInbox(payload);
 
     if (!inbox) {
       await this.mq.sendToQueue(DLQ_NAME, {
@@ -49,10 +38,50 @@ export class WebhookService {
     });
   }
 
-  private extractPid(payload: Record<string, unknown>): string | null {
+  /**
+   * Resolve a inbox em dois passos, do mais para o menos específico.
+   *
+   * 1. `value.metadata.phone_number_id` — presente em `messages` e em
+   *    `message_echoes`, que é a maior parte do tráfego.
+   * 2. `entry.id`, que na Cloud API é o id da WABA — único caminho para os eventos
+   *    de NÍVEL WABA (`account_update`, `phone_number_quality_update`,
+   *    `message_template_status_update`, `message_template_quality_update`,
+   *    `account_review_update`, …). Sem este passo, TODOS eles caíam na fila de
+   *    mensagens mortas como INBOX_NAO_REGISTRADA, porque não têm `metadata`.
+   */
+  private async resolverInbox(
+    payload: Record<string, unknown>,
+  ): Promise<{ id: string } | null> {
+    const pid = this.extractPid(payload);
+    if (pid) {
+      const porPid = await this.inboxRepo.findByPid(pid);
+      if (porPid) return porPid;
+    }
+
+    const wabaId = this.extractWabaId(payload);
+    if (wabaId) {
+      const porWaba = await this.inboxRepo.findByWabaId(wabaId);
+      if (porWaba) {
+        this.logger.log(
+          `Webhook sem pid resolvido pela WABA ${wabaId} → inbox ${porWaba.id}`,
+        );
+        return porWaba;
+      }
+    }
+
+    return null;
+  }
+
+  private primeiroChange(
+    payload: Record<string, unknown>,
+  ): Record<string, unknown> | null {
     const entry = payload['entry'];
     if (!Array.isArray(entry) || entry.length === 0) return null;
-    const firstEntry = entry[0] as Record<string, unknown> | undefined;
+    return (entry[0] as Record<string, unknown> | undefined) ?? null;
+  }
+
+  private extractPid(payload: Record<string, unknown>): string | null {
+    const firstEntry = this.primeiroChange(payload);
     if (!firstEntry) return null;
     const changes = firstEntry['changes'];
     if (!Array.isArray(changes) || changes.length === 0) return null;
@@ -64,5 +93,13 @@ export class WebhookService {
     if (!metadata) return null;
     const pid = metadata['phone_number_id'];
     return typeof pid === 'string' && pid.length > 0 ? pid : null;
+  }
+
+  /** `entry[0].id` — na Cloud API é o id da WABA que originou o evento. */
+  private extractWabaId(payload: Record<string, unknown>): string | null {
+    const firstEntry = this.primeiroChange(payload);
+    if (!firstEntry) return null;
+    const id = firstEntry['id'];
+    return typeof id === 'string' && id.length > 0 ? id : null;
   }
 }

@@ -40,8 +40,22 @@ model inboxes {
   del         Boolean  @default(false)
   data        DateTime @default(now())
 
+  /// WABA (WhatsApp Business Account) dona do número, quando aplicável.
+  ///
+  /// Existe para resolver os webhooks de NÍVEL WABA — `account_update`,
+  /// `phone_number_quality_update`, `message_template_*` etc. Esses payloads não
+  /// trazem `value.metadata.phone_number_id`, então a resolução por `pid` falha e
+  /// eles iam todos para a fila de mensagens mortas.
+  ///
+  /// NÃO é único: uma WABA pode ter vários números, logo várias inboxes. Para o
+  /// roteamento isso não importa — o que se procura aqui é o AMBIENTE, e os números
+  /// de uma mesma WABA pertencem ao mesmo ambiente.
+  waba_id String?
+
   ambiente              ambiente                @relation(fields: [id_ambiente], references: [id])
   fila_mensagens_mortas fila_mensagens_mortas[]
+
+  @@index([waba_id])
 }
 
 /// Chave de API para autenticação de integrações externas.

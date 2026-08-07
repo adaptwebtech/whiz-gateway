@@ -22,4 +22,13 @@ export class UpdateInboxDto {
   @IsInt()
   @IsPositive()
   id_ambiente?: number;
+
+  @ApiPropertyOptional({
+    description:
+      'WABA dona do número, usada para rotear os webhooks de nível WABA.',
+    example: '1613119706411328',
+  })
+  @IsOptional()
+  @IsString()
+  waba_id?: string;
 }
