@@ -6,6 +6,12 @@
  * AC-8: payload without phone_number_id → mq.sendToQueue(DLQ, INBOX_NAO_REGISTRADA), responds 200
  *
  * REG-4: dispatchHandler.handle rejects → WebhookService catches and logs error (not silent swallow)
+ *
+ * Resolução por WABA (docs/specs/2026-08-07-webhook-resolucao-por-waba.md):
+ * AC-1: sem pid, com entry.id de WABA registrada → resolve e despacha (não vai para a DLQ)
+ * AC-2: sem pid, WABA desconhecida → DLQ INBOX_NAO_REGISTRADA
+ * AC-3: com pid resolvido → nem consulta a WABA (pid tem precedência)
+ * AC-4: pid não registrado + WABA registrada → cai no fallback e despacha
  */
 
 import { WebhookService } from './webhook.service';
@@ -22,6 +28,7 @@ const makeInboxRepo = (): jest.Mocked<IInboxRepository> => ({
   findAll: jest.fn(),
   findById: jest.fn(),
   findByPid: jest.fn(),
+  findByWabaId: jest.fn(),
   reviveByPid: jest.fn(),
   create: jest.fn(),
   update: jest.fn(),
@@ -44,11 +51,13 @@ const makeDispatchHandler = (): jest.Mocked<IDispatchHandler> => ({
 
 const INBOX_ID = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
 const PHONE_NUMBER_ID = 'whatsapp-phone-123';
+const WABA_ID = '1613119706411328';
 
 const INBOX_FIXTURE: InboxResponseDto = {
   id: INBOX_ID,
   id_ambiente: 1,
   pid: PHONE_NUMBER_ID,
+  waba_id: WABA_ID,
   nome: 'WhatsApp Dev',
   del: false,
   data: new Date('2026-06-01T00:00:00.000Z').toISOString(),
@@ -62,6 +71,33 @@ const buildPayload = (phoneNumberId?: string): Record<string, unknown> => ({
         {
           value: {
             metadata: phoneNumberId ? { phone_number_id: phoneNumberId } : {},
+          },
+        },
+      ],
+    },
+  ],
+});
+
+/**
+ * Evento de NÍVEL WABA, na forma real: `entry.id` é a WABA e `value` NÃO tem
+ * `metadata` — é exatamente por isso que a resolução por pid não serve aqui.
+ */
+const buildPayloadNivelWaba = (
+  wabaId: string = WABA_ID,
+  field = 'phone_number_quality_update',
+): Record<string, unknown> => ({
+  object: 'whatsapp_business_account',
+  entry: [
+    {
+      id: wabaId,
+      time: 1754500000,
+      changes: [
+        {
+          field,
+          value: {
+            display_phone_number: '5531999999999',
+            event: 'THROUGHPUT_UPGRADE',
+            max_daily_conversations_per_business: 'TIER_10K',
           },
         },
       ],
@@ -198,6 +234,116 @@ describe('WebhookService — unit', () => {
 
     // Assert
     expect(dispatchHandler.handle).not.toHaveBeenCalled();
+  });
+
+  // ─── Resolução por WABA ────────────────────────────────────────────────────
+
+  it('AC-1: evento de nível WABA (sem metadata) é resolvido por entry.id e despachado', async () => {
+    // Arrange — payload real de phone_number_quality_update: não tem phone_number_id
+    inboxRepo.findByWabaId.mockResolvedValueOnce(INBOX_FIXTURE);
+    const payload = buildPayloadNivelWaba();
+
+    // Act
+    await service.handleIncoming(payload);
+    await new Promise((r) => setImmediate(r));
+
+    // Assert
+    expect(inboxRepo.findByPid).not.toHaveBeenCalled();
+    expect(inboxRepo.findByWabaId).toHaveBeenCalledWith(WABA_ID);
+    expect(dispatchHandler.handle).toHaveBeenCalledWith(INBOX_ID, payload);
+    expect(rabbitMQ.sendToQueue).not.toHaveBeenCalled();
+  });
+
+  it('AC-1: vale para qualquer field de nível WABA, não só quality', async () => {
+    // Arrange
+    inboxRepo.findByWabaId.mockResolvedValue(INBOX_FIXTURE);
+
+    // Act
+    for (const field of [
+      'account_update',
+      'message_template_status_update',
+      'message_template_quality_update',
+      'account_review_update',
+      'campo_que_a_meta_ainda_nao_documentou',
+    ]) {
+      await service.handleIncoming(buildPayloadNivelWaba(WABA_ID, field));
+    }
+    await new Promise((r) => setImmediate(r));
+
+    // Assert — o roteamento é pela WABA, não pelo nome do field
+    expect(dispatchHandler.handle).toHaveBeenCalledTimes(5);
+    expect(rabbitMQ.sendToQueue).not.toHaveBeenCalled();
+  });
+
+  it('AC-2: WABA desconhecida → DLQ INBOX_NAO_REGISTRADA', async () => {
+    // Arrange
+    inboxRepo.findByWabaId.mockResolvedValueOnce(null);
+    const payload = buildPayloadNivelWaba('waba-que-nao-existe');
+
+    // Act
+    await service.handleIncoming(payload);
+
+    // Assert
+    expect(inboxRepo.findByWabaId).toHaveBeenCalledWith('waba-que-nao-existe');
+    expect(dispatchHandler.handle).not.toHaveBeenCalled();
+    expect(rabbitMQ.sendToQueue).toHaveBeenCalledWith(
+      DLQ_NAME,
+      expect.objectContaining({
+        message: payload,
+        id_inbox: null,
+        status: 'INBOX_NAO_REGISTRADA',
+      }),
+    );
+  });
+
+  it('AC-3: com pid resolvido, a WABA nem é consultada (pid tem precedência)', async () => {
+    // Arrange
+    inboxRepo.findByPid.mockResolvedValueOnce(INBOX_FIXTURE);
+
+    // Act — payload de mensagem, que tem pid E entry.id
+    await service.handleIncoming({
+      object: 'whatsapp_business_account',
+      entry: [
+        {
+          id: WABA_ID,
+          changes: [
+            { value: { metadata: { phone_number_id: PHONE_NUMBER_ID } } },
+          ],
+        },
+      ],
+    });
+    await new Promise((r) => setImmediate(r));
+
+    // Assert
+    expect(inboxRepo.findByPid).toHaveBeenCalledWith(PHONE_NUMBER_ID);
+    expect(inboxRepo.findByWabaId).not.toHaveBeenCalled();
+    expect(dispatchHandler.handle).toHaveBeenCalledTimes(1);
+  });
+
+  it('AC-4: pid presente mas não registrado cai no fallback da WABA', async () => {
+    // Arrange — número novo ainda não registrado, WABA já conhecida
+    inboxRepo.findByPid.mockResolvedValueOnce(null);
+    inboxRepo.findByWabaId.mockResolvedValueOnce(INBOX_FIXTURE);
+
+    // Act
+    await service.handleIncoming({
+      object: 'whatsapp_business_account',
+      entry: [
+        {
+          id: WABA_ID,
+          changes: [
+            { value: { metadata: { phone_number_id: 'pid-desconhecido' } } },
+          ],
+        },
+      ],
+    });
+    await new Promise((r) => setImmediate(r));
+
+    // Assert
+    expect(inboxRepo.findByPid).toHaveBeenCalledWith('pid-desconhecido');
+    expect(inboxRepo.findByWabaId).toHaveBeenCalledWith(WABA_ID);
+    expect(dispatchHandler.handle).toHaveBeenCalledWith(INBOX_ID, expect.any(Object));
+    expect(rabbitMQ.sendToQueue).not.toHaveBeenCalled();
   });
 
   // ─── REG-4 ─────────────────────────────────────────────────────────────────

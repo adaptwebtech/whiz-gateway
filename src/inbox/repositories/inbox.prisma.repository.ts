@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateInboxDto } from '../dto/create-inbox.dto';
@@ -8,6 +8,8 @@ import type { IInboxRepository } from '../interfaces/inbox-repository.interface'
 
 @Injectable()
 export class InboxPrismaRepository implements IInboxRepository {
+  private readonly logger = new Logger(InboxPrismaRepository.name);
+
   constructor(private readonly prisma: PrismaService) {}
 
   async findAll(): Promise<InboxResponseDto[]> {
@@ -45,6 +47,32 @@ export class InboxPrismaRepository implements IInboxRepository {
     );
   }
 
+  async findByWabaId(wabaId: string): Promise<InboxResponseDto | null> {
+    const records = await this.prisma.inboxes.findMany({
+      where: { waba_id: wabaId, del: false },
+      orderBy: { data: 'asc' },
+    });
+    if (records.length === 0) return null;
+
+    // Vários números da mesma WABA são o caso NORMAL, e todos devem apontar para o
+    // mesmo ambiente. Ambientes divergentes significam cadastro inconsistente: o
+    // evento de nível WABA só chegaria a um deles, então vale o aviso.
+    const ambientes = new Set(records.map((r) => r.id_ambiente));
+    if (ambientes.size > 1) {
+      this.logger.warn(
+        `WABA ${wabaId} tem inboxes em ambientes diferentes (${[...ambientes].join(', ')}); ` +
+          `webhooks de nível WABA irão para o ambiente ${records[0].id_ambiente}.`,
+      );
+    }
+
+    const record = records[0];
+    return plainToInstance(
+      InboxResponseDto,
+      { ...record, data: record.data.toISOString() },
+      { excludeExtraneousValues: true },
+    );
+  }
+
   async reviveByPid(data: CreateInboxDto): Promise<InboxResponseDto | null> {
     // O pid é @unique ignorando `del`, então uma linha soft-deletada continua
     // ocupando o pid e um novo insert bateria em P2002 (500). Aqui revivemos essa
@@ -70,6 +98,9 @@ export class InboxPrismaRepository implements IInboxRepository {
         id_ambiente: data.id_ambiente,
         // Atualiza o nome registrado quando informado; senão mantém o anterior.
         ...(data.nome ? { nome: data.nome } : {}),
+        // Idem para a WABA: reconectar um número não pode apagar a resolução de
+        // nível WABA que já estava registrada.
+        ...(data.waba_id ? { waba_id: data.waba_id } : {}),
       },
     });
     return plainToInstance(
@@ -93,6 +124,7 @@ export class InboxPrismaRepository implements IInboxRepository {
         id_ambiente: data.id_ambiente,
         pid: data.pid,
         nome: data.nome,
+        waba_id: data.waba_id ?? null,
       },
     });
     return plainToInstance(
@@ -108,6 +140,7 @@ export class InboxPrismaRepository implements IInboxRepository {
       data: {
         nome: data.nome,
         id_ambiente: data.id_ambiente,
+        waba_id: data.waba_id,
       },
     });
     return plainToInstance(

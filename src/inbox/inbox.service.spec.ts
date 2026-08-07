@@ -133,7 +133,7 @@ describe('InboxService — unit', () => {
 
   // ─── AC-9 ──────────────────────────────────────────────────────────────────
 
-  it('AC-9: create retorna InboxResponseDto com os 6 campos exatos (sem campos internos Prisma)', async () => {
+  it('AC-9: create retorna InboxResponseDto com os 7 campos exatos (sem campos internos Prisma)', async () => {
     // Arrange
     repo.findByPid.mockResolvedValueOnce(null);
     repo.create.mockResolvedValueOnce(INBOX_FIXTURE);
@@ -151,7 +151,7 @@ describe('InboxService — unit', () => {
     expect(result).not.toHaveProperty('$transaction');
     expect(result).not.toHaveProperty('_count');
     expect(Object.keys(result as object).sort()).toEqual(
-      ['data', 'del', 'id', 'id_ambiente', 'nome', 'pid'].sort(),
+      ['data', 'del', 'id', 'id_ambiente', 'nome', 'pid', 'waba_id'].sort(),
     );
   });
 
@@ -166,7 +166,7 @@ describe('InboxService — unit', () => {
     expect(result).toHaveLength(1);
     const item = result[0];
     expect(Object.keys(item as object).sort()).toEqual(
-      ['data', 'del', 'id', 'id_ambiente', 'nome', 'pid'].sort(),
+      ['data', 'del', 'id', 'id_ambiente', 'nome', 'pid', 'waba_id'].sort(),
     );
   });
 
@@ -181,7 +181,7 @@ describe('InboxService — unit', () => {
     expect(result).toHaveProperty('id', INBOX_ID);
     expect(result).toHaveProperty('del', false);
     expect(Object.keys(result as object).sort()).toEqual(
-      ['data', 'del', 'id', 'id_ambiente', 'nome', 'pid'].sort(),
+      ['data', 'del', 'id', 'id_ambiente', 'nome', 'pid', 'waba_id'].sort(),
     );
   });
 

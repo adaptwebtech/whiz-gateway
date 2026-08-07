@@ -34,6 +34,15 @@ export class InboxResponseDto {
   nome: string;
 
   @ApiProperty({
+    description:
+      'WABA dona do número, quando aplicável. Resolve os webhooks de nível WABA.',
+    example: '1613119706411328',
+    nullable: true,
+  })
+  @Expose()
+  waba_id: string | null;
+
+  @ApiProperty({
     description: 'Indica se a inbox foi removida (soft-delete).',
     example: false,
   })

@@ -27,6 +27,11 @@ Duas entidades governam tudo:
 Definir o ambiente é, portanto, dois passos: **(1)** criar o ambiente com sua
 `url`; **(2)** criar a inbox que aponta o `pid` para aquele ambiente.
 
+> **WhatsApp tem um segundo caminho de resolução.** Os webhooks que descrevem a
+> **conta** (qualidade do número, limite de mensagens, status de template, review…) não
+> trazem `phone_number_id`. Para eles a resolução é pela **WABA** (`entry[0].id` →
+> `inbox.waba_id`). Por isso toda inbox de WhatsApp deve cadastrar `waba_id` — ver §3.2.
+
 ---
 
 ## 2. Autenticação
@@ -85,7 +90,18 @@ curl https://gateway.exemplo.com/ambientes/1/test -H "Authorization: Bearer $ADM
 ### 3.2 Apontar uma inbox para o ambiente
 
 `POST /inboxes` — cria a correlação `pid → id_ambiente`.
-Campos: `id_ambiente` (int), `pid` (string única), `nome` (string).
+Campos: `id_ambiente` (int), `pid` (string única), `nome` (string),
+`waba_id` (string, **opcional**).
+
+> **`waba_id` — cadastre em toda inbox de WhatsApp.** Metade dos webhooks da Meta
+> (`account_update`, `phone_number_quality_update`, `message_template_status_update`,
+> `message_template_quality_update`, `account_review_update`, …) descreve a **conta**, não
+> uma mensagem, e por isso **não traz `phone_number_id`**. Sem `waba_id` cadastrado esses
+> eventos não têm como ser resolvidos e vão todos para mensagens mortas como
+> `INBOX_NAO_REGISTRADA`. Ver §5.1.
+>
+> Ele **não é único**: uma WABA tem vários números, logo várias inboxes — todas com o mesmo
+> `waba_id` e, obrigatoriamente, o mesmo `id_ambiente`.
 
 **O `pid` DEVE ser o identificador que a Meta manda no webhook** (ver §5.3):
 
@@ -97,10 +113,10 @@ Campos: `id_ambiente` (int), `pid` (string única), `nome` (string).
 | Messenger (página Facebook)        | Page ID = `entry[0].id`                     |
 
 ```bash
-# WhatsApp: pid = phone_number_id
+# WhatsApp: pid = phone_number_id, waba_id = a WABA dona do número
 curl -X POST https://gateway.exemplo.com/inboxes \
   -H "Authorization: Bearer $ADMIN_API_KEY" -H "Content-Type: application/json" \
-  -d '{ "id_ambiente": 1, "pid": "109876543210987", "nome": "WhatsApp Dev" }'
+  -d '{ "id_ambiente": 1, "pid": "109876543210987", "nome": "WhatsApp Dev", "waba_id": "1613119706411328" }'
 
 # Instagram Login: pid = IGID (entry[0].id)
 curl -X POST https://gateway.exemplo.com/inboxes \
@@ -141,8 +157,18 @@ Dois fluxos, com uma diferença crucial no **destino**.
 1. `MetaSignatureGuard` valida `X-Hub-Signature-256` com `META_APP_SECRET`.
    Falhou → **401** (e, se o corpo tiver forma Meta, vai para mensagens mortas
    com status `ASSINATURA_INVALIDA`).
-2. Extrai `pid` de `entry[0].changes[0].value.metadata.phone_number_id`.
-3. `inboxRepo.findByPid(pid)` → inbox. Não achou → DLQ `INBOX_NAO_REGISTRADA`.
+2. Resolve a inbox em **dois passos**, do mais para o menos específico:
+   1. `pid` = `entry[0].changes[0].value.metadata.phone_number_id` →
+      `inboxRepo.findByPid(pid)`.
+   2. **Fallback:** `waba_id` = `entry[0].id` → `inboxRepo.findByWabaId(wabaId)`.
+   Nenhum dos dois resolveu → DLQ `INBOX_NAO_REGISTRADA`.
+3. **Por que o fallback existe:** os webhooks que descrevem a CONTA
+   (`account_update`, `phone_number_quality_update`, `message_template_status_update`,
+   `message_template_quality_update`, `account_review_update`, `account_alerts`,
+   `business_capability_update`, `template_category_update`, `user_preferences`, …) não
+   têm `value.metadata` — logo, não têm `phone_number_id`. Antes deste fallback **todos
+   eles morriam na DLQ**. Se a WABA tiver inboxes em ambientes diferentes (cadastro
+   inconsistente), o gateway registra um `warn` e usa a mais antiga.
 4. `DispatchHandlerService.handle(inbox.id, payload)`:
    - Faz fan-out para `redirecionamentos-webhooks` (redirects extras por PID).
    - Resolve `ambiente = getAmbiente(inbox.id_ambiente)` (cache Redis, TTL 3600s).
@@ -181,7 +207,7 @@ Dois fluxos, com uma diferença crucial no **destino**.
 
 | Rota de ingestão            | Fonte do `pid`                                    | Destino final                          | HMAC no gateway |
 |-----------------------------|---------------------------------------------------|----------------------------------------|-----------------|
-| `POST /webhook`             | `entry[0].changes[0].value.metadata.phone_number_id` | `{ambiente.url}`                     | ✅ `META_APP_SECRET` |
+| `POST /webhook`             | `entry[0].changes[0].value.metadata.phone_number_id`, com fallback para `waba_id` = `entry[0].id` | `{ambiente.url}`                     | ✅ `META_APP_SECRET` |
 | `POST /webhook/instagram`   | `entry[0].id`                                     | `{ambiente.url}/webhooks/instagram`    | ❌ passthrough |
 | `POST /webhook/instagram-login` | `entry[0].id`                                 | `{ambiente.url}/webhooks/instagram-login` | ❌ passthrough |
 | `POST /webhook/messenger`   | `entry[0].id`                                     | `{ambiente.url}/webhooks/messenger`    | ❌ passthrough |
