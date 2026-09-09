@@ -182,6 +182,82 @@ export class WppTemplatesController {
   }
 
   /**
+   * POST /wpp/:wabaId/migrate_message_templates — Migração entre WABAs
+   *
+   * Passthrough puro. As queries (`source_waba_id`, `page_number`, `count`,
+   * `template_ids`) vão cruas para a Meta; quem valida a regra é ela.
+   *
+   * A restrição que sempre pega quem chama: **origem e destino têm de pertencer
+   * ao MESMO negócio Meta**. E a migração não MOVE — recria no destino, com ids
+   * novos e qualidade zerada em `UNKNOWN`. Só `APPROVED` com qualidade `GREEN`
+   * ou `UNKNOWN` é elegível.
+   *
+   * Declarada ANTES de `POST /:templateId` por clareza de leitura: são caminhos
+   * de profundidades diferentes e não colidem, mas manter os de dois segmentos
+   * juntos evita que alguém encaixe um handler de um segmento no meio.
+   */
+  @Post(':wabaId/migrate_message_templates')
+  @ApiOperation({
+    summary: 'Migra templates de outra WABA para esta',
+    description:
+      'Encaminha `POST /{destino}/migrate_message_templates` à Meta. Query `source_waba_id` é obrigatória; `page_number`, `count` e `template_ids` são opcionais e repassados sem alteração. A Meta exige que origem e destino pertençam ao mesmo negócio. Resposta ({ migrated_templates, failed_templates }) repassada sem alteração.',
+  })
+  @ApiParam({
+    name: 'wabaId',
+    description: 'ID da WABA de DESTINO (`{{WABA-ID}}`)',
+    example: 'waba456',
+  })
+  @ApiQuery({
+    name: 'source_waba_id',
+    required: true,
+    description: 'ID da WABA de ORIGEM',
+    example: 'waba123',
+  })
+  @ApiQuery({
+    name: 'page_number',
+    required: false,
+    description: 'Página (0-indexada, blocos de 500)',
+  })
+  @ApiQuery({
+    name: 'count',
+    required: false,
+    description: 'Tamanho do bloco (máx. 500)',
+  })
+  @ApiQuery({
+    name: 'template_ids',
+    required: false,
+    description: 'JSON array de ids de template (máx. 500)',
+  })
+  @ApiResponse({
+    status: 200,
+    description:
+      'Resultado da migração (resposta da Meta: { migrated_templates, failed_templates })',
+  })
+  @ApiResponse({
+    status: 400,
+    description:
+      'Erro repassado da Meta (ex.: WABAs em negócios diferentes, source_waba_id ausente)',
+  })
+  @ApiResponse({ status: 401, description: 'Chave de API ausente ou inválida' })
+  @ApiResponse({
+    status: 502,
+    description: 'Erro de transporte ao contatar a Meta',
+  })
+  async migrateTemplates(
+    @Param('wabaId') wabaId: string,
+    @Query() query: Record<string, string>,
+    @Res() res: Response,
+  ): Promise<void> {
+    const path = `${wabaId}/migrate_message_templates`;
+    this.logger.log(`POST ${path} source_waba_id=${query?.source_waba_id ?? '-'}`);
+
+    const result = await this.wppService.forward('POST', path, { query });
+
+    this.logger.log(`POST ${path} → ${result.status}`);
+    res.status(result.status).json(result.data);
+  }
+
+  /**
    * POST /wpp/:templateId — Edição (AC-7)
    */
   @Post(':templateId')

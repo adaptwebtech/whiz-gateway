@@ -12,6 +12,10 @@
  * AC-9:  DELETE /:wabaId/message_templates?hsm_id=123&name=hello_world → ambas queries
  * AC-10: Sem X-API-KEY válida → 401, forward não chamado
  * AC-11: Meta 400 → caller 400 com mesmo body; Meta timeout → 502
+ * AC-12: POST /:wabaId/migrate_message_templates?source_waba_id= → query repassada
+ * AC-13: migrate com page_number/count/template_ids → todas as queries repassadas
+ * AC-14: migrate sem X-API-KEY → 401, forward não chamado
+ * AC-15: migrate recusado pela Meta (negócios diferentes) → 400 com o mesmo body
  */
 
 import {
@@ -118,6 +122,13 @@ describe('WppTemplatesController — integração', () => {
           category: 'UTILITY',
           components: [],
         })
+        .expect(401);
+      expect(mockWppService.forward).not.toHaveBeenCalled();
+    });
+
+    it('AC-14: dado sem X-API-KEY válida, quando POST /wpp/waba456/migrate_message_templates, então 401 e forward não chamado', async () => {
+      await request(app.getHttpServer())
+        .post('/wpp/waba456/migrate_message_templates?source_waba_id=waba123')
         .expect(401);
       expect(mockWppService.forward).not.toHaveBeenCalled();
     });
@@ -479,6 +490,92 @@ describe('WppTemplatesController — integração', () => {
           components: [],
         })
         .expect(502);
+    });
+
+    // ── AC-12..15: migrate_message_templates ─────────────────────────────────
+
+    it('AC-12: dado X-API-KEY válida, quando POST /wpp/waba456/migrate_message_templates?source_waba_id=waba123, então forward repassa a query e devolve o body da Meta', async () => {
+      // Arrange
+      const metaResult = {
+        migrated_templates: ['tpl_a', 'tpl_b'],
+        failed_templates: { tpl_c: 'INVALID_FORMAT' },
+      };
+      mockWppService.forward.mockResolvedValue({
+        status: 200,
+        data: metaResult,
+      });
+
+      // Act
+      const res = await request(app.getHttpServer())
+        .post('/wpp/waba456/migrate_message_templates?source_waba_id=waba123')
+        .expect(200);
+
+      // Assert
+      expect(mockWppService.forward).toHaveBeenCalledWith(
+        'POST',
+        'waba456/migrate_message_templates',
+        expect.objectContaining({
+          query: expect.objectContaining({ source_waba_id: 'waba123' }),
+        }),
+      );
+
+      const body = res.body as Record<string, unknown>;
+      expect(body).toEqual(metaResult);
+    });
+
+    it('AC-13: dado X-API-KEY válida, quando POST migrate com page_number, count e template_ids, então todas as queries chegam cruas ao forward', async () => {
+      // Arrange
+      mockWppService.forward.mockResolvedValue({
+        status: 200,
+        data: { migrated_templates: [], failed_templates: {} },
+      });
+
+      // Act
+      await request(app.getHttpServer())
+        .post(
+          '/wpp/waba456/migrate_message_templates?source_waba_id=waba123&page_number=0&count=500&template_ids=%5B%22tpl_a%22%5D',
+        )
+        .expect(200);
+
+      // Assert
+      expect(mockWppService.forward).toHaveBeenCalledWith(
+        'POST',
+        'waba456/migrate_message_templates',
+        expect.objectContaining({
+          query: expect.objectContaining({
+            source_waba_id: 'waba123',
+            page_number: '0',
+            count: '500',
+            template_ids: '["tpl_a"]',
+          }),
+        }),
+      );
+    });
+
+    it('AC-15: dado a Meta recusar por WABAs em negócios diferentes, quando POST migrate, então caller recebe 400 com o mesmo body (não 502)', async () => {
+      // Arrange — é a recusa real do caso "cliente veio de outro BSP".
+      const metaErro = {
+        error: {
+          message:
+            'Templates can only be migrated between WABAs owned by the same business',
+          type: 'OAuthException',
+          code: 100,
+          fbtrace_id: 'AbC123',
+        },
+      };
+      mockWppService.forward.mockResolvedValue({
+        status: 400,
+        data: metaErro,
+      });
+
+      // Act
+      const res = await request(app.getHttpServer())
+        .post('/wpp/waba456/migrate_message_templates?source_waba_id=waba999')
+        .expect(400);
+
+      // Assert
+      const body = res.body as Record<string, unknown>;
+      expect(body).toEqual(metaErro);
     });
   });
 });
