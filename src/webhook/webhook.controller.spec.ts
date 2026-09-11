@@ -66,7 +66,8 @@ describe('WebhookController — integration', () => {
         {
           provide: INBOX_REPOSITORY,
           useValue: {
-            findByPid: jest.fn(),
+            findAllByPid: jest.fn(),
+  findByPidEAmbiente: jest.fn(),
             findAll: jest.fn(),
             findById: jest.fn(),
             create: jest.fn(),
@@ -183,7 +184,8 @@ describe('WebhookController — integration', () => {
         {
           provide: INBOX_REPOSITORY,
           useValue: {
-            findByPid: jest.fn(),
+            findAllByPid: jest.fn(),
+  findByPidEAmbiente: jest.fn(),
             findAll: jest.fn(),
             findById: jest.fn(),
             create: jest.fn(),
@@ -243,7 +245,8 @@ describe('WebhookController — integration', () => {
         {
           provide: INBOX_REPOSITORY,
           useValue: {
-            findByPid: jest.fn(),
+            findAllByPid: jest.fn(),
+  findByPidEAmbiente: jest.fn(),
             findAll: jest.fn(),
             findById: jest.fn(),
             create: jest.fn(),

@@ -329,14 +329,16 @@
           canDelete: true,
           createFields: [
             { key: 'id_ambiente', label: 'id_ambiente', type: 'number', required: true },
-            { key: 'pid', label: 'pid', type: 'text', required: true },
+            // O mesmo pid pode existir em ambientes diferentes: o par (pid,
+            // ambiente) é que é único.
+            { key: 'pid', label: 'pid (único POR ambiente)', type: 'text', required: true },
             { key: 'nome', label: 'nome', type: 'text', required: true },
-            { key: 'waba_id', label: 'waba_id (roteia eventos de nível WABA)', type: 'text' },
+            { key: 'waba_id', label: 'waba_id (opcional — roteia eventos de nível WABA)', type: 'text' },
           ],
           updateFields: [
             { key: 'nome', label: 'nome', type: 'text' },
             { key: 'id_ambiente', label: 'id_ambiente', type: 'number' },
-            { key: 'waba_id', label: 'waba_id (roteia eventos de nível WABA)', type: 'text' },
+            { key: 'waba_id', label: 'waba_id (opcional — deixe em branco para limpar)', type: 'text', clearable: true },
           ],
         },
         {
@@ -510,7 +512,14 @@
             const body = {};
             for (const f of this.formFields()) {
               let v = this.form[f.key];
-              if (v === undefined || v === null || v === '') continue;
+              if (v === undefined || v === null || v === '') {
+                // Campo em branco normalmente significa "não mexe", e por isso é
+                // omitido. Mas para os `clearable` isso tornava IMPOSSÍVEL apagar
+                // um valor já gravado pela tela: só dava para trocar, nunca
+                // limpar. Nesses, em edição, o branco vira `null` explícito.
+                if (f.clearable && this.editingId) body[f.key] = null;
+                continue;
+              }
               if (f.type === 'number') v = Number(v);
               else if (f.type === 'datetime') v = new Date(v).toISOString();
               body[f.key] = v;

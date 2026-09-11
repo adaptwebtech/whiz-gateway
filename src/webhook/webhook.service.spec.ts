@@ -27,9 +27,10 @@ import { Logger } from '@nestjs/common';
 const makeInboxRepo = (): jest.Mocked<IInboxRepository> => ({
   findAll: jest.fn(),
   findById: jest.fn(),
-  findByPid: jest.fn(),
-  findByWabaId: jest.fn(),
-  reviveByPid: jest.fn(),
+  findAllByPid: jest.fn(),
+  findByPidEAmbiente: jest.fn(),
+  findAllByWabaId: jest.fn(),
+  reviveByPidEAmbiente: jest.fn(),
   create: jest.fn(),
   update: jest.fn(),
   softDelete: jest.fn(),
@@ -125,7 +126,7 @@ describe('WebhookService — unit', () => {
 
   it('AC-5: dado PID com inbox ativa, dispatchHandler.handle chamado com inbox.id e payload', async () => {
     // Arrange
-    inboxRepo.findByPid.mockResolvedValueOnce(INBOX_FIXTURE);
+    inboxRepo.findAllByPid.mockResolvedValueOnce([INBOX_FIXTURE]);
     const payload = buildPayload(PHONE_NUMBER_ID);
 
     // Act
@@ -133,14 +134,14 @@ describe('WebhookService — unit', () => {
 
     // Assert — aguarda microtasks do fire-and-forget
     await new Promise((r) => setImmediate(r));
-    expect(inboxRepo.findByPid).toHaveBeenCalledWith(PHONE_NUMBER_ID);
+    expect(inboxRepo.findAllByPid).toHaveBeenCalledWith(PHONE_NUMBER_ID);
     expect(dispatchHandler.handle).toHaveBeenCalledWith(INBOX_ID, payload);
     expect(rabbitMQ.sendToQueue).not.toHaveBeenCalled();
   });
 
   it('AC-5: dispatchHandler.handle chamado uma única vez para inbox existente', async () => {
     // Arrange
-    inboxRepo.findByPid.mockResolvedValueOnce(INBOX_FIXTURE);
+    inboxRepo.findAllByPid.mockResolvedValueOnce([INBOX_FIXTURE]);
     const payload = buildPayload(PHONE_NUMBER_ID);
 
     // Act
@@ -155,7 +156,7 @@ describe('WebhookService — unit', () => {
 
   it('AC-6: dado PID sem inbox registrada, sendToQueue chamado com DLQ_NAME e INBOX_NAO_REGISTRADA', async () => {
     // Arrange
-    inboxRepo.findByPid.mockResolvedValueOnce(null);
+    inboxRepo.findAllByPid.mockResolvedValueOnce([]);
     const payload = buildPayload(PHONE_NUMBER_ID);
 
     // Act
@@ -175,7 +176,7 @@ describe('WebhookService — unit', () => {
 
   it('AC-6: dado PID sem inbox, dispatchHandler.handle nunca é chamado', async () => {
     // Arrange
-    inboxRepo.findByPid.mockResolvedValueOnce(null);
+    inboxRepo.findAllByPid.mockResolvedValueOnce([]);
     const payload = buildPayload(PHONE_NUMBER_ID);
 
     // Act
@@ -195,7 +196,7 @@ describe('WebhookService — unit', () => {
     await service.handleIncoming(payload);
 
     // Assert
-    expect(inboxRepo.findByPid).not.toHaveBeenCalled();
+    expect(inboxRepo.findAllByPid).not.toHaveBeenCalled();
     expect(rabbitMQ.sendToQueue).toHaveBeenCalledWith(
       DLQ_NAME,
       expect.objectContaining({
@@ -240,7 +241,7 @@ describe('WebhookService — unit', () => {
 
   it('AC-1: evento de nível WABA (sem metadata) é resolvido por entry.id e despachado', async () => {
     // Arrange — payload real de phone_number_quality_update: não tem phone_number_id
-    inboxRepo.findByWabaId.mockResolvedValueOnce(INBOX_FIXTURE);
+    inboxRepo.findAllByWabaId.mockResolvedValueOnce([INBOX_FIXTURE]);
     const payload = buildPayloadNivelWaba();
 
     // Act
@@ -248,15 +249,15 @@ describe('WebhookService — unit', () => {
     await new Promise((r) => setImmediate(r));
 
     // Assert
-    expect(inboxRepo.findByPid).not.toHaveBeenCalled();
-    expect(inboxRepo.findByWabaId).toHaveBeenCalledWith(WABA_ID);
+    expect(inboxRepo.findAllByPid).not.toHaveBeenCalled();
+    expect(inboxRepo.findAllByWabaId).toHaveBeenCalledWith(WABA_ID);
     expect(dispatchHandler.handle).toHaveBeenCalledWith(INBOX_ID, payload);
     expect(rabbitMQ.sendToQueue).not.toHaveBeenCalled();
   });
 
   it('AC-1: vale para qualquer field de nível WABA, não só quality', async () => {
     // Arrange
-    inboxRepo.findByWabaId.mockResolvedValue(INBOX_FIXTURE);
+    inboxRepo.findAllByWabaId.mockResolvedValue([INBOX_FIXTURE]);
 
     // Act
     for (const field of [
@@ -277,14 +278,14 @@ describe('WebhookService — unit', () => {
 
   it('AC-2: WABA desconhecida → DLQ INBOX_NAO_REGISTRADA', async () => {
     // Arrange
-    inboxRepo.findByWabaId.mockResolvedValueOnce(null);
+    inboxRepo.findAllByWabaId.mockResolvedValueOnce([]);
     const payload = buildPayloadNivelWaba('waba-que-nao-existe');
 
     // Act
     await service.handleIncoming(payload);
 
     // Assert
-    expect(inboxRepo.findByWabaId).toHaveBeenCalledWith('waba-que-nao-existe');
+    expect(inboxRepo.findAllByWabaId).toHaveBeenCalledWith('waba-que-nao-existe');
     expect(dispatchHandler.handle).not.toHaveBeenCalled();
     expect(rabbitMQ.sendToQueue).toHaveBeenCalledWith(
       DLQ_NAME,
@@ -298,7 +299,7 @@ describe('WebhookService — unit', () => {
 
   it('AC-3: com pid resolvido, a WABA nem é consultada (pid tem precedência)', async () => {
     // Arrange
-    inboxRepo.findByPid.mockResolvedValueOnce(INBOX_FIXTURE);
+    inboxRepo.findAllByPid.mockResolvedValueOnce([INBOX_FIXTURE]);
 
     // Act — payload de mensagem, que tem pid E entry.id
     await service.handleIncoming({
@@ -315,15 +316,15 @@ describe('WebhookService — unit', () => {
     await new Promise((r) => setImmediate(r));
 
     // Assert
-    expect(inboxRepo.findByPid).toHaveBeenCalledWith(PHONE_NUMBER_ID);
-    expect(inboxRepo.findByWabaId).not.toHaveBeenCalled();
+    expect(inboxRepo.findAllByPid).toHaveBeenCalledWith(PHONE_NUMBER_ID);
+    expect(inboxRepo.findAllByWabaId).not.toHaveBeenCalled();
     expect(dispatchHandler.handle).toHaveBeenCalledTimes(1);
   });
 
   it('AC-4: pid presente mas não registrado cai no fallback da WABA', async () => {
     // Arrange — número novo ainda não registrado, WABA já conhecida
-    inboxRepo.findByPid.mockResolvedValueOnce(null);
-    inboxRepo.findByWabaId.mockResolvedValueOnce(INBOX_FIXTURE);
+    inboxRepo.findAllByPid.mockResolvedValueOnce([]);
+    inboxRepo.findAllByWabaId.mockResolvedValueOnce([INBOX_FIXTURE]);
 
     // Act
     await service.handleIncoming({
@@ -340,8 +341,8 @@ describe('WebhookService — unit', () => {
     await new Promise((r) => setImmediate(r));
 
     // Assert
-    expect(inboxRepo.findByPid).toHaveBeenCalledWith('pid-desconhecido');
-    expect(inboxRepo.findByWabaId).toHaveBeenCalledWith(WABA_ID);
+    expect(inboxRepo.findAllByPid).toHaveBeenCalledWith('pid-desconhecido');
+    expect(inboxRepo.findAllByWabaId).toHaveBeenCalledWith(WABA_ID);
     expect(dispatchHandler.handle).toHaveBeenCalledWith(INBOX_ID, expect.any(Object));
     expect(rabbitMQ.sendToQueue).not.toHaveBeenCalled();
   });
@@ -350,7 +351,7 @@ describe('WebhookService — unit', () => {
 
   it('REG-4: dado dispatchHandler.handle rejeitando, quando handleIncoming processa inbox válida, então o erro é capturado e logado (não engolido silenciosamente)', async () => {
     // Arrange
-    inboxRepo.findByPid.mockResolvedValueOnce(INBOX_FIXTURE);
+    inboxRepo.findAllByPid.mockResolvedValueOnce([INBOX_FIXTURE]);
     const dispatchError = new Error('Redis connection refused');
     dispatchHandler.handle.mockRejectedValueOnce(dispatchError);
     const payload = buildPayload(PHONE_NUMBER_ID);

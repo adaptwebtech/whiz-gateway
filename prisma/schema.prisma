@@ -35,7 +35,19 @@ model ambiente {
 model inboxes {
   id          String   @id @default(uuid())
   id_ambiente Int
-  pid         String   @unique
+
+  /// Identificador externo do número/conta na Meta (phone_number_id, page_id, …).
+  ///
+  /// Único POR AMBIENTE, e não globalmente. `development`, `staging` e
+  /// `production` são deployments distintos do whiz atrás do mesmo gateway, e o
+  /// mesmo número pode estar cadastrado em mais de um — tipicamente um número de
+  /// teste que depois vai para produção.
+  ///
+  /// Com o `@unique` global que existia aqui, o segundo cadastro batia em 409 e o
+  /// whiz, que trata 409 como "já registrado", marcava a inbox como registrada
+  /// apontando para a entrada do OUTRO ambiente. Resultado: a inbox aparecia
+  /// conectada e os webhooks dela iam para o ambiente errado.
+  pid         String
   nome        String
   del         Boolean  @default(false)
   data        DateTime @default(now())
@@ -55,6 +67,11 @@ model inboxes {
   ambiente              ambiente                @relation(fields: [id_ambiente], references: [id])
   fila_mensagens_mortas fila_mensagens_mortas[]
 
+  /// Um pid por ambiente. O par é o que identifica a caixa de verdade.
+  @@unique([pid, id_ambiente])
+  /// O roteamento procura por `pid` SEM ambiente (o webhook da Meta não diz de
+  /// qual ambiente é), então o índice isolado continua sendo necessário.
+  @@index([pid])
   @@index([waba_id])
 }
 

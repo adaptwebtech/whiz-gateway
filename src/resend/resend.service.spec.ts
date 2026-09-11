@@ -35,8 +35,9 @@ const makeDispatchHandler = (): jest.Mocked<IDispatchHandler> => ({
 const makeInboxRepo = (): jest.Mocked<IInboxRepository> => ({
   findAll: jest.fn(),
   findById: jest.fn(),
-  findByPid: jest.fn(),
-  reviveByPid: jest.fn(),
+  findAllByPid: jest.fn(),
+  findByPidEAmbiente: jest.fn(),
+  reviveByPidEAmbiente: jest.fn(),
   create: jest.fn(),
   update: jest.fn(),
   softDelete: jest.fn(),
@@ -104,7 +105,7 @@ describe('ResendService — unit', () => {
   it('AC-3: dado reenvio bem-sucedido, markReenviado(id) é chamado com o id correto', async () => {
     // Arrange
     const dlMessage = makeDlFixture('dl-001', false);
-    inboxRepo.findByPid.mockResolvedValueOnce(INBOX_FIXTURE);
+    inboxRepo.findAllByPid.mockResolvedValueOnce([INBOX_FIXTURE]);
     dlRepo.findMany.mockResolvedValueOnce([dlMessage]);
     dispatchHandler.handle.mockResolvedValueOnce(undefined);
     dlRepo.markReenviado.mockResolvedValueOnce(undefined);
@@ -121,7 +122,7 @@ describe('ResendService — unit', () => {
     // Arrange
     const msg1 = makeDlFixture('dl-001', false);
     const msg2 = makeDlFixture('dl-002', false);
-    inboxRepo.findByPid.mockResolvedValueOnce(INBOX_FIXTURE);
+    inboxRepo.findAllByPid.mockResolvedValueOnce([INBOX_FIXTURE]);
     dlRepo.findMany.mockResolvedValueOnce([msg1, msg2]);
     dispatchHandler.handle.mockResolvedValue(undefined);
     dlRepo.markReenviado.mockResolvedValue(undefined);
@@ -141,7 +142,7 @@ describe('ResendService — unit', () => {
   it('AC-4: dado falha no dispatch, markReenviado NÃO é chamado e falhas incrementado', async () => {
     // Arrange
     const dlMessage = makeDlFixture('dl-fail-001', false);
-    inboxRepo.findByPid.mockResolvedValueOnce(INBOX_FIXTURE);
+    inboxRepo.findAllByPid.mockResolvedValueOnce([INBOX_FIXTURE]);
     dlRepo.findMany.mockResolvedValueOnce([dlMessage]);
     dispatchHandler.handle.mockRejectedValueOnce(new Error('dispatch failed'));
 
@@ -158,7 +159,7 @@ describe('ResendService — unit', () => {
     // Arrange
     const msgOk = makeDlFixture('dl-ok-001', false);
     const msgFail = makeDlFixture('dl-fail-001', false);
-    inboxRepo.findByPid.mockResolvedValueOnce(INBOX_FIXTURE);
+    inboxRepo.findAllByPid.mockResolvedValueOnce([INBOX_FIXTURE]);
     dlRepo.findMany.mockResolvedValueOnce([msgOk, msgFail]);
     dispatchHandler.handle
       .mockResolvedValueOnce(undefined)
@@ -179,7 +180,7 @@ describe('ResendService — unit', () => {
   it('AC-7: forcarReenviadas=false (default) → mensagens com reenviado=true são ignoradas', async () => {
     // Arrange — findMany retorna mensagem já reenviada
     const msgJaReenviado = makeDlFixture('dl-already-sent', true);
-    inboxRepo.findByPid.mockResolvedValueOnce(INBOX_FIXTURE);
+    inboxRepo.findAllByPid.mockResolvedValueOnce([INBOX_FIXTURE]);
     dlRepo.findMany.mockResolvedValueOnce([msgJaReenviado]);
 
     // Act
@@ -194,7 +195,7 @@ describe('ResendService — unit', () => {
 
   it('AC-7: forcarReenviadas omitido (default false) → findMany chamado com reenviado=false', async () => {
     // Arrange
-    inboxRepo.findByPid.mockResolvedValueOnce(INBOX_FIXTURE);
+    inboxRepo.findAllByPid.mockResolvedValueOnce([INBOX_FIXTURE]);
     dlRepo.findMany.mockResolvedValueOnce([]);
 
     // Act
@@ -211,7 +212,7 @@ describe('ResendService — unit', () => {
   it('AC-8: forcarReenviadas=true → mensagens com reenviado=true também são despachadas', async () => {
     // Arrange
     const msgReenviado = makeDlFixture('dl-already-001', true);
-    inboxRepo.findByPid.mockResolvedValueOnce(INBOX_FIXTURE);
+    inboxRepo.findAllByPid.mockResolvedValueOnce([INBOX_FIXTURE]);
     dlRepo.findMany.mockResolvedValueOnce([msgReenviado]);
     dispatchHandler.handle.mockResolvedValueOnce(undefined);
     dlRepo.markReenviado.mockResolvedValueOnce(undefined);
@@ -227,7 +228,7 @@ describe('ResendService — unit', () => {
 
   it('AC-8: forcarReenviadas=true → findMany NÃO filtra por reenviado=false', async () => {
     // Arrange
-    inboxRepo.findByPid.mockResolvedValueOnce(INBOX_FIXTURE);
+    inboxRepo.findAllByPid.mockResolvedValueOnce([INBOX_FIXTURE]);
     dlRepo.findMany.mockResolvedValueOnce([]);
 
     // Act
@@ -243,7 +244,7 @@ describe('ResendService — unit', () => {
   it('AC-9: reenvio usa IDispatchHandler.handle(inboxId, rawPayload)', async () => {
     // Arrange
     const dlMessage = makeDlFixture('dl-dispatch-001', false);
-    inboxRepo.findByPid.mockResolvedValueOnce(INBOX_FIXTURE);
+    inboxRepo.findAllByPid.mockResolvedValueOnce([INBOX_FIXTURE]);
     dlRepo.findMany.mockResolvedValueOnce([dlMessage]);
     dispatchHandler.handle.mockResolvedValueOnce(undefined);
     dlRepo.markReenviado.mockResolvedValueOnce(undefined);
@@ -262,10 +263,10 @@ describe('ResendService — unit', () => {
     // Arrange
     const customInboxId = 'custom-inbox-uuid-999';
     const dlMessage = makeDlFixture('dl-dispatch-002', false, customInboxId);
-    inboxRepo.findByPid.mockResolvedValueOnce({
+    inboxRepo.findAllByPid.mockResolvedValueOnce([{
       ...INBOX_FIXTURE,
       id: customInboxId,
-    });
+    }]);
     dlRepo.findMany.mockResolvedValueOnce([dlMessage]);
     dispatchHandler.handle.mockResolvedValueOnce(undefined);
     dlRepo.markReenviado.mockResolvedValueOnce(undefined);

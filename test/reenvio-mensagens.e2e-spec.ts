@@ -57,8 +57,9 @@ const mockDispatchHandler: jest.Mocked<IDispatchHandler> = {
 const mockInboxRepo: jest.Mocked<IInboxRepository> = {
   findAll: jest.fn(),
   findById: jest.fn(),
-  findByPid: jest.fn(),
-  reviveByPid: jest.fn(),
+  findAllByPid: jest.fn(),
+  findByPidEAmbiente: jest.fn(),
+  reviveByPidEAmbiente: jest.fn(),
   create: jest.fn(),
   update: jest.fn(),
   softDelete: jest.fn(),
@@ -175,7 +176,7 @@ describe('Reenvio Mensagens (e2e)', () => {
     // Arrange
     const msg1 = makeDlRecord('dl-e2e-001', false);
     const msg2 = makeDlRecord('dl-e2e-002', false);
-    mockInboxRepo.findByPid.mockResolvedValueOnce(INBOX_FIXTURE);
+    mockInboxRepo.findAllByPid.mockResolvedValueOnce([INBOX_FIXTURE]);
     mockDeadLetterRepo.findMany.mockResolvedValueOnce([msg1, msg2]);
     mockDispatchHandler.handle.mockResolvedValue(undefined);
 
@@ -197,7 +198,7 @@ describe('Reenvio Mensagens (e2e)', () => {
   it('AC-2: ResendResultDto contém exatamente os campos total, reenviadas, falhas', async () => {
     // Arrange
     const msg = makeDlRecord('dl-e2e-003', false);
-    mockInboxRepo.findByPid.mockResolvedValueOnce(INBOX_FIXTURE);
+    mockInboxRepo.findAllByPid.mockResolvedValueOnce([INBOX_FIXTURE]);
     mockDeadLetterRepo.findMany.mockResolvedValueOnce([msg]);
     mockDispatchHandler.handle.mockResolvedValueOnce(undefined);
 
@@ -217,7 +218,7 @@ describe('Reenvio Mensagens (e2e)', () => {
   it('AC-2: dispatch chamado com inboxId correto para cada mensagem morta', async () => {
     // Arrange
     const msg = makeDlRecord('dl-e2e-004', false);
-    mockInboxRepo.findByPid.mockResolvedValueOnce(INBOX_FIXTURE);
+    mockInboxRepo.findAllByPid.mockResolvedValueOnce([INBOX_FIXTURE]);
     mockDeadLetterRepo.findMany.mockResolvedValueOnce([msg]);
     mockDispatchHandler.handle.mockResolvedValueOnce(undefined);
 
@@ -323,7 +324,7 @@ describe('Reenvio Mensagens (e2e)', () => {
 
   it('AC-10: seleção vazia → 200 com total=0, reenviadas=0, falhas=0', async () => {
     // Arrange — inbox existe mas não há mensagens mortas
-    mockInboxRepo.findByPid.mockResolvedValueOnce(INBOX_FIXTURE);
+    mockInboxRepo.findAllByPid.mockResolvedValueOnce([INBOX_FIXTURE]);
     mockDeadLetterRepo.findMany.mockResolvedValueOnce([]);
 
     // Act
@@ -341,7 +342,7 @@ describe('Reenvio Mensagens (e2e)', () => {
 
   it('AC-10: pid sem inbox encontrada → 200 com total=0 (não 404)', async () => {
     // Arrange — pid não associado a nenhuma inbox
-    mockInboxRepo.findByPid.mockResolvedValueOnce(null);
+    mockInboxRepo.findAllByPid.mockResolvedValueOnce([]);
 
     // Act
     const res = await request(app.getHttpServer())

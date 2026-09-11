@@ -60,9 +60,13 @@ export class InstagramWebhookService {
         return;
       }
 
-      const inbox = await this.inboxRepo.findByPid(pid);
+      // Lista, e não uma: o mesmo pid pode estar cadastrado em mais de um
+      // ambiente (`development`/`staging`/`production` são deployments distintos
+      // do whiz atrás deste gateway) e o payload da Meta não diz de qual é. Cada
+      // ambiente cadastrado recebe o evento.
+      const inboxes = await this.inboxRepo.findAllByPid(pid);
 
-      if (!inbox || inbox.del) {
+      if (inboxes.length === 0) {
         this.logger.warn(
           `Inbox para pid ${pid} não encontrada ou deletada — enviando para DLQ`,
         );
@@ -76,7 +80,25 @@ export class InstagramWebhookService {
 
       const subPath = SURFACE_SUBPATH[surface];
 
-      await this.forwarder.forward(subPath, inbox, rawBody, signature);
+      if (inboxes.length > 1) {
+        this.logger.log(
+          `Webhook Instagram (${surface}) pid ${pid} cadastrado em ` +
+            `${inboxes.length} ambientes (${inboxes.map((i) => i.id_ambiente).join(', ')}) — ` +
+            `encaminhando para todos.`,
+        );
+      }
+
+      // Um forward por ambiente. Falha em um não pode impedir os demais.
+      for (const inbox of inboxes) {
+        try {
+          await this.forwarder.forward(subPath, inbox, rawBody, signature);
+        } catch (err) {
+          this.logger.error(
+            `Falha ao encaminhar webhook Instagram para a inbox ${inbox.id} ` +
+              `(ambiente ${inbox.id_ambiente}): ${String(err)}`,
+          );
+        }
+      }
     } catch (err: unknown) {
       this.logger.error(
         `Erro inesperado ao processar webhook Instagram (${surface}): ${String(err)}`,

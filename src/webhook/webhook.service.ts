@@ -20,9 +20,9 @@ export class WebhookService {
   ) {}
 
   async handleIncoming(payload: Record<string, unknown>): Promise<void> {
-    const inbox = await this.resolverInbox(payload);
+    const inboxes = await this.resolverInboxes(payload);
 
-    if (!inbox) {
+    if (inboxes.length === 0) {
       await this.mq.sendToQueue(DLQ_NAME, {
         message: payload,
         id_inbox: null,
@@ -31,11 +31,23 @@ export class WebhookService {
       return;
     }
 
-    this.dispatchHandler.handle(inbox.id, payload).catch((err: unknown) => {
-      this.logger.error(
-        `Erro inesperado no despacho inbox ${inbox.id}: ${String(err)}`,
+    if (inboxes.length > 1) {
+      this.logger.log(
+        `Webhook resolvido para ${inboxes.length} ambientes ` +
+          `(${inboxes.map((i) => i.id_ambiente).join(', ')}) — despachando para todos.`,
       );
-    });
+    }
+
+    // Um despacho por AMBIENTE. Falha em um não pode impedir os outros, então
+    // cada um tem o próprio catch — é o mesmo motivo de o despacho já não ser
+    // aguardado aqui.
+    for (const inbox of inboxes) {
+      this.dispatchHandler.handle(inbox.id, payload).catch((err: unknown) => {
+        this.logger.error(
+          `Erro inesperado no despacho inbox ${inbox.id}: ${String(err)}`,
+        );
+      });
+    }
   }
 
   /**
@@ -43,33 +55,39 @@ export class WebhookService {
    *
    * 1. `value.metadata.phone_number_id` — presente em `messages` e em
    *    `message_echoes`, que é a maior parte do tráfego.
+   * Devolve uma LISTA: o payload da Meta não diz de qual ambiente é, e o mesmo
+   * número pode estar cadastrado em mais de um (`development`/`staging`/
+   * `production` são deployments distintos do whiz atrás deste gateway). Cada
+   * ambiente cadastrado recebe o evento.
+   *
    * 2. `entry.id`, que na Cloud API é o id da WABA — único caminho para os eventos
    *    de NÍVEL WABA (`account_update`, `phone_number_quality_update`,
    *    `message_template_status_update`, `message_template_quality_update`,
    *    `account_review_update`, …). Sem este passo, TODOS eles caíam na fila de
    *    mensagens mortas como INBOX_NAO_REGISTRADA, porque não têm `metadata`.
    */
-  private async resolverInbox(
+  private async resolverInboxes(
     payload: Record<string, unknown>,
-  ): Promise<{ id: string } | null> {
+  ): Promise<{ id: string; id_ambiente: number }[]> {
     const pid = this.extractPid(payload);
     if (pid) {
-      const porPid = await this.inboxRepo.findByPid(pid);
-      if (porPid) return porPid;
+      const porPid = await this.inboxRepo.findAllByPid(pid);
+      if (porPid.length > 0) return porPid;
     }
 
     const wabaId = this.extractWabaId(payload);
     if (wabaId) {
-      const porWaba = await this.inboxRepo.findByWabaId(wabaId);
-      if (porWaba) {
+      const porWaba = await this.inboxRepo.findAllByWabaId(wabaId);
+      if (porWaba.length > 0) {
         this.logger.log(
-          `Webhook sem pid resolvido pela WABA ${wabaId} → inbox ${porWaba.id}`,
+          `Webhook sem pid resolvido pela WABA ${wabaId} → ` +
+            `${porWaba.length} inbox(es): ${porWaba.map((i) => i.id).join(', ')}`,
         );
         return porWaba;
       }
     }
 
-    return null;
+    return [];
   }
 
   private primeiroChange(
