@@ -30,7 +30,8 @@ const mockRepo: jest.Mocked<IRedirecionamentosWebhooksRepository> = {
 };
 
 const mockInboxRepo: jest.Mocked<Pick<IInboxRepository, 'findByPid'>> = {
-  findByPid: jest.fn(),
+  findAllByPid: jest.fn(),
+  findByPidEAmbiente: jest.fn(),
 } as unknown as jest.Mocked<Pick<IInboxRepository, 'findByPid'>>;
 
 const mockHttp = {
@@ -201,10 +202,10 @@ describe('RedirecionamentosWebhooksService', () => {
 
     it('AC-8: given valid Meta payload with 2 active redirects, then dispatched=2 and http.post called twice', async () => {
       const payload = makeMetaPayload('PID-001');
-      mockInboxRepo.findByPid.mockResolvedValue({
+      mockInboxRepo.findAllByPid.mockResolvedValue([{
         id: 1,
         id_ambiente: 10,
-      } as never);
+      } as never]);
       mockRepo.findActiveByAmbiente.mockResolvedValue([
         makeEntity({ uid: 'uid-1', url: 'https://dest1.com/hook' }),
         makeEntity({ uid: 'uid-2', url: 'https://dest2.com/hook' }),
@@ -221,10 +222,10 @@ describe('RedirecionamentosWebhooksService', () => {
 
     it('AC-9: given redirect with id_ambiente=null, then it is included in dispatch (eligible for all ambientes)', async () => {
       const payload = makeMetaPayload('PID-002');
-      mockInboxRepo.findByPid.mockResolvedValue({
+      mockInboxRepo.findAllByPid.mockResolvedValue([{
         id: 2,
         id_ambiente: 5,
-      } as never);
+      } as never]);
       // repo returns the null-ambiente redirect as eligible
       mockRepo.findActiveByAmbiente.mockResolvedValue([
         makeEntity({
@@ -245,10 +246,10 @@ describe('RedirecionamentosWebhooksService', () => {
 
     it('AC-10: given expired redirect, then it is NOT included (findActiveByAmbiente returns empty)', async () => {
       const payload = makeMetaPayload('PID-003');
-      mockInboxRepo.findByPid.mockResolvedValue({
+      mockInboxRepo.findAllByPid.mockResolvedValue([{
         id: 3,
         id_ambiente: 7,
-      } as never);
+      } as never]);
       // repo applies the expiry filter and returns empty
       mockRepo.findActiveByAmbiente.mockResolvedValue([]);
       mockHttp.post.mockReturnValue(of({ data: {} }));
@@ -265,7 +266,7 @@ describe('RedirecionamentosWebhooksService', () => {
       const result = await service.dispatch({ random: 'data' });
 
       expect(result).toEqual({ dispatched: 0 });
-      expect(mockInboxRepo.findByPid).not.toHaveBeenCalled();
+      expect(mockInboxRepo.findAllByPid).not.toHaveBeenCalled();
       expect(mockRepo.findActiveByAmbiente).not.toHaveBeenCalled();
     });
 
@@ -278,7 +279,7 @@ describe('RedirecionamentosWebhooksService', () => {
 
     it('AC-11: given inbox not found for PID, then dispatched=0', async () => {
       const payload = makeMetaPayload('UNKNOWN-PID');
-      mockInboxRepo.findByPid.mockResolvedValue(null);
+      mockInboxRepo.findAllByPid.mockResolvedValue([]);
 
       const result = await service.dispatch(payload);
 
@@ -290,10 +291,10 @@ describe('RedirecionamentosWebhooksService', () => {
 
     it('AC-13: given URL failing all 5 retries, then Logger.warn called for that URL; other URL succeeds; dispatched reflects attempted count', async () => {
       const payload = makeMetaPayload('PID-004');
-      mockInboxRepo.findByPid.mockResolvedValue({
+      mockInboxRepo.findAllByPid.mockResolvedValue([{
         id: 4,
         id_ambiente: 9,
-      } as never);
+      } as never]);
       mockRepo.findActiveByAmbiente.mockResolvedValue([
         makeEntity({ uid: 'uid-fail', url: 'https://failing.com/hook' }),
         makeEntity({ uid: 'uid-ok', url: 'https://ok.com/hook' }),

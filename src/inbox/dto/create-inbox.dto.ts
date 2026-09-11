@@ -1,4 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Transform } from 'class-transformer';
 import {
   IsInt,
   IsNotEmpty,
@@ -42,8 +43,15 @@ export class CreateInboxDto {
       'trazem phone_number_id e por isso não podem ser resolvidos pelo pid.',
     example: '1613119706411328',
   })
+  // Sem `@IsNotEmpty()`: `@IsOptional()` só ignora `undefined`/`null`, então
+  // string vazia caía no NotEmpty e o cadastro voltava 400 em vez de simplesmente
+  // não ter WABA. Nem todo canal tem WABA (Instagram e Messenger não têm), e
+  // formulário manda campo em branco como `''`. O `@Transform` normaliza para
+  // `undefined`, que é o que a coluna nullable espera.
   @IsOptional()
   @IsString()
-  @IsNotEmpty()
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string' && value.trim() === '' ? undefined : value,
+  )
   waba_id?: string;
 }

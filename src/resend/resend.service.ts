@@ -40,9 +40,14 @@ export class ResendService {
 
     const filter = new ListDeadLetterQueryDto();
 
+    // Ids das inboxes que respondem por este pid. É LISTA porque o mesmo pid pode
+    // estar cadastrado em mais de um ambiente, e cada um tem as próprias
+    // mensagens mortas — reenviar só as do primeiro deixaria as dos outros presas
+    // na fila sem nenhum aviso.
+    let idsInbox: string[] = [];
     if (pid) {
-      const inbox = await this.inboxRepo.findByPid(pid);
-      if (!inbox) {
+      const inboxes = await this.inboxRepo.findAllByPid(pid);
+      if (inboxes.length === 0) {
         this.logger.warn(
           `Inbox com pid=${pid} não encontrada. Retornando zeros.`,
         );
@@ -52,7 +57,10 @@ export class ResendService {
           { excludeExtraneousValues: true },
         );
       }
-      filter.id_inbox = inbox.id;
+      idsInbox = inboxes.map((i) => i.id);
+      // O filtro do repositório aceita UM id. Com mais de um ambiente, a busca
+      // roda sem o recorte de inbox e o recorte é aplicado aqui embaixo.
+      if (idsInbox.length === 1) filter.id_inbox = idsInbox[0];
     }
 
     if (dataInicio) filter.dataInicio = dataInicio;
@@ -64,10 +72,17 @@ export class ResendService {
 
     const messages = await this.dlRepo.findMany(filter);
 
+    // Recorte por inbox quando o pid resolve para VÁRIOS ambientes (o filtro do
+    // repositório só aceita um id).
+    const doPid =
+      idsInbox.length > 1
+        ? messages.filter((m) => m.id_inbox && idsInbox.includes(m.id_inbox))
+        : messages;
+
     // Filtrar mensagens já reenviadas quando forcarReenviadas=false
     const candidates = forcarReenviadas
-      ? messages
-      : messages.filter((m) => !m.reenviado);
+      ? doPid
+      : doPid.filter((m) => !m.reenviado);
 
     let reenviadas = 0;
     let falhas = 0;

@@ -3,7 +3,7 @@
  *
  * AC-4: payload sem entry[0].id → DLQ INBOX_NAO_REGISTRADA (+ 200 fire-and-forget)
  * AC-5: entry[0].id sem inbox correspondente → DLQ INBOX_NAO_REGISTRADA
- * pid extraction: PID extraído de entry[0].id e usado em findByPid + forward
+ * pid extraction: PID extraído de entry[0].id e usado em findAllByPid + forward
  */
 
 import { StatusFalhaMensagem } from '@prisma/client';
@@ -19,8 +19,9 @@ import { DLQ_NAME } from '../rabbitmq/constants/rabbitmq-queue.constants';
 const makeInboxRepo = (): jest.Mocked<IInboxRepository> => ({
   findAll: jest.fn(),
   findById: jest.fn(),
-  findByPid: jest.fn(),
-  reviveByPid: jest.fn(),
+  findAllByPid: jest.fn(),
+  findByPidEAmbiente: jest.fn(),
+  reviveByPidEAmbiente: jest.fn(),
   create: jest.fn(),
   update: jest.fn(),
   softDelete: jest.fn(),
@@ -88,7 +89,7 @@ describe('InstagramWebhookService — unit', () => {
     await new Promise((r) => setImmediate(r));
 
     // Assert
-    expect(inboxRepo.findByPid).not.toHaveBeenCalled();
+    expect(inboxRepo.findAllByPid).not.toHaveBeenCalled();
     expect(rabbitMQ.sendToQueue).toHaveBeenCalledWith(
       DLQ_NAME,
       expect.objectContaining({
@@ -124,7 +125,7 @@ describe('InstagramWebhookService — unit', () => {
 
   it('AC-5: dado entry[0].id sem inbox correspondente, então publica DLQ com INBOX_NAO_REGISTRADA e não chama forward', async () => {
     // Arrange
-    inboxRepo.findByPid.mockResolvedValueOnce(null);
+    inboxRepo.findAllByPid.mockResolvedValueOnce([]);
     const body = buildInstagramPayload(IGID);
     const rawBody = Buffer.from(JSON.stringify(body));
 
@@ -133,7 +134,7 @@ describe('InstagramWebhookService — unit', () => {
     await new Promise((r) => setImmediate(r));
 
     // Assert
-    expect(inboxRepo.findByPid).toHaveBeenCalledWith(IGID);
+    expect(inboxRepo.findAllByPid).toHaveBeenCalledWith(IGID);
     expect(rabbitMQ.sendToQueue).toHaveBeenCalledWith(
       DLQ_NAME,
       expect.objectContaining({
@@ -147,10 +148,10 @@ describe('InstagramWebhookService — unit', () => {
 
   it('AC-5: dado inbox com del=true, então publica DLQ com INBOX_NAO_REGISTRADA e não chama forward', async () => {
     // Arrange
-    inboxRepo.findByPid.mockResolvedValueOnce({
-      ...INBOX_FIXTURE,
-      del: true,
-    });
+    // `findAllByPid` já filtra `del: false` no repositório, então uma inbox
+    // soft-deletada simplesmente não aparece na lista — não chega ao serviço
+    // para ele reavaliar.
+    inboxRepo.findAllByPid.mockResolvedValueOnce([]);
     const body = buildInstagramPayload(IGID);
     const rawBody = Buffer.from(JSON.stringify(body));
 
@@ -172,7 +173,7 @@ describe('InstagramWebhookService — unit', () => {
 
   it('pid extraction: dado inbox válido, extrai pid de entry[0].id e delega forward com rawBody e signature', async () => {
     // Arrange
-    inboxRepo.findByPid.mockResolvedValueOnce(INBOX_FIXTURE);
+    inboxRepo.findAllByPid.mockResolvedValueOnce([INBOX_FIXTURE]);
     const body = buildInstagramPayload(IGID);
 
     // Act
@@ -180,7 +181,7 @@ describe('InstagramWebhookService — unit', () => {
     await new Promise((r) => setImmediate(r));
 
     // Assert
-    expect(inboxRepo.findByPid).toHaveBeenCalledWith(IGID);
+    expect(inboxRepo.findAllByPid).toHaveBeenCalledWith(IGID);
     expect(forwarder.forward).toHaveBeenCalledWith(
       '/webhooks/instagram',
       INBOX_FIXTURE,
@@ -192,7 +193,7 @@ describe('InstagramWebhookService — unit', () => {
 
   it('pid extraction: surface instagram-login delega forward para sub-caminho /webhooks/instagram-login', async () => {
     // Arrange
-    inboxRepo.findByPid.mockResolvedValueOnce(INBOX_FIXTURE);
+    inboxRepo.findAllByPid.mockResolvedValueOnce([INBOX_FIXTURE]);
     const body = buildInstagramPayload(IGID);
 
     // Act
@@ -212,7 +213,7 @@ describe('InstagramWebhookService — unit', () => {
     // Arrange — Messenger (object=page): entry[0].id é o pageId
     const PAGE_ID = 'fb-page-987';
     const messengerInbox = { ...INBOX_FIXTURE, pid: PAGE_ID };
-    inboxRepo.findByPid.mockResolvedValueOnce(messengerInbox);
+    inboxRepo.findAllByPid.mockResolvedValueOnce([messengerInbox]);
     const body = { object: 'page', entry: [{ id: PAGE_ID }] };
     const rawBody = Buffer.from(JSON.stringify(body));
 
@@ -221,7 +222,7 @@ describe('InstagramWebhookService — unit', () => {
     await new Promise((r) => setImmediate(r));
 
     // Assert
-    expect(inboxRepo.findByPid).toHaveBeenCalledWith(PAGE_ID);
+    expect(inboxRepo.findAllByPid).toHaveBeenCalledWith(PAGE_ID);
     expect(forwarder.forward).toHaveBeenCalledWith(
       '/webhooks/messenger',
       messengerInbox,

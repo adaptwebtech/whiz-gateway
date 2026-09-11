@@ -152,17 +152,24 @@ export class RedirecionamentosWebhooksService {
       return { dispatched: 0 };
     }
     this.logger.log('2 - PID extraído:', pid);
-    const inbox = await this.inboxRepo.findByPid(pid);
-    if (!inbox) {
+    // O mesmo pid pode estar cadastrado em mais de um ambiente; cada um tem os
+    // próprios redirecionamentos e todos devem receber.
+    const inboxes = await this.inboxRepo.findAllByPid(pid);
+    if (inboxes.length === 0) {
       return { dispatched: 0 };
     }
-    this.logger.log('3 - Inbox encontrada:', inbox);
-    const redirects = await this.repo.findActiveByAmbiente(inbox.id_ambiente);
+    this.logger.log('3 - Inbox(es) encontrada(s):', JSON.stringify(inboxes));
+
+    const ambientes = [...new Set(inboxes.map((i) => i.id_ambiente))];
+    const redirects = (
+      await Promise.all(ambientes.map((a) => this.repo.findActiveByAmbiente(a)))
+    ).flat();
     if (redirects.length === 0) {
       return { dispatched: 0 };
     }
     this.logger.log(
-      `4 - ${redirects.length} redirecionamentos ativos encontrados para ambiente ${inbox.id_ambiente}`,
+      `4 - ${redirects.length} redirecionamentos ativos encontrados para ` +
+        `ambiente(s) ${ambientes.join(', ')}`,
     );
     await Promise.all(redirects.map((r) => this.sendWithRetry(r.url, payload)));
 

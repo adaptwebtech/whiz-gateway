@@ -87,7 +87,8 @@ beforeEach(() => {
   inboxRepo = {
     findById: jest.fn(),
     findAll: jest.fn(),
-    findByPid: jest.fn(),
+    findAllByPid: jest.fn(),
+  findByPidEAmbiente: jest.fn(),
     create: jest.fn(),
     update: jest.fn(),
     softDelete: jest.fn(),

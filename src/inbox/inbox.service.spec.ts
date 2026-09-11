@@ -21,8 +21,9 @@ import { CreateInboxDto } from './dto/create-inbox.dto';
 const makeRepo = (): jest.Mocked<IInboxRepository> => ({
   findAll: jest.fn(),
   findById: jest.fn(),
-  findByPid: jest.fn(),
-  reviveByPid: jest.fn(),
+  findAllByPid: jest.fn(),
+  findByPidEAmbiente: jest.fn(),
+  reviveByPidEAmbiente: jest.fn(),
   create: jest.fn(),
   update: jest.fn(),
   softDelete: jest.fn(),
@@ -60,7 +61,7 @@ describe('InboxService — unit', () => {
 
   it('AC-3: dado pid já existente (del=false), quando create, então ConflictException', async () => {
     // Arrange
-    repo.findByPid.mockResolvedValueOnce(INBOX_FIXTURE);
+    repo.findByPidEAmbiente.mockResolvedValueOnce(INBOX_FIXTURE);
 
     // Act & Assert
     await expect(service.create(CREATE_DTO)).rejects.toThrow(ConflictException);
@@ -69,7 +70,7 @@ describe('InboxService — unit', () => {
 
   it('AC-3: ConflictException tem status 409', async () => {
     // Arrange
-    repo.findByPid.mockResolvedValueOnce(INBOX_FIXTURE);
+    repo.findByPidEAmbiente.mockResolvedValueOnce(INBOX_FIXTURE);
 
     // Act
     let thrown: ConflictException | undefined;
@@ -87,15 +88,15 @@ describe('InboxService — unit', () => {
   // ─── Revive (re-onboarding do mesmo pid soft-deletado) ──────────────────────
 
   it('revive: pid livre mas existe linha soft-deletada → revive e NÃO insere', async () => {
-    repo.findByPid.mockResolvedValueOnce(null);
-    repo.reviveByPid.mockResolvedValueOnce({
+    repo.findByPidEAmbiente.mockResolvedValueOnce(null);
+    repo.reviveByPidEAmbiente.mockResolvedValueOnce({
       ...INBOX_FIXTURE,
       nome: 'Novo Nome',
     });
 
     const result = await service.create({ ...CREATE_DTO, nome: 'Novo Nome' });
 
-    expect(repo.reviveByPid).toHaveBeenCalledWith({
+    expect(repo.reviveByPidEAmbiente).toHaveBeenCalledWith({
       ...CREATE_DTO,
       nome: 'Novo Nome',
     });
@@ -105,14 +106,14 @@ describe('InboxService — unit', () => {
     expect(result.del).toBe(false);
   });
 
-  it('revive: sem linha soft-deletada (reviveByPid null) → cai no create normal', async () => {
-    repo.findByPid.mockResolvedValueOnce(null);
-    repo.reviveByPid.mockResolvedValueOnce(null);
+  it('revive: sem linha soft-deletada (reviveByPidEAmbiente null) → cai no create normal', async () => {
+    repo.findByPidEAmbiente.mockResolvedValueOnce(null);
+    repo.reviveByPidEAmbiente.mockResolvedValueOnce(null);
     repo.create.mockResolvedValueOnce(INBOX_FIXTURE);
 
     await service.create(CREATE_DTO);
 
-    expect(repo.reviveByPid).toHaveBeenCalledTimes(1);
+    expect(repo.reviveByPidEAmbiente).toHaveBeenCalledTimes(1);
     expect(repo.create).toHaveBeenCalledTimes(1);
   });
 
@@ -120,7 +121,7 @@ describe('InboxService — unit', () => {
 
   it('AC-4: dado id_ambiente inexistente, quando create, então erro HTTP', async () => {
     // Arrange — pid disponível, mas ambiente não existe → repo.create lança BadRequestException
-    repo.findByPid.mockResolvedValueOnce(null);
+    repo.findByPidEAmbiente.mockResolvedValueOnce(null);
     repo.create.mockRejectedValueOnce(
       new BadRequestException('Ambiente não encontrado'),
     );
@@ -135,7 +136,7 @@ describe('InboxService — unit', () => {
 
   it('AC-9: create retorna InboxResponseDto com os 7 campos exatos (sem campos internos Prisma)', async () => {
     // Arrange
-    repo.findByPid.mockResolvedValueOnce(null);
+    repo.findByPidEAmbiente.mockResolvedValueOnce(null);
     repo.create.mockResolvedValueOnce(INBOX_FIXTURE);
 
     // Act

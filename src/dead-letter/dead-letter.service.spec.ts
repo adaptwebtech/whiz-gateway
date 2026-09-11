@@ -28,7 +28,8 @@ const makeRepo = (): jest.Mocked<IDeadLetterRepository> => ({
 
 const makeInboxRepo = () => ({
   findById: jest.fn(),
-  findByPid: jest.fn(),
+  findAllByPid: jest.fn(),
+  findByPidEAmbiente: jest.fn(),
   findAll: jest.fn(),
   create: jest.fn(),
   update: jest.fn(),

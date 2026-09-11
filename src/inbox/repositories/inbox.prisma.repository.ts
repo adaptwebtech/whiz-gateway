@@ -35,9 +35,26 @@ export class InboxPrismaRepository implements IInboxRepository {
     );
   }
 
-  async findByPid(pid: string): Promise<InboxResponseDto | null> {
-    const record = await this.prisma.inboxes.findFirst({
+  async findAllByPid(pid: string): Promise<InboxResponseDto[]> {
+    const records = await this.prisma.inboxes.findMany({
       where: { pid, del: false },
+      orderBy: { id_ambiente: 'asc' },
+    });
+    return records.map((r) =>
+      plainToInstance(
+        InboxResponseDto,
+        { ...r, data: r.data.toISOString() },
+        { excludeExtraneousValues: true },
+      ),
+    );
+  }
+
+  async findByPidEAmbiente(
+    pid: string,
+    idAmbiente: number,
+  ): Promise<InboxResponseDto | null> {
+    const record = await this.prisma.inboxes.findFirst({
+      where: { pid, id_ambiente: idAmbiente, del: false },
     });
     if (!record) return null;
     return plainToInstance(
@@ -47,38 +64,41 @@ export class InboxPrismaRepository implements IInboxRepository {
     );
   }
 
-  async findByWabaId(wabaId: string): Promise<InboxResponseDto | null> {
+  async findAllByWabaId(wabaId: string): Promise<InboxResponseDto[]> {
     const records = await this.prisma.inboxes.findMany({
       where: { waba_id: wabaId, del: false },
-      orderBy: { data: 'asc' },
+      orderBy: [{ id_ambiente: 'asc' }, { data: 'asc' }],
     });
-    if (records.length === 0) return null;
+    if (records.length === 0) return [];
 
-    // Vários números da mesma WABA são o caso NORMAL, e todos devem apontar para o
-    // mesmo ambiente. Ambientes divergentes significam cadastro inconsistente: o
-    // evento de nível WABA só chegaria a um deles, então vale o aviso.
-    const ambientes = new Set(records.map((r) => r.id_ambiente));
-    if (ambientes.size > 1) {
-      this.logger.warn(
-        `WABA ${wabaId} tem inboxes em ambientes diferentes (${[...ambientes].join(', ')}); ` +
-          `webhooks de nível WABA irão para o ambiente ${records[0].id_ambiente}.`,
-      );
+    // Vários números da mesma WABA são o caso NORMAL, e o evento de nível WABA
+    // interessa ao AMBIENTE, não ao número: despachar por número entregaria o
+    // mesmo evento N vezes ao mesmo whiz. Uma por ambiente distinto.
+    const porAmbiente = new Map<number, (typeof records)[number]>();
+    for (const r of records) {
+      if (!porAmbiente.has(r.id_ambiente)) porAmbiente.set(r.id_ambiente, r);
     }
 
-    const record = records[0];
-    return plainToInstance(
-      InboxResponseDto,
-      { ...record, data: record.data.toISOString() },
-      { excludeExtraneousValues: true },
+    return [...porAmbiente.values()].map((r) =>
+      plainToInstance(
+        InboxResponseDto,
+        { ...r, data: r.data.toISOString() },
+        { excludeExtraneousValues: true },
+      ),
     );
   }
-
-  async reviveByPid(data: CreateInboxDto): Promise<InboxResponseDto | null> {
-    // O pid é @unique ignorando `del`, então uma linha soft-deletada continua
-    // ocupando o pid e um novo insert bateria em P2002 (500). Aqui revivemos essa
-    // linha em vez de inserir.
+  async reviveByPidEAmbiente(
+    data: CreateInboxDto,
+  ): Promise<InboxResponseDto | null> {
+    // O par (pid, id_ambiente) é @unique ignorando `del`, então uma linha
+    // soft-deletada continua ocupando o par e um novo insert bateria em P2002
+    // (500). Aqui revivemos essa linha em vez de inserir.
+    //
+    // Escopado ao AMBIENTE: procurar só pelo pid faria uma entrada apagada em
+    // `development` ser revivida como a entrada de `production`, trocando o
+    // ambiente de uma caixa que o operador achava que estava criando do zero.
     const record = await this.prisma.inboxes.findFirst({
-      where: { pid: data.pid, del: true },
+      where: { pid: data.pid, id_ambiente: data.id_ambiente, del: true },
     });
     if (!record) return null;
 
@@ -95,7 +115,6 @@ export class InboxPrismaRepository implements IInboxRepository {
       where: { id: record.id },
       data: {
         del: false,
-        id_ambiente: data.id_ambiente,
         // Atualiza o nome registrado quando informado; senão mantém o anterior.
         ...(data.nome ? { nome: data.nome } : {}),
         // Idem para a WABA: reconectar um número não pode apagar a resolução de
