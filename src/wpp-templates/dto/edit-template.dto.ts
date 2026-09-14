@@ -1,5 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsArray, IsOptional, IsString } from 'class-validator';
+import { Allow, IsArray, IsOptional, IsString } from 'class-validator';
 
 export class EditTemplateDto {
   @ApiPropertyOptional({
@@ -39,4 +39,17 @@ export class EditTemplateDto {
   @IsOptional()
   @IsString()
   category?: string;
+
+  /**
+   * PASSTHROUGH, mesmo caso do `CreateTemplateDto`: a Meta aceita
+   * `parameter_format` também na edição, e sem metadado de validação o pipe
+   * global recusaria a requisição inteira.
+   */
+  @ApiPropertyOptional({
+    description:
+      'Formato dos parâmetros do template: `POSITIONAL` (`{{1}}`) ou `NAMED` (`{{nome}}`). Passthrough.',
+    example: 'NAMED',
+  })
+  @Allow()
+  parameter_format?: string;
 }
