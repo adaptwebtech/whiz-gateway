@@ -1,5 +1,5 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsArray, IsString } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Allow, IsArray, IsString } from 'class-validator';
 
 export class CreateTemplateDto {
   @ApiProperty({
@@ -39,4 +39,23 @@ export class CreateTemplateDto {
   })
   @IsArray()
   components: object[];
+
+  /**
+   * PASSTHROUGH. `@Allow()` (e não `@IsString()`) pelo mesmo motivo dos demais
+   * DTOs de proxy: o que falta é registrar metadado de validação para o campo
+   * não ser tratado como propriedade estranha pelo pipe global de `main.ts`
+   * (`whitelist: true` + `forbidNonWhitelisted: true`). Quem define o contrato
+   * deste campo é a Meta.
+   *
+   * Sem esta declaração, todo template com variáveis NOMEADAS era recusado AQUI,
+   * com 400 "property parameter_format should not exist" — a requisição nunca
+   * chegava à Meta.
+   */
+  @ApiPropertyOptional({
+    description:
+      'Formato dos parâmetros do template: `POSITIONAL` (`{{1}}`) ou `NAMED` (`{{nome}}`). Passthrough — a Meta é a autoridade sobre os valores aceitos.',
+    example: 'NAMED',
+  })
+  @Allow()
+  parameter_format?: string;
 }
