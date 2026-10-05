@@ -103,19 +103,44 @@ export class WppService {
     }
   }
 
+  /**
+   * Repassa o upload de mídia à Meta.
+   *
+   * `filename` e `mediaType` vêm do multipart ORIGINAL e precisam sobreviver à
+   * viagem pela fila. O job só guarda o arquivo num tmp cujo nome é o `jobId` —
+   * um UUID **sem extensão** — e remontar o form com esse nome fazia a Meta
+   * recusar o áudio depois de aceitá-lo:
+   *
+   *   131053 Media upload error
+   *   "Audio file uploaded with mimetype as audio/mp4, however on processing it
+   *    is of type application/octet-stream. Please choose a different file."
+   *
+   * Ou seja: a Meta lê o `Content-Type` da parte (audio/mp4), mas ao processar o
+   * arquivo cai em `application/octet-stream` porque não tem nem extensão no nome
+   * nem o campo `type` para confirmar. Os dois vinham do whiz-server e eram
+   * descartados aqui.
+   */
   async forwardMultipart(
     subPath: string,
     tmpFilePath: string,
     contentType: string,
     messagingProduct: string,
+    filename?: string,
+    mediaType?: string,
   ): Promise<WppForwardResult> {
     const fileBuffer = await fs.promises.readFile(tmpFilePath);
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const FormData = require('form-data') as typeof import('form-data');
     const form = new FormData();
     form.append('messaging_product', messagingProduct);
+    // `type` é o campo que a Meta usa para confirmar o mime do arquivo. Só é
+    // enviado quando veio do cliente — inventar um valor aqui seria pior que
+    // omitir, porque passaria a discordar do `Content-Type` da parte.
+    if (mediaType) form.append('type', mediaType);
     form.append('file', fileBuffer, {
-      filename: path.basename(tmpFilePath),
+      // Fallback no basename do tmp (o jobId) só para jobs antigos, enfileirados
+      // antes deste campo existir; o caminho normal usa o nome original.
+      filename: filename || path.basename(tmpFilePath),
       contentType,
     });
 

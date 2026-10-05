@@ -101,11 +101,16 @@ describe('WppMediaUploadConsumerService — unit', () => {
 
     await service.handleJob(job);
 
+    // `filename` e `mediaType` fecham a lista de args: vêm do multipart original e
+    // sem eles a Meta recusa áudio com 131053 (ver wpp-media-upload-filename.reg.spec).
+    // Neste job não existem, e `undefined` é o que o forward precisa receber.
     expect(mockWppService.forwardMultipart).toHaveBeenCalledWith(
       'pn001/media',
       '/tmp/wpp-uploads/job-uuid-001',
       'image/jpeg',
       'whatsapp',
+      undefined,
+      undefined,
     );
 
     expect(unlinkSpy).toHaveBeenCalledWith('/tmp/wpp-uploads/job-uuid-001');
