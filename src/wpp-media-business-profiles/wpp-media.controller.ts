@@ -106,6 +106,7 @@ export class WppMediaController {
     });
     const textFields: Record<string, string> = {};
     let fileContentType = 'application/octet-stream';
+    let fileName: string | undefined;
 
     // Stream the file part straight to disk — no buffering in RAM (NFR-1).
     await new Promise<void>((resolve, reject) => {
@@ -125,10 +126,13 @@ export class WppMediaController {
         (
           _name: string,
           stream: NodeJS.ReadableStream,
-          info: { mimeType: string },
+          info: { mimeType: string; filename?: string },
         ) => {
           hasFile = true;
           fileContentType = info.mimeType;
+          // O nome original tem de viajar no job: o arquivo em disco é o `jobId`,
+          // sem extensão, e a Meta recusa áudio sem ela (131053).
+          fileName = info.filename;
           stream.on('error', reject);
           stream.pipe(writeStream);
           writeStream.on('finish', () => {
@@ -159,6 +163,8 @@ export class WppMediaController {
       contentType: fileContentType,
       messagingProduct: textFields['messaging_product'],
       callbackUrl: textFields['callback_url'],
+      filename: fileName,
+      mediaType: textFields['type'],
     };
 
     this.logger.log(`uploadMedia jobId=${jobId} subPath=${subPath}`);

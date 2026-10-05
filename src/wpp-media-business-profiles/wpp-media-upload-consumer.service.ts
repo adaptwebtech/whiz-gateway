@@ -65,6 +65,8 @@ export class WppMediaUploadConsumerService implements OnApplicationBootstrap {
           job.tmpFilePath,
           job.contentType,
           job.messagingProduct!,
+          job.filename,
+          job.mediaType,
         );
       } else {
         result = await this.wppService.forwardBinary(
