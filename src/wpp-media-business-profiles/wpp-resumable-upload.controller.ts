@@ -113,6 +113,13 @@ export class WppResumableUploadController {
     description: 'URL de callback para receber o resultado via webhook',
     example: 'https://meu-servidor.com/webhook/upload',
   })
+  @ApiQuery({
+    name: 'file_offset',
+    required: false,
+    description:
+      'Offset do chunk. Preferido ao header homônimo, que não sobrevive a proxy nginx.',
+    example: '0',
+  })
   @ApiResponse({
     status: 202,
     description: 'Job enfileirado — retorna { jobId }',
@@ -122,6 +129,7 @@ export class WppResumableUploadController {
   async uploadBinary(
     @Param('uploadId') uploadId: string,
     @Query('callback_url') callbackUrl: string | undefined,
+    @Query('file_offset') fileOffsetQuery: string | undefined,
     @Req() req: Request,
     @Res() res: Response,
   ): Promise<void> {
@@ -134,7 +142,10 @@ export class WppResumableUploadController {
 
     const contentType =
       (req.headers['content-type'] as string) || 'application/octet-stream';
-    const fileOffset = req.headers['file_offset'] as string | undefined;
+    const { fileOffset, origem } = this.resolverFileOffset(
+      fileOffsetQuery,
+      req,
+    );
 
     const job: MediaUploadJobDto = {
       jobId,
@@ -146,10 +157,55 @@ export class WppResumableUploadController {
       callbackUrl,
     };
 
-    this.logger.log(`uploadBinary jobId=${jobId} uploadId=${uploadId}`);
+    this.logger.log(
+      `uploadBinary jobId=${jobId} uploadId=${uploadId} fileOffset=${fileOffset} (${origem})`,
+    );
     await this.rabbitMQService.publish(MEDIA_UPLOAD_QUEUE, job);
 
     res.status(202).json({ jobId });
+  }
+
+  /**
+   * De onde sai o `file_offset`, em ordem de precedência: query param → header
+   * `file_offset` → `file-offset` → `x-file-offset` → `"0"`.
+   *
+   * O header com underscore **não é confiável nesta rota**: em produção e
+   * staging o whiz-server alcança o gateway pela internet
+   * (`https://gateway.whiz.net.br`) através de um reverse proxy nginx, e o nginx
+   * descarta headers com underscore por padrão (`underscores_in_headers off`).
+   * O header morria no proxy, o job saía com `fileOffset: undefined`, axios
+   * omitia o header na chamada à Meta e a Meta respondia 400 — o mesmo arquivo
+   * subia em `development`, que roda em modo direto e não tem proxy no caminho.
+   *
+   * O default `"0"` é seguro para o upload de um único chunk, que é o que o
+   * whiz-server faz; um upload retomado de verdade manda o valor explícito.
+   */
+  private resolverFileOffset(
+    fileOffsetQuery: string | undefined,
+    req: Request,
+  ): { fileOffset: string; origem: string } {
+    const candidatos: [string, string | undefined][] = [
+      ['query', fileOffsetQuery],
+      ['header file_offset', req.headers['file_offset'] as string | undefined],
+      ['header file-offset', req.headers['file-offset'] as string | undefined],
+      [
+        'header x-file-offset',
+        req.headers['x-file-offset'] as string | undefined,
+      ],
+    ];
+
+    for (const [origem, valor] of candidatos) {
+      if (valor !== undefined && valor !== '') {
+        return { fileOffset: String(valor), origem };
+      }
+    }
+
+    this.logger.warn(
+      'uploadBinary sem file_offset no query nem em header algum — assumindo "0". ' +
+        'Se o caller mandou o header `file_offset`, ele foi comido por um proxy ' +
+        '(nginx descarta headers com underscore): mande por query param.',
+    );
+    return { fileOffset: '0', origem: 'default' };
   }
 
   @Get('uploads/:uploadId')

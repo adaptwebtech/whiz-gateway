@@ -111,6 +111,7 @@ describe('WppMediaUploadConsumerService — unit', () => {
       'whatsapp',
       undefined,
       undefined,
+      'job-uuid-001',
     );
 
     expect(unlinkSpy).toHaveBeenCalledWith('/tmp/wpp-uploads/job-uuid-001');
@@ -254,6 +255,7 @@ describe('WppMediaUploadConsumerService — unit', () => {
       '/tmp/wpp-uploads/job-uuid-binary-001',
       'image/jpeg',
       '0',
+      'job-uuid-001',
     );
 
     expect(unlinkSpy).toHaveBeenCalledWith(

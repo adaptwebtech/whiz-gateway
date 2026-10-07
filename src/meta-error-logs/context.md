@@ -1,0 +1,53 @@
+# MetaErrorLogs
+
+Guarda inteiro o erro que a Meta devolve — e a falha de entrega de callback —
+sob uma chave curta que é emitida em log no mesmo instante. Existe porque o
+gateway logava só o status do erro e descartava o corpo, que é o único lugar
+onde a Meta escreve o motivo.
+
+## Language
+
+**Chave de busca** (`chave`):
+Identificador curto e único (`ERRMETA-<12 hex>`) emitido em log no instante do
+persist. É o que se cola numa query, ou na URL `GET /meta-error-logs/<chave>`,
+para recuperar o erro inteiro.
+_Avoid_: id do erro, correlation id, trace id
+
+**Origem**:
+Em qual caminho o erro aconteceu: `forward`, `forwardMultipart`,
+`forwardBinary` ou `callback`. As três primeiras são chamadas à Meta; `callback`
+é a entrega do resultado de um job ao whiz-server.
+_Avoid_: tipo, categoria, fonte
+
+**Corpo** (`corpo`):
+Resposta da Meta gravada **sem truncar**. Truncar é exatamente o que fazia o log
+ser inútil.
+_Avoid_: payload, body, resposta
+
+**Erro de transporte**:
+Ausência de resposta (timeout, DNS, conexão). Grava `status = null` e preenche
+`mensagem`.
+_Avoid_: erro de rede, falha de conexão
+
+**Redação**:
+Substituição por `[REDACTED]` dos headers de `HEADERS_REDIGIDOS`
+(`authorization`, `x-meta-access-token`, `x-api-key`, `x-callback-secret`,
+`cookie`) antes de gravar. Estes registros vivem 14 dias no banco; credencial
+nenhuma entra.
+_Avoid_: mascarar, sanitizar, ofuscar
+
+**TTL de 14 dias**:
+Janela de retenção, aplicada por cron de hard delete às 03:30
+(`MetaErrorLogsCleanupService`) — não é um TTL do Postgres.
+_Avoid_: expiração, retenção, purge
+
+## Notas de operação
+
+- `persistir` **nunca lança**: uma falha de banco não pode mudar o resultado da
+  requisição que estava em curso. Devolve `null` e registra o próprio tombo.
+- `MetaErrorLogsModule` é `@Global` porque o serviço é injetado em caminhos
+  transversais (`WppService`, consumer de upload) e importá-lo em cada um abriria
+  ciclo com `ApiKeysModule`, usado aqui pelo guard da rota de consulta.
+- `WppService` e o consumer recebem o serviço com `@Optional()`: a ausência do
+  log não derruba um forward, e as suítes que constroem os dois à mão seguem
+  valendo.

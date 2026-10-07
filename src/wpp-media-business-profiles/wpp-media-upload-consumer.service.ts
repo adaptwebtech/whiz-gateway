@@ -14,6 +14,7 @@ import {
 } from '../rabbitmq/constants/rabbitmq-queue.constants';
 import type { IRabbitMQService } from '../rabbitmq/interfaces/rabbitmq-service.interface';
 import { WppService } from '../wpp/wpp.service';
+import { MetaErrorLogsService } from '../meta-error-logs/meta-error-logs.service';
 import { MediaUploadJobDto } from './dto/media-upload-job.dto';
 
 @Injectable()
@@ -26,6 +27,7 @@ export class WppMediaUploadConsumerService implements OnApplicationBootstrap {
     @Optional()
     @Inject(RABBITMQ_SERVICE)
     private readonly rabbitMQService?: IRabbitMQService,
+    @Optional() private readonly erros?: MetaErrorLogsService,
   ) {}
 
   async onApplicationBootstrap(): Promise<void> {
@@ -67,25 +69,48 @@ export class WppMediaUploadConsumerService implements OnApplicationBootstrap {
           job.messagingProduct!,
           job.filename,
           job.mediaType,
+          job.jobId,
         );
       } else {
         result = await this.wppService.forwardBinary(
           job.subPath,
           job.tmpFilePath,
           job.contentType,
-          job.fileOffset!,
+          job.fileOffset ?? '0',
+          job.jobId,
         );
       }
     } finally {
       await fs.promises.unlink(job.tmpFilePath).catch(() => {});
     }
 
-    if (!job.callbackUrl) return;
-
     const isSuccess = result.status >= 200 && result.status < 300;
+
+    if (!job.callbackUrl) {
+      // Era um `return` mudo. Um job que falha sem callback some sem rastro, e
+      // do outro lado o whiz-server espera 30 s e reporta só
+      // `Timeout aguardando job de upload do gateway: <jobId>`.
+      if (!isSuccess) {
+        this.logger.warn(
+          `handleJob jobId=${job.jobId} falhou (status=${result.status}) e NÃO tem callbackUrl — ` +
+            `o caller nunca vai saber. chaveErro=${result.chaveErro ?? '-'}`,
+        );
+      }
+      return;
+    }
+
+    // A chave acompanha o erro para que o front, que recebe a mensagem do
+    // whiz-server, traga por onde puxar o corpo inteiro da Meta.
+    const erroComChave =
+      result.chaveErro && result.data && typeof result.data === 'object'
+        ? { ...result.data, chaveErro: result.chaveErro }
+        : result.chaveErro
+          ? { corpo: result.data, chaveErro: result.chaveErro }
+          : result.data;
+
     const webhookPayload = isSuccess
       ? { jobId: job.jobId, status: 'done' as const, payload: result.data }
-      : { jobId: job.jobId, status: 'failed' as const, error: result.data };
+      : { jobId: job.jobId, status: 'failed' as const, error: erroComChave };
 
     this.logger.log(
       `handleJob jobId=${job.jobId} status=${webhookPayload.status} callbackUrl=${job.callbackUrl}`,
@@ -125,6 +150,19 @@ export class WppMediaUploadConsumerService implements OnApplicationBootstrap {
           this.logger.error(
             `webhook all retries exhausted for jobId=${jobId}: ${String(err)}`,
           );
+          // Entrega de callback esgotada: persistir é o que transforma esse
+          // `logger.error` volátil em algo consultável depois do incidente.
+          await this.erros
+            ?.persistir({
+              origem: 'callback',
+              metodo: 'POST',
+              subPath: url,
+              status: null,
+              corpo: payload,
+              jobId,
+              mensagem: `entrega de callback esgotou as retentativas: ${String(err)}`,
+            })
+            .catch(() => undefined);
         }
       }
     }

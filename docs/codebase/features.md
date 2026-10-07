@@ -330,3 +330,27 @@ Mapa de cada feature para seus arquivos. Autoritativo para descoberta (evita `gr
 | Config (modificado) | `src/config/config.validation.ts` (envs `SENTRY_*`) |
 | Despacho (modificado) | `src/dispatch/dispatch-handler.service.ts` (métricas de despacho/DLQ) |
 | Bootstrap (modificado) | `src/app.module.ts` · `src/main.ts` |
+
+## meta-error-logs
+
+> Feature 24. Erros da Meta persistidos inteiros em `logs_erros_meta`, com chave curta de busca emitida em log no persist e TTL de 14 dias por cron. Inclui a correção da causa do `400` no upload resumível: `file_offset` deixa de depender de um header com underscore (descartado pelo nginx que fronteia o gateway). Spec: [`docs/specs/2026-10-07-meta-error-logs.md`](../specs/2026-10-07-meta-error-logs.md) · Impl: [`docs/implementation/2026-10-07-meta-error-logs.md`](../implementation/2026-10-07-meta-error-logs.md)
+
+| Camada | Arquivos |
+|---|---|
+| Constantes (novo) | `src/meta-error-logs/constants/meta-error-logs-tokens.constants.ts` |
+| Contrato do repositório (novo) | `src/meta-error-logs/interfaces/meta-error-logs-repository.interface.ts` |
+| DTOs (novo) | `src/meta-error-logs/dto/meta-error-log-response.dto.ts` · `src/meta-error-logs/dto/list-meta-error-logs-query.dto.ts` |
+| Repositório Prisma (novo) | `src/meta-error-logs/repositories/meta-error-logs.prisma.repository.ts` |
+| Serviço (novo) | `src/meta-error-logs/meta-error-logs.service.ts` · `src/meta-error-logs/meta-error-logs.service.spec.ts` |
+| TTL de 14 dias (novo) | `src/meta-error-logs/meta-error-logs-cleanup.service.ts` · `src/meta-error-logs/meta-error-logs-cleanup.service.spec.ts` |
+| Controller (novo) | `src/meta-error-logs/meta-error-logs.controller.ts` · `src/meta-error-logs/meta-error-logs.controller.spec.ts` |
+| Module `@Global` (novo) | `src/meta-error-logs/meta-error-logs.module.ts` |
+| Glossário | `src/meta-error-logs/context.md` |
+| Schema + migration (novo) | `prisma/schema.prisma` (`logs_erros_meta`) · `prisma/migrations/20261007120000_logs_erros_meta/` |
+| Adapter Meta (modificado) | `src/wpp/wpp.service.ts` (`chaveErro` em `WppForwardResult`; persist nos 3 forwards; `file_offset` nunca vazio) · `src/wpp/wpp-erro-persistido.spec.ts` (novo) · `src/wpp/context.md` |
+| Upload resumível (modificado) | `src/wpp-media-business-profiles/wpp-resumable-upload.controller.ts` (`resolverFileOffset`: query → headers → `"0"`) · `src/wpp-media-business-profiles/wpp-resumable-upload-file-offset.reg.spec.ts` (novo) |
+| Consumer de upload (modificado) | `src/wpp-media-business-profiles/wpp-media-upload-consumer.service.ts` (`chaveErro` no callback; `callbackUrl` ausente deixa de ser mudo; persist de callback esgotado) · `src/wpp-media-business-profiles/wpp-media-upload-callback-erro.reg.spec.ts` (novo) |
+| Job da fila (modificado) | `src/wpp-media-business-profiles/dto/media-upload-job.dto.ts` |
+| Painel (modificado) | `src/ui/public/index.html` (aba **Erros da Meta**, somente leitura) |
+| Guia operacional (modificado) | `docs/GUIA-GATEWAY.md` §7.1 |
+| Bootstrap (modificado) | `src/app.module.ts` |

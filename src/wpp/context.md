@@ -35,8 +35,14 @@ Método de `WppService` que lê arquivo de disco e faz pipe binário bruto ao Me
 _Avoid_: upload binário, binary proxy
 
 **file_offset**:
-Header obrigatório da Meta no upload binário de sessão resumível. Indica o offset do chunk enviado (normalmente `0` para uploads simples). Repassado pelo gateway sem interpretação.
+Parâmetro obrigatório da Meta no upload binário de sessão resumível. Indica o offset do chunk enviado (normalmente `0` para uploads simples).
+
+Chega ao gateway por **query param** (`?file_offset=0`), com fallback para os headers `file_offset`, `file-offset` e `x-file-offset` e default `"0"`. O header com underscore não é confiável: em produção e staging a rota é alcançada pela internet através de um reverse proxy nginx, que descarta headers com underscore por padrão (`underscores_in_headers off`) — o header morria no proxy, `forwardBinary` mandava o valor vazio, axios omitia o header e a Meta respondia `400`.
 _Avoid_: offset, posição do arquivo
+
+**Chave de erro** (`chaveErro`):
+Campo opcional de `WppForwardResult` que carrega a chave do erro persistido em `logs_erros_meta` quando a chamada falhou. Viaja até o `error` do callback de upload para que a mensagem que chega ao front traga por onde puxar o corpo inteiro da Meta. Ver `src/meta-error-logs/context.md`.
+_Avoid_: id do erro, código do erro
 
 **callback_url**:
 URL opcional fornecida pelo cliente em rotas assíncronas de upload. O consumer dispara `POST <callback_url>` com o resultado após concluir o job. Ausente → fire-and-forget.
