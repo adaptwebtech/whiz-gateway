@@ -1,11 +1,18 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { HttpService } from '@nestjs/axios';
-import { BadGatewayException, Injectable, Logger } from '@nestjs/common';
+import {
+  BadGatewayException,
+  Injectable,
+  Logger,
+  Optional,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AxiosError } from 'axios';
 import { firstValueFrom } from 'rxjs';
 import { MetaTokenStore } from '../meta-token/meta-token.store';
+import { MetaErrorLogsService } from '../meta-error-logs/meta-error-logs.service';
+import { OrigemErroMeta } from '../meta-error-logs/constants/meta-error-logs-tokens.constants';
 
 export interface WppForwardOptions {
   query?: Record<string, string | string[]>;
@@ -22,6 +29,12 @@ export interface WppForwardOptions {
 export interface WppForwardResult {
   status: number;
   data: unknown;
+  /**
+   * Chave do erro persistido em `logs_erros_meta`, quando a chamada falhou.
+   * Viaja até o callback de upload para que o erro que o whiz-server propaga ao
+   * front traga por onde puxar o corpo inteiro da Meta.
+   */
+  chaveErro?: string;
 }
 
 @Injectable()
@@ -32,7 +45,36 @@ export class WppService {
     private readonly httpService: HttpService,
     private readonly configService: ConfigService,
     private readonly metaTokenStore: MetaTokenStore,
+    // `@Optional` de propósito: as suítes que constroem o WppService à mão
+    // (e qualquer caminho sem o módulo global carregado) continuam valendo, e a
+    // ausência do log nunca pode derrubar um forward.
+    @Optional() private readonly erros?: MetaErrorLogsService,
   ) {}
+
+  /**
+   * Persiste o erro INTEIRO e devolve a chave. Engole qualquer falha própria:
+   * um log que não grava não pode mudar o resultado do forward (NFR-1).
+   */
+  private async persistirErro(dados: {
+    origem: OrigemErroMeta;
+    metodo: string;
+    subPath: string;
+    status: number | null;
+    corpo?: unknown;
+    requisicao?: Record<string, unknown>;
+    jobId?: string;
+    mensagem?: string;
+  }): Promise<string | undefined> {
+    if (!this.erros) return undefined;
+    try {
+      return (await this.erros.persistir(dados)) ?? undefined;
+    } catch (err) {
+      this.logger.error(
+        `falha ao persistir erro da Meta (${dados.origem} ${dados.subPath}): ${String(err)}`,
+      );
+      return undefined;
+    }
+  }
 
   /**
    * Resolve o Bearer: token por-inbox do contexto (`X-Meta-Access-Token`) →
@@ -85,15 +127,32 @@ export class WppService {
       const axiosErr = err as AxiosError;
       if (axiosErr.response) {
         // Meta returned an HTTP error (4xx/5xx) — pass through transparently
+        const chaveErro = await this.persistirErro({
+          origem: 'forward',
+          metodo: method,
+          subPath: normalizedPath,
+          status: axiosErr.response.status,
+          corpo: axiosErr.response.data,
+          requisicao: headers,
+        });
         this.logger.log(
-          `forward ${method} ${normalizedPath} → ${axiosErr.response.status} (Meta error passthrough)`,
+          `forward ${method} ${normalizedPath} → ${axiosErr.response.status} (Meta error passthrough) chaveErro=${chaveErro ?? '-'}`,
         );
         return {
           status: axiosErr.response.status,
           data: axiosErr.response.data,
+          chaveErro,
         };
       }
       // Transport error (timeout, network) → 502
+      await this.persistirErro({
+        origem: 'forward',
+        metodo: method,
+        subPath: normalizedPath,
+        status: null,
+        requisicao: headers,
+        mensagem: String(err),
+      });
       this.logger.error(
         `forward ${method} ${normalizedPath} → transport error: ${String(err)}`,
       );
@@ -127,6 +186,7 @@ export class WppService {
     messagingProduct: string,
     filename?: string,
     mediaType?: string,
+    jobId?: string,
   ): Promise<WppForwardResult> {
     const fileBuffer = await fs.promises.readFile(tmpFilePath);
     // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -149,6 +209,11 @@ export class WppService {
     const normalizedPath = subPath.startsWith('/') ? subPath.slice(1) : subPath;
     const url = `${baseUrl}/${normalizedPath}`;
 
+    const headers: Record<string, string> = {
+      Authorization: `Bearer ${token}`,
+      ...(form.getHeaders() as Record<string, string>),
+    };
+
     this.logger.log(`forwardMultipart POST ${normalizedPath}`);
     try {
       const response = await firstValueFrom(
@@ -156,10 +221,7 @@ export class WppService {
           method: 'POST',
           url,
           data: form,
-          headers: {
-            Authorization: `Bearer ${token}`,
-            ...(form.getHeaders() as Record<string, string>),
-          },
+          headers,
         }),
       );
       this.logger.log(
@@ -169,14 +231,33 @@ export class WppService {
     } catch (err) {
       const axiosErr = err as AxiosError;
       if (axiosErr.response) {
+        const chaveErro = await this.persistirErro({
+          origem: 'forwardMultipart',
+          metodo: 'POST',
+          subPath: normalizedPath,
+          status: axiosErr.response.status,
+          corpo: axiosErr.response.data,
+          requisicao: { ...headers, filename, type: mediaType },
+          jobId,
+        });
         this.logger.log(
-          `forwardMultipart POST ${normalizedPath} → ${axiosErr.response.status} (Meta error passthrough)`,
+          `forwardMultipart POST ${normalizedPath} → ${axiosErr.response.status} (Meta error passthrough) chaveErro=${chaveErro ?? '-'}`,
         );
         return {
           status: axiosErr.response.status,
           data: axiosErr.response.data,
+          chaveErro,
         };
       }
+      await this.persistirErro({
+        origem: 'forwardMultipart',
+        metodo: 'POST',
+        subPath: normalizedPath,
+        status: null,
+        requisicao: { ...headers, filename, type: mediaType },
+        jobId,
+        mensagem: String(err),
+      });
       this.logger.error(
         `forwardMultipart POST ${normalizedPath} → transport error: ${String(err)}`,
       );
@@ -191,12 +272,22 @@ export class WppService {
     tmpFilePath: string,
     contentType: string,
     fileOffset: string,
+    jobId?: string,
   ): Promise<WppForwardResult> {
     const fileBuffer = await fs.promises.readFile(tmpFilePath);
     const baseUrl = this.configService.get<string>('META_GRAPH_URL')!;
     const token = this.resolveToken();
     const normalizedPath = subPath.startsWith('/') ? subPath.slice(1) : subPath;
     const url = `${baseUrl}/${normalizedPath}`;
+
+    // `file_offset` é obrigatório para a Meta. Nunca deixar o valor viajar
+    // vazio: axios omite um header `undefined`, e a Meta responde 400 sem dizer
+    // qual parâmetro faltou. Quem resolve a origem do valor é o controller.
+    const headers: Record<string, string> = {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': contentType,
+      file_offset: fileOffset || '0',
+    };
 
     this.logger.log(`forwardBinary POST ${normalizedPath}`);
     try {
@@ -205,11 +296,7 @@ export class WppService {
           method: 'POST',
           url,
           data: fileBuffer,
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': contentType,
-            file_offset: fileOffset,
-          },
+          headers,
         }),
       );
       this.logger.log(
@@ -219,14 +306,33 @@ export class WppService {
     } catch (err) {
       const axiosErr = err as AxiosError;
       if (axiosErr.response) {
+        const chaveErro = await this.persistirErro({
+          origem: 'forwardBinary',
+          metodo: 'POST',
+          subPath: normalizedPath,
+          status: axiosErr.response.status,
+          corpo: axiosErr.response.data,
+          requisicao: { ...headers, tamanhoEmBytes: String(fileBuffer.length) },
+          jobId,
+        });
         this.logger.log(
-          `forwardBinary POST ${normalizedPath} → ${axiosErr.response.status} (Meta error passthrough)`,
+          `forwardBinary POST ${normalizedPath} → ${axiosErr.response.status} (Meta error passthrough) chaveErro=${chaveErro ?? '-'}`,
         );
         return {
           status: axiosErr.response.status,
           data: axiosErr.response.data,
+          chaveErro,
         };
       }
+      await this.persistirErro({
+        origem: 'forwardBinary',
+        metodo: 'POST',
+        subPath: normalizedPath,
+        status: null,
+        requisicao: { ...headers, tamanhoEmBytes: String(fileBuffer.length) },
+        jobId,
+        mensagem: String(err),
+      });
       this.logger.error(
         `forwardBinary POST ${normalizedPath} → transport error: ${String(err)}`,
       );

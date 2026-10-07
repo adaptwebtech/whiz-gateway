@@ -83,6 +83,7 @@ describe('upload de mídia — nome do arquivo e type atravessam a fila', () => 
         'whatsapp',
         'audio.m4a',
         'audio/mp4',
+        'job-1',
       );
 
       // Assert
@@ -146,6 +147,7 @@ describe('upload de mídia — nome do arquivo e type atravessam a fila', () => 
         'whatsapp',
         'audio.m4a',
         'audio/mp4',
+        'job-1',
       );
       unlink.mockRestore();
     });

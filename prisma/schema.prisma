@@ -115,3 +115,44 @@ model redirecionamentos_webhooks {
 
   ambiente ambiente? @relation(fields: [id_ambiente], references: [id])
 }
+
+/// Erro bruto devolvido pela Meta — ou falha de entrega de callback — guardado
+/// INTEIRO para diagnóstico posterior.
+///
+/// Existe porque o log do gateway só registrava o status (`… → 400 (Meta error
+/// passthrough)`) e jogava o corpo fora. O corpo é o único lugar onde a Meta
+/// escreve o motivo, e sem ele um upload quebrado chegava ao whiz-server como um
+/// `Timeout aguardando job de upload do gateway: <jobId>` — três camadas, nenhuma
+/// com a causa.
+///
+/// `chave` é o identificador curto emitido em log no instante do persist: é o que
+/// se cola numa query para recuperar o erro inteiro. Registros expiram em 14 dias
+/// (`MetaErrorLogsCleanupService`).
+model logs_erros_meta {
+  id    String @id @default(uuid())
+  /// Chave curta de busca (`ERRMETA-<12 hex>`), logada no persist.
+  chave String @unique
+
+  /// Onde o erro aconteceu: `forward`, `forwardMultipart`, `forwardBinary` ou `callback`.
+  origem   String
+  metodo   String
+  sub_path String
+
+  /// Status HTTP da resposta. `null` em erro de transporte (nenhuma resposta).
+  status Int?
+  /// Corpo da resposta, sem truncar. `null` em erro de transporte.
+  corpo  Json?
+  /// Headers enviados, com `Authorization` substituído por `[REDACTED]`.
+  requisicao Json?
+
+  /// Job de upload assíncrono correlacionado, quando houver.
+  job_id   String?
+  /// Mensagem do erro de transporte / da falha de callback.
+  mensagem String?
+
+  data DateTime @default(now())
+
+  @@index([data])
+  @@index([job_id])
+  @@index([origem])
+}

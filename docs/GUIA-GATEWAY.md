@@ -253,6 +253,82 @@ curl -X DELETE https://gateway.exemplo.com/dead-letter/<id> -H "x-api-key: $API_
 
 ---
 
+## 7.1 Quando a Meta recusa → erros persistidos (`/meta-error-logs`)
+
+A DLQ cobre o caminho **de entrada** (webhook que não chegou ao ambiente). O
+caminho **de saída** — uma chamada do gateway à Meta que volta 4xx/5xx — tem
+tabela própria: `logs_erros_meta`.
+
+Antes, esse erro só existia como uma linha de log com o status:
+
+```
+forwardBinary POST upload:MTphdHRhY2htZW50Oj… → 400 (Meta error passthrough)
+```
+
+O corpo — o único lugar onde a Meta escreve o motivo — ia para o lixo. Hoje a
+linha de log traz uma **chave**, e o registro inteiro fica no banco por 14 dias:
+
+```
+erro da Meta persistido chave=ERRMETA-A1B2C3D4E5F6 origem=forwardBinary status=400 subPath=upload:MTph… jobId=ce15210a-…
+```
+
+Cada registro guarda: `origem` (`forward`, `forwardMultipart`, `forwardBinary`
+ou `callback`), `metodo`, `sub_path`, `status` (`null` em erro de transporte),
+`corpo` (resposta da Meta **inteira**, sem truncar), `requisicao` (headers
+enviados, com `Authorization`, `x-api-key` e afins substituídos por
+`[REDACTED]`), `job_id` do upload assíncrono e `mensagem`.
+
+Operações (auth `x-api-key`):
+
+```bash
+# Abrir um erro pela chave que apareceu no log (ou no `chaveErro` do callback)
+curl https://gateway.exemplo.com/meta-error-logs/ERRMETA-A1B2C3D4E5F6 -H "x-api-key: $API_KEY"
+
+# Listar os mais recentes (default 50, máx 200)
+curl "https://gateway.exemplo.com/meta-error-logs?origem=forwardBinary&limit=20" -H "x-api-key: $API_KEY"
+
+# Todos os erros de um job de upload
+curl "https://gateway.exemplo.com/meta-error-logs?job_id=ce15210a-5da8-4aa7-a662-d55771b47169" -H "x-api-key: $API_KEY"
+```
+
+Ou direto no banco:
+
+```sql
+SELECT * FROM logs_erros_meta WHERE chave = 'ERRMETA-A1B2C3D4E5F6';
+```
+
+**Retenção:** 14 dias, por cron de hard delete às 03:30
+(`MetaErrorLogsCleanupService`). Não há soft-delete: o registro desaparece.
+
+**No upload assíncrono**, a chave também viaja no callback. Um job que falha
+manda ao `callback_url`:
+
+```json
+{ "jobId": "ce15210a-…", "status": "failed",
+  "error": { "error": { "message": "(#100) …" }, "chaveErro": "ERRMETA-A1B2C3D4E5F6" } }
+```
+
+— então a chave chega até a mensagem que o whiz-server propaga ao front, e dá
+para ir do erro na tela ao corpo inteiro da Meta em uma requisição.
+
+### `file_offset` no upload resumível: use query param
+
+`POST /wpp/uploads/:uploadId` aceita o offset por **query param**:
+
+```bash
+curl -X POST "https://gateway.exemplo.com/wpp/uploads/upload:MTph…?file_offset=0&callback_url=https://servidor/cb" \
+  -H "x-api-key: $API_KEY" -H "Content-Type: application/octet-stream" \
+  --data-binary @arquivo.pdf
+```
+
+O header `file_offset` continua aceito (e `file-offset`/`x-file-offset`), mas
+**não é confiável**: o gateway é alcançado pela internet através de um reverse
+proxy nginx, e nginx descarta headers com underscore por padrão
+(`underscores_in_headers off`). Com o header comido no proxy, o gateway assume
+`"0"` e emite um `warn` dizendo isso. Mande por query param.
+
+---
+
 ## 8. Exemplo ponta-a-ponta (WhatsApp, ambiente novo)
 
 ```bash
@@ -375,4 +451,6 @@ Notas operacionais:
 | Ambientes (CRUD)        | `src/ambiente/`                                       |
 | Inboxes (CRUD)          | `src/inbox/`                                          |
 | Mensagens mortas        | `src/dead-letter/`                                   |
+| Erros da Meta (14 dias) | `src/meta-error-logs/`                               |
+| Upload resumível        | `src/wpp-media-business-profiles/wpp-resumable-upload.controller.ts` |
 | Observabilidade Sentry  | `src/instrument.ts` · `src/sentry/`                  |

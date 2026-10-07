@@ -397,6 +397,17 @@
           createFields: null,
           updateFields: null,
         },
+        {
+          name: 'meta-error-logs',
+          label: 'Erros da Meta',
+          base: '/meta-error-logs',
+          idField: 'chave',
+          auth: 'apikey',
+          canDelete: false,
+          note: 'Somente leitura. O corpo inteiro do erro da Meta, guardado por 14 dias. A chave (ERRMETA-…) sai no log do gateway e no `chaveErro` do callback de upload — cole-a na URL para abrir um registro: /meta-error-logs/<chave>.',
+          createFields: null,
+          updateFields: null,
+        },
       ];
 
       function app() {

@@ -5,6 +5,11 @@ export class MediaUploadJobDto {
   tmpFilePath: string;
   contentType: string;
   messagingProduct?: string;
+  /**
+   * Offset do chunk, já resolvido pelo controller (query param → header →
+   * `"0"`). Opcional só por compatibilidade com jobs antigos ainda na fila:
+   * jobs novos sempre têm valor.
+   */
   fileOffset?: string;
   callbackUrl?: string;
   /**
