@@ -11,6 +11,10 @@ import {
 import { ListMetaErrorLogsQueryDto } from './dto/list-meta-error-logs-query.dto';
 import { MetaErrorLogResponseDto } from './dto/meta-error-log-response.dto';
 import type { IMetaErrorLogsRepository } from './interfaces/meta-error-logs-repository.interface';
+import {
+  extrairErrosDeWebhook,
+  type ErroDeWebhook,
+} from './meta-webhook-errors.extractor';
 
 /**
  * O que o chamador sabe sobre o erro. Nada aqui é truncado: o corpo da Meta é a
@@ -29,10 +33,14 @@ export interface DadosErroMeta {
   url?: string;
   /** `null` em erro de transporte: não houve resposta. */
   status?: number | null;
+  /** Código de erro da Meta (131053, 131049…), independente do status HTTP. */
+  codigoMeta?: number | null;
   corpo?: unknown;
   /** Headers enviados. A redação dos segredos é feita aqui. */
   requisicao?: Record<string, unknown>;
   jobId?: string | null;
+  /** `wamid` da mensagem, nas falhas que a Meta reporta por webhook. */
+  referencia?: string | null;
   mensagem?: string | null;
 }
 
@@ -94,9 +102,11 @@ export class MetaErrorLogsService {
         subPath: dados.subPath,
         url: dados.url,
         status: dados.status ?? null,
+        codigoMeta: dados.codigoMeta ?? null,
         corpo: dados.corpo,
         requisicao: this.redigir(dados.requisicao),
         jobId: dados.jobId ?? null,
+        referencia: dados.referencia ?? null,
         mensagem: dados.mensagem ?? null,
       });
     } catch (err) {
@@ -107,9 +117,50 @@ export class MetaErrorLogsService {
     }
 
     this.logger.error(
-      `erro da Meta persistido chave=${chave} origem=${dados.origem} status=${String(dados.status ?? 'transporte')} subPath=${dados.subPath} jobId=${dados.jobId ?? '-'} url=${dados.url ?? '-'}`,
+      `erro da Meta persistido chave=${chave} origem=${dados.origem} status=${String(dados.status ?? 'n/a')} codigoMeta=${String(dados.codigoMeta ?? '-')} subPath=${dados.subPath} jobId=${dados.jobId ?? '-'} referencia=${dados.referencia ?? '-'} url=${dados.url ?? '-'}`,
     );
     return chave;
+  }
+
+  /**
+   * Persiste os erros embutidos num webhook de ENTRADA da Meta, um registro por
+   * erro, e devolve as chaves emitidas.
+   *
+   * Roda em TODO webhook, e o caso normal é não achar nada: `extrairErrosDeWebhook`
+   * devolve lista vazia e isto sai sem tocar no banco. Nunca lança — a ingestão
+   * de webhook não pode falhar por causa de um log.
+   */
+  async persistirErrosDeWebhook(
+    payload: Record<string, unknown>,
+  ): Promise<string[]> {
+    let erros: ErroDeWebhook[];
+    try {
+      erros = extrairErrosDeWebhook(payload);
+    } catch (err) {
+      this.logger.error(`Falha ao extrair erros do webhook: ${String(err)}`);
+      return [];
+    }
+    if (erros.length === 0) return [];
+
+    const chaves: string[] = [];
+    for (const erro of erros) {
+      const chave = await this.persistir({
+        origem: 'webhook-status',
+        metodo: 'WEBHOOK',
+        // Não há URL nem sub-path: a Meta é quem chamou. O que identifica o
+        // evento é a WABA e o número.
+        subPath: `waba:${erro.wabaId ?? '-'} pid:${erro.pid ?? '-'}`,
+        // Sem status HTTP: quem chamou foi a Meta. O código dela vai no campo
+        // próprio.
+        status: null,
+        codigoMeta: erro.codigo ?? null,
+        corpo: erro.corpo,
+        referencia: erro.referencia ?? null,
+        mensagem: erro.resumo,
+      });
+      if (chave) chaves.push(chave);
+    }
+    return chaves;
   }
 
   async findByChave(chave: string): Promise<MetaErrorLogResponseDto> {

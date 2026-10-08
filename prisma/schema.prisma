@@ -145,8 +145,15 @@ model logs_erros_meta {
   /// sozinho não mostrava isso.
   url      String?
 
-  /// Status HTTP da resposta. `null` em erro de transporte (nenhuma resposta).
+  /// Status HTTP da resposta. `null` em erro de transporte (nenhuma resposta) e
+  /// em erro vindo de webhook, onde não houve requisição nossa.
   status Int?
+
+  /// Código de erro da Meta (131053, 131049, 100…), quando o corpo trouxer um.
+  /// Separado do `status` de propósito: misturar os dois arruinaria as duas
+  /// consultas — `?status=400` e `?codigo_meta=131053` perguntam coisas
+  /// diferentes.
+  codigo_meta Int?
   /// Corpo da resposta, sem truncar. `null` em erro de transporte.
   corpo  Json?
   /// Headers enviados, com `Authorization` substituído por `[REDACTED]`.
@@ -154,6 +161,11 @@ model logs_erros_meta {
 
   /// Job de upload assíncrono correlacionado, quando houver.
   job_id   String?
+
+  /// Identificador do objeto a que o erro se refere, quando não é uma chamada
+  /// HTTP: o `wamid` da mensagem, nas falhas de entrega que a Meta reporta por
+  /// webhook. É por aqui que se liga o erro à mensagem no whiz.
+  referencia String?
   /// Mensagem do erro de transporte / da falha de callback.
   mensagem String?
 
@@ -162,4 +174,6 @@ model logs_erros_meta {
   @@index([data])
   @@index([job_id])
   @@index([origem])
+  @@index([referencia])
+  @@index([codigo_meta])
 }

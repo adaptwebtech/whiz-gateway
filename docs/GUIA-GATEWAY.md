@@ -298,6 +298,35 @@ curl "https://gateway.exemplo.com/meta-error-logs?origem=forwardBinary&limit=20"
 curl "https://gateway.exemplo.com/meta-error-logs?job_id=ce15210a-5da8-4aa7-a662-d55771b47169" -H "x-api-key: $API_KEY"
 ```
 
+### Falha que chega por WEBHOOK (a metade assíncrona)
+
+Nem toda recusa da Meta aparece numa resposta HTTP. O `POST /messages` responde
+`200` com um `wamid`, e a recusa chega segundos depois num webhook de status —
+`statuses[].errors[]`. Essas também são persistidas, com `origem=webhook-status`:
+
+| campo | no erro de webhook |
+|---|---|
+| `referencia` | o `wamid` da mensagem recusada |
+| `codigo_meta` | o código da Meta (131053, 131049, …) |
+| `status` | `null` — quem chamou foi a Meta, não houve requisição nossa |
+| `sub_path` | `waba:<id> pid:<id>` |
+| `corpo` | o `statuses[]` inteiro: wamid, destinatário, timestamp, erros |
+
+```bash
+# Toda recusa por mídia grande demais nos últimos registros
+curl "https://gateway.exemplo.com/meta-error-logs?codigo_meta=131053" -H "x-api-key: $API_KEY"
+
+# O erro de uma mensagem específica, pelo wamid
+curl "https://gateway.exemplo.com/meta-error-logs?referencia=wamid.HBgM…" -H "x-api-key: $API_KEY"
+```
+
+Exemplo real do que isso captura — e que antes vivia só numa linha de log:
+
+```
+131053 — Media upload error — Video file has size 63787247 bytes but must be
+atmost 16777216 bytes and non-empty
+```
+
 Ou direto no banco:
 
 ```sql

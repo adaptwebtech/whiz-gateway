@@ -17,13 +17,17 @@ export interface CreateMetaErrorLogData {
    * é a rota que saiu do processo, já com base URL e query string montadas.
    */
   url?: string;
-  /** `null` em erro de transporte: não houve resposta. */
+  /** `null` em erro de transporte, e em erro vindo de webhook. */
   status: number | null;
+  /** Código de erro da Meta (131053, 131049…), independente do status HTTP. */
+  codigoMeta?: number | null;
   /** Corpo da resposta da Meta. `undefined` quando não houve corpo. */
   corpo?: unknown;
   /** Headers enviados, já sem segredos. */
   requisicao?: Record<string, unknown>;
   jobId?: string | null;
+  /** `wamid` da mensagem, nas falhas que a Meta reporta por webhook. */
+  referencia?: string | null;
   mensagem?: string | null;
 }
 

@@ -1,4 +1,4 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import { StatusFalhaMensagem } from '@prisma/client';
 import { DISPATCH_HANDLER } from '../dispatch/constants/dispatch-tokens.constants';
 import type { IDispatchHandler } from '../dispatch/interfaces/dispatch-handler.interface';
@@ -7,6 +7,7 @@ import type { IInboxRepository } from '../inbox/interfaces/inbox-repository.inte
 import { DLQ_NAME } from '../rabbitmq/constants/rabbitmq-queue.constants';
 import { RABBITMQ_SERVICE } from '../rabbitmq/constants/rabbitmq-tokens.constants';
 import type { IRabbitMQService } from '../rabbitmq/interfaces/rabbitmq-service.interface';
+import { MetaErrorLogsService } from '../meta-error-logs/meta-error-logs.service';
 
 @Injectable()
 export class WebhookService {
@@ -17,9 +18,26 @@ export class WebhookService {
     @Inject(RABBITMQ_SERVICE) private readonly mq: IRabbitMQService,
     @Inject(DISPATCH_HANDLER)
     private readonly dispatchHandler: IDispatchHandler,
+    @Optional() private readonly erros?: MetaErrorLogsService,
   ) {}
 
   async handleIncoming(payload: Record<string, unknown>): Promise<void> {
+    // Metade das falhas da Meta é assíncrona: o `POST /messages` responde 200
+    // com um `wamid` e a recusa chega aqui, num `statuses[].errors[]`. Nenhuma
+    // resposta HTTP revela isso, então `logs_erros_meta` não enxergava — um
+    // 131053 ("Video file has size 63787247 bytes but must be atmost 16777216")
+    // passava direto, sem registro e sem chave de busca.
+    //
+    // Fire-and-forget de propósito: a ingestão do webhook não espera o log, e um
+    // banco fora não pode segurar o despacho ao ambiente.
+    void this.erros
+      ?.persistirErrosDeWebhook(payload)
+      .catch((err: unknown) =>
+        this.logger.error(
+          `Falha ao persistir erros do webhook: ${String(err)}`,
+        ),
+      );
+
     const inboxes = await this.resolverInboxes(payload);
 
     if (inboxes.length === 0) {

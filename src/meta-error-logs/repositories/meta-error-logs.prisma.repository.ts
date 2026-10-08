@@ -18,9 +18,11 @@ type RegistroCru = {
   sub_path: string;
   url: string | null;
   status: number | null;
+  codigo_meta: number | null;
   corpo: unknown;
   requisicao: unknown;
   job_id: string | null;
+  referencia: string | null;
   mensagem: string | null;
   data: Date;
 };
@@ -60,9 +62,11 @@ export class MetaErrorLogsPrismaRepository implements IMetaErrorLogsRepository {
         sub_path: data.subPath,
         url: data.url ?? null,
         status: data.status ?? null,
+        codigo_meta: data.codigoMeta ?? null,
         corpo: this.toJson(data.corpo),
         requisicao: this.toJson(data.requisicao),
         job_id: data.jobId ?? null,
+        referencia: data.referencia ?? null,
         mensagem: data.mensagem ?? null,
       },
     });
@@ -84,6 +88,9 @@ export class MetaErrorLogsPrismaRepository implements IMetaErrorLogsRepository {
     if (filter.origem) where.origem = filter.origem;
     if (filter.status !== undefined) where.status = filter.status;
     if (filter.job_id) where.job_id = filter.job_id;
+    if (filter.referencia) where.referencia = filter.referencia;
+    if (filter.codigo_meta !== undefined)
+      where.codigo_meta = filter.codigo_meta;
 
     const records = await this.prisma.logs_erros_meta.findMany({
       where,
