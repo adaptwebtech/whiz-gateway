@@ -364,3 +364,14 @@ Mapa de cada feature para seus arquivos. Autoritativo para descoberta (evita `gr
 | Adapter Meta (modificado) | `src/wpp/wpp.service.ts` (6 pontos de persist passam a gravar a `url` absoluta) · `src/wpp/wpp-erro-persistido.spec.ts` |
 | Glossários | `src/meta-error-logs/context.md` · `src/wpp/context.md` |
 | Guia operacional | `docs/GUIA-GATEWAY.md` §7.1 |
+
+### meta-error-logs — adendo 2026-10-08 (falha que chega por WEBHOOK)
+
+| Camada | Arquivos |
+|---|---|
+| Extrator puro (novo) | `src/meta-error-logs/meta-webhook-errors.extractor.ts` · `…extractor.spec.ts` |
+| Persistência em lote (modificado) | `src/meta-error-logs/meta-error-logs.service.ts` (`persistirErrosDeWebhook`) · `src/meta-error-logs/meta-error-logs-webhook.spec.ts` (novo) |
+| Colunas `referencia` + `codigo_meta` | `prisma/schema.prisma` · `prisma/migrations/20261008150000_logs_erros_meta_referencia/` · `src/meta-error-logs/{interfaces/meta-error-logs-repository.interface,dto/meta-error-log-response.dto,dto/list-meta-error-logs-query.dto,repositories/meta-error-logs.prisma.repository}.ts` |
+| Ingestão (modificado) | `src/webhook/webhook.service.ts` (persist antes de resolver inbox) · `src/webhook/webhook-erro-persistido.reg.spec.ts` (novo) |
+| Glossário | `src/meta-error-logs/context.md` |
+| Guia operacional | `docs/GUIA-GATEWAY.md` §7.1 |

@@ -404,7 +404,7 @@
           idField: 'chave',
           auth: 'apikey',
           canDelete: false,
-          note: 'Somente leitura. O corpo inteiro do erro da Meta, guardado por 14 dias. A chave (ERRMETA-…) sai no log do gateway e no `chaveErro` do callback de upload — cole-a na URL para abrir um registro: /meta-error-logs/<chave>.',
+          note: 'Somente leitura. O corpo inteiro do erro da Meta, guardado por 14 dias. Cobre tanto as chamadas de saída quanto as falhas assíncronas que chegam por webhook (origem webhook-status, com o wamid em referencia e o código em codigo_meta). A chave (ERRMETA-…) sai no log do gateway — cole-a na URL para abrir um registro: /meta-error-logs/<chave>. Filtros: ?origem= ?status= ?codigo_meta= ?referencia= ?job_id=.',
           createFields: null,
           updateFields: null,
         },

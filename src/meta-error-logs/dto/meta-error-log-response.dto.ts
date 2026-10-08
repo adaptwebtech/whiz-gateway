@@ -59,6 +59,15 @@ export class MetaErrorLogResponseDto {
   status: number | null;
 
   @ApiProperty({
+    description:
+      'Código de erro da Meta (131053, 131049…), independente do status HTTP.',
+    example: 131053,
+    nullable: true,
+  })
+  @Expose()
+  codigo_meta: number | null;
+
+  @ApiProperty({
     description: 'Corpo da resposta, inteiro, sem truncar.',
     example: { error: { message: '(#100) …', code: 100 } },
     nullable: true,
@@ -81,6 +90,15 @@ export class MetaErrorLogResponseDto {
   })
   @Expose()
   job_id: string | null;
+
+  @ApiProperty({
+    description:
+      'Objeto a que o erro se refere quando não é uma chamada HTTP: o `wamid` da mensagem, nas falhas reportadas por webhook.',
+    example: 'wamid.HBgMNTUzNTk3NjAyNzcyFQIAERgSN0JEMEVEQzJDNzlGMDY4NTcxAA==',
+    nullable: true,
+  })
+  @Expose()
+  referencia: string | null;
 
   @ApiProperty({
     description: 'Mensagem do erro de transporte ou da falha de callback.',

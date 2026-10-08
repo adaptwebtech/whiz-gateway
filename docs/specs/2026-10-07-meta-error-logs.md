@@ -248,3 +248,76 @@ path é precisamente o que um reverse proxy pode fazer — é o mesmo tipo de ap
 que já custou um incidente aqui. base64url é `[A-Za-z0-9-_]`: sem `?`, sem `%`,
 sem `+` (que `URLSearchParams` e o parser do Express leem como espaço). Não há o
 que reescrever.
+
+---
+
+# Adendo 2 (2026-10-08) — o ponto cego: falha que chega por WEBHOOK
+
+A tabela cobria o caminho de **saída**. Metade das falhas da Cloud API não passa
+por ali: o `POST /messages` responde `200` com um `wamid`, e a recusa chega
+segundos depois, num webhook de status.
+
+```json
+{"statuses":[{"id":"wamid.HBgM…","status":"failed","recipient_id":"553597602772",
+  "errors":[{"code":131053,"title":"Media upload error","error_data":{"details":
+  "Video file has size 63787247 bytes but must be atmost 16777216 bytes and non-empty"}}]}]}
+```
+
+Nenhuma resposta HTTP revela isso, então `logs_erros_meta` não enxergava: o erro
+existia só como uma linha de log, sem registro e **sem chave de busca**.
+
+## Novos FRs
+
+- **FR-20**: `WebhookService.handleIncoming` persiste todo erro embutido no
+  payload de entrada, antes de resolver inbox e despachar.
+- **FR-21**: um registro por erro. Origem `webhook-status`; `referencia` recebe o
+  `wamid`; `sub_path` recebe `waba:<id> pid:<id>`.
+- **FR-22**: o `status` HTTP fica `null` — quem chamou foi a Meta. O código dela
+  vai em `codigo_meta`, coluna nova e indexada.
+- **FR-23**: o `corpo` guarda o nó `statuses[]` **inteiro** (wamid, destinatário,
+  timestamp e erros), não só o erro.
+- **FR-24**: a persistência é fire-and-forget e `@Optional()`: a ingestão do
+  webhook não espera o log, e banco fora não segura o despacho ao ambiente.
+- **FR-25**: erro em webhook de inbox **não registrada** também é persistido —
+  era justamente aí que ele sumia por completo.
+- **FR-26**: `GET /meta-error-logs` ganha os filtros `referencia` e
+  `codigo_meta`.
+
+## Novos ACs
+
+- **AC-22** — *Given* o webhook 131053, *then* o extrator devolve um erro com o
+  `wamid` em `referencia`, o código, a WABA e o pid.
+- **AC-23** — *Given* o mesmo, *then* o `corpo` é o `statuses[]` inteiro.
+- **AC-24** — *Given* um webhook normal (mensagem recebida, sem `errors`), *then*
+  lista vazia e nenhum toque no banco.
+- **AC-25** — *Given* `errors` fora de `statuses` (nível conta), *then* também é
+  capturado, sem `referencia`; vários statuses com erro viram vários registros.
+- **AC-26** — *Given* payload malformado (vem da internet), *then* nunca lança;
+  erro sem `code`/`title`/`details` ainda vira registro, com resumo genérico.
+- **AC-27** — *Given* o webhook 131053, *then* o payload chega ao persist **e** o
+  despacho ao ambiente acontece do mesmo jeito.
+- **AC-28** — *Given* o persist indisponível ou não injetado, *then* a ingestão
+  segue normalmente.
+- **AC-29** — *Given* inbox não registrada, *then* o erro é persistido antes de o
+  payload ir para a DLQ.
+- **AC-30** — *Given* o webhook, *then* grava `origem=webhook-status`,
+  `metodo=WEBHOOK`, `referencia=<wamid>`, `codigo_meta=131053`, e emite chave e
+  motivo em log.
+- **AC-31** — *Given* o mesmo, *then* `status` HTTP é `null` e o corpo preserva o
+  detalhe em bytes.
+- **AC-32** — *Given* webhook sem erro, ou banco fora, *then* lista vazia e nada
+  propaga.
+
+## Data model (adendo 2)
+
+```sql
+ALTER TABLE "logs_erros_meta" ADD COLUMN IF NOT EXISTS "referencia"  TEXT;
+ALTER TABLE "logs_erros_meta" ADD COLUMN IF NOT EXISTS "codigo_meta" INTEGER;
+CREATE INDEX IF NOT EXISTS "logs_erros_meta_referencia_idx"  ON "logs_erros_meta"("referencia");
+CREATE INDEX IF NOT EXISTS "logs_erros_meta_codigo_meta_idx" ON "logs_erros_meta"("codigo_meta");
+```
+
+`codigo_meta` é separado do `status` de propósito: `?status=400` pergunta "a
+Graph recusou a requisição" e `?codigo_meta=131053` pergunta "mídia grande
+demais". Num erro de webhook não existe status HTTP nenhum, e misturar os dois
+arruinaria as duas consultas.

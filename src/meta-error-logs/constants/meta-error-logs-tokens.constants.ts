@@ -12,14 +12,23 @@ export const META_ERROR_LOGS_REPOSITORY = 'META_ERROR_LOGS_REPOSITORY';
 export const PREFIXO_CHAVE_ERRO = 'ERRMETA';
 
 /**
- * Onde o erro aconteceu. `callback` não é uma chamada à Meta — é a entrega do
- * resultado do job ao whiz-server, que falhava em silêncio.
+ * Onde o erro aconteceu.
+ *
+ * `callback` não é uma chamada à Meta — é a entrega do resultado do job ao
+ * whiz-server, que falhava em silêncio.
+ *
+ * `webhook-status` é o caminho de ENTRADA, e cobre a metade das falhas da Meta
+ * que nenhuma resposta HTTP revela: o `POST /messages` devolve 200 com um
+ * `wamid`, e a recusa chega depois, num webhook `statuses[].errors[]`. Era o
+ * ponto cego da tabela — um 131053 ("Video file has size … but must be atmost
+ * 16777216 bytes") passava por aqui sem registro e sem chave.
  */
 export const ORIGENS_ERRO_META = [
   'forward',
   'forwardMultipart',
   'forwardBinary',
   'callback',
+  'webhook-status',
 ] as const;
 
 export type OrigemErroMeta = (typeof ORIGENS_ERRO_META)[number];

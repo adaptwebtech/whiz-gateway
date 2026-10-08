@@ -324,3 +324,107 @@ um caso de `url` em `src/wpp/wpp-erro-persistido.spec.ts`.
 
 whiz-server: manda `upload_session=<base64url(sessionId)>` em lugar de interpolar
 o id cru no path.
+
+---
+
+# Adendo 2 (2026-10-08) — o ponto cego: falha que chega por WEBHOOK
+
+Relatado de produção: envio de vídeo grande por `WHATSAPP_META` falhava, **e o
+erro não era persistido nem ganhava chave**. O log tinha isto e nada mais:
+
+```
+1 - Payload recebido para dispatch: {"object":"whatsapp_business_account","entry":[{…
+  "statuses":[{"id":"wamid.HBgM…","status":"failed","errors":[{"code":131053,
+  "title":"Media upload error","error_data":{"details":
+  "Video file has size 63787247 bytes but must be atmost 16777216 bytes and non-empty"}}]}]…
+```
+
+## Por que escapava
+
+`logs_erros_meta` cobria o caminho de **saída** — `WppService.forward*` e a
+entrega de callback. Esta falha é de **entrada**: a Graph respondeu `200` com um
+`wamid` no envio, e a recusa chegou depois, num webhook de status. Não existe
+resposta HTTP nossa para interceptar. Não era um bug do registro; era um ponto
+cego do desenho.
+
+É a mesma família de `131049` ("200 com wamid ≠ entregue"), já conhecida do lado
+do whiz-server.
+
+## O que mudou
+
+### `extrairErrosDeWebhook` — função pura, defensiva
+
+`src/meta-error-logs/meta-webhook-errors.extractor.ts`. Varre
+`entry[].changes[].value` em dois pontos:
+
+1. `statuses[].errors[]` — falha de entrega de uma mensagem específica (o 131053);
+2. `value.errors[]` — erro de nível conta/WABA, sem mensagem associada.
+
+Devolve um item por erro, com `referencia` (o `wamid`), `codigo`, `wabaId`, `pid`,
+um `resumo` para o log e o **nó inteiro** em `corpo`. O payload vem da internet:
+todo nó fora do formato é ignorado em silêncio e a função nunca lança.
+
+O `resumo` prioriza `error_data.details` — `title` e `message` costumam repetir o
+mesmo rótulo genérico ("Media upload error"), e é o `details` que carrega o número
+de bytes, isto é, a informação inteira.
+
+### Duas colunas novas
+
+| coluna | por quê |
+|---|---|
+| `referencia` | o `wamid`, para ligar o registro à mensagem no whiz |
+| `codigo_meta` | o código da Meta, **separado** do `status` HTTP |
+
+`codigo_meta` não é preciosismo: `?status=400` pergunta "a Graph recusou a
+requisição", `?codigo_meta=131053` pergunta "mídia grande demais". Num erro de
+webhook não existe status HTTP nenhum — reaproveitar `status` para o código da
+Meta arruinaria as duas consultas. Ambas indexadas e expostas como filtro em
+`GET /meta-error-logs`.
+
+### Ligado na ingestão
+
+`WebhookService.handleIncoming` chama `persistirErrosDeWebhook` **antes** de
+resolver a inbox — assim o erro é registrado mesmo quando a inbox não está
+cadastrada e o payload vai para a DLQ, que era o caso em que ele sumia por
+completo.
+
+Fire-and-forget e `@Optional()`, pelo mesmo princípio do resto do módulo: a
+ingestão do webhook não espera o log, e banco fora não pode segurar o despacho ao
+ambiente.
+
+Linha emitida no persist:
+
+```
+erro da Meta persistido chave=ERRMETA-A1B2C3D4E5F6 origem=webhook-status status=n/a codigoMeta=131053 subPath=waba:1613119706411328 pid:1106219235900077 jobId=- referencia=wamid.HBgM… url=-
+```
+
+## Sobre o aviso ao front e a persistência da falha
+
+Verificado, **não reimplementado**: o caminho já existe no whiz-server e no front.
+
+- `ApiOficialWebhooksService.handleStatuses` detecta `status=failed`, monta o
+  `MetaApiError` por `erroMetaDeStatusWebhook` (que é agnóstico de código, logo
+  já cobre o 131053), anexa `conteudo.erro` e reinjeta a mensagem no pipeline;
+- o pipeline reaproveita `id`/`dataEnvio`/`cursor` da linha antiga, então
+  **ATUALIZA** em vez de duplicar — é isso que faz a falha sobreviver a reabrir a
+  conversa;
+- no front, `chatUtils.ts` mapeia `conteudo.erro` → `motivoFalha`, e
+  `ChatMessage.vue` renderiza o bloco "Não enviado" + motivo para **qualquer**
+  tipo de mensagem (só `template_meta` fica de fora, porque desenha o próprio).
+
+O que faltava era só o registro consultável no gateway.
+
+## Gate
+
+| item | resultado |
+|---|---|
+| `nest build` | 0 erros |
+| testes | **74 suites / 577 testes GREEN** (`--maxWorkers=2`) |
+| lint | 0 erros nos arquivos tocados |
+
+Suítes novas: `src/meta-error-logs/meta-webhook-errors.extractor.spec.ts` (AC-22..AC-26),
+`src/meta-error-logs/meta-error-logs-webhook.spec.ts` (AC-30..AC-32),
+`src/webhook/webhook-erro-persistido.reg.spec.ts` (AC-27..AC-29).
+
+Migration `20261008150000_logs_erros_meta_referencia` — duas colunas, aditivas e
+idempotentes.

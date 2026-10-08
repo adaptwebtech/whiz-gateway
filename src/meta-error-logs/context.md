@@ -15,9 +15,27 @@ _Avoid_: id do erro, correlation id, trace id
 
 **Origem**:
 Em qual caminho o erro aconteceu: `forward`, `forwardMultipart`,
-`forwardBinary` ou `callback`. As três primeiras são chamadas à Meta; `callback`
-é a entrega do resultado de um job ao whiz-server.
+`forwardBinary`, `callback` ou `webhook-status`. As três primeiras são chamadas à
+Meta; `callback` é a entrega do resultado de um job ao whiz-server;
+`webhook-status` é o caminho de ENTRADA.
 _Avoid_: tipo, categoria, fonte
+
+**Falha assíncrona** (`webhook-status`):
+Recusa que nenhuma resposta HTTP revela — o `POST /messages` devolve `200` com um
+`wamid` e a recusa chega depois, num `statuses[].errors[]`. Era o ponto cego da
+tabela. `status` fica `null` (não houve requisição nossa), `codigo_meta` guarda o
+código e `referencia` guarda o `wamid`.
+_Avoid_: erro de webhook, falha pós-envio
+
+**Código da Meta** (`codigo_meta`):
+`131053`, `131049`, `100`… Vive em coluna própria, **nunca** no `status`:
+`?status=400` e `?codigo_meta=131053` perguntam coisas diferentes.
+_Avoid_: código de erro, error code
+
+**Referência** (`referencia`):
+O `wamid` da mensagem a que o erro se refere. É por ele que o registro liga à
+mensagem no whiz.
+_Avoid_: id da mensagem, correlação
 
 **URL requisitada** (`url`):
 Rota ABSOLUTA que saiu do processo, com base URL e query string montadas. O

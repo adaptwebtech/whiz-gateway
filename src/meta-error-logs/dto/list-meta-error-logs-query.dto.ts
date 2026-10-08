@@ -35,6 +35,24 @@ export class ListMetaErrorLogsQueryDto {
   job_id?: string;
 
   @ApiPropertyOptional({
+    description: 'Filtro pelo código de erro da Meta (ex.: 131053).',
+    example: 131053,
+  })
+  @IsOptional()
+  @IsInt()
+  @Type(() => Number)
+  codigo_meta?: number;
+
+  @ApiPropertyOptional({
+    description:
+      'Filtro pelo objeto referenciado — o `wamid` da mensagem, nas falhas vindas de webhook.',
+    example: 'wamid.HBgMNTUzNTk3NjAyNzcyFQIAERgSN0JEMEVEQzJDNzlGMDY4NTcxAA==',
+  })
+  @IsOptional()
+  @IsString()
+  referencia?: string;
+
+  @ApiPropertyOptional({
     description: 'Limite de registros por página. Padrão: 50.',
     example: 50,
     default: 50,
