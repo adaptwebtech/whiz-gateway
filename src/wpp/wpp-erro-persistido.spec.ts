@@ -205,6 +205,27 @@ describe('WppService — persistência do erro da Meta', () => {
     });
   });
 
+  it('AC-21: dado a Meta responde 400, então a URL ABSOLUTA requisitada é persistida', async () => {
+    // Arrange: subPath COM o `?sig=` do id de sessão — o caso que quebrou.
+    httpService.request.mockReturnValue(
+      throwError(() => erroDaMeta(400, CORPO_META)),
+    );
+
+    // Act
+    await service.forwardBinary(
+      'upload:MTph?sig=ARZqAApVPDDNjMlPTpM',
+      tmpFile,
+      'application/octet-stream',
+      '0',
+      'job-1',
+    );
+
+    // Assert
+    expect(erros.persistir.mock.calls[0][0].url).toBe(
+      'https://graph.facebook.com/v22.0/upload:MTph?sig=ARZqAApVPDDNjMlPTpM',
+    );
+  });
+
   it('AC-5: dado 2xx, então nada é persistido', async () => {
     httpService.request.mockReturnValue(of({ status: 200, data: { ok: 1 } }));
 

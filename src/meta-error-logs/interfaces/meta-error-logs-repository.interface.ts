@@ -12,6 +12,11 @@ export interface CreateMetaErrorLogData {
   origem: OrigemErroMeta;
   metodo: string;
   subPath: string;
+  /**
+   * URL absoluta de fato requisitada. O `subPath` é o que o caller pediu; esta
+   * é a rota que saiu do processo, já com base URL e query string montadas.
+   */
+  url?: string;
   /** `null` em erro de transporte: não houve resposta. */
   status: number | null;
   /** Corpo da resposta da Meta. `undefined` quando não houve corpo. */

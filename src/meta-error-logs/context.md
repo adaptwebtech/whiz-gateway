@@ -19,6 +19,13 @@ Em qual caminho o erro aconteceu: `forward`, `forwardMultipart`,
 é a entrega do resultado de um job ao whiz-server.
 _Avoid_: tipo, categoria, fonte
 
+**URL requisitada** (`url`):
+Rota ABSOLUTA que saiu do processo, com base URL e query string montadas. O
+`sub_path` é o que o caller pediu; a `url` é o que foi de fato pedido à Meta. A
+distinção é o que torna visível uma URL montada errado — o primeiro erro que esta
+tabela capturou em produção foi o `?sig=` do id de sessão ausente na URL final.
+_Avoid_: endpoint, rota, destino
+
 **Corpo** (`corpo`):
 Resposta da Meta gravada **sem truncar**. Truncar é exatamente o que fazia o log
 ser inútil.

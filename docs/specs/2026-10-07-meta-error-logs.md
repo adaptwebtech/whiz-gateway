@@ -160,3 +160,91 @@ CREATE INDEX IF NOT EXISTS "logs_erros_meta_origem_idx" ON "logs_erros_meta"("or
   exatamente 14 dias e a contagem é logada.
 - **AC-15** — *Given* `GET /meta-error-logs` sem `limit`, *then* 50 registros no máximo, mais
   recentes primeiro.
+
+---
+
+# Adendo (2026-10-08) — o `?sig=` do id de sessão, e a URL no registro
+
+A instrumentação acima entrou em produção e capturou, no primeiro upload, o erro
+que estava escondido desde o começo:
+
+```json
+{"debug_info":{"type":"ParameterValidationError",
+  "message":"HMAC check failed! sessionId=upload:MTphdHRhY2htZW50Ojc5MjVkMDRkLTc0NDgtNDM5NC1hYzdjLWY2MjRlYjg2NGMxZD9maWxlX3R5cGU9aW1hZ2UlMkZqcGVnJmZpbGVfbGVuZ3RoPTQxMjQ3JmZpbGVfbmFtZT1mYzI2MjMyMy01ZWIxLTQwMTktOWRkYi1lNjZlZWZlYTliMzAuanBlZw== mac=",
+  "retriable":false}}
+```
+
+`mac=` **vazio**. Não era o `file_offset` — era o HMAC da sessão.
+
+## Causa raiz (a de verdade)
+
+O id que a Meta devolve em `POST /app/uploads` **não é path-safe**:
+
+```
+upload:MTphdHRhY2htZW50Ojc5MjVkMDRk?sig=ARZqAApVPDDNjMlPTpM
+       └─ base64 do payload ───────┘ └─ HMAC da sessão ────┘
+```
+
+O whiz-server montava `/uploads/${sessionId}?callback_url=…&file_offset=0`, o
+que produz uma URL com **dois `?`**. Medido com o Express real:
+
+| URL enviada | `req.params.uploadId` | `req.query` |
+|---|---|---|
+| `…/uploads/upload:X?sig=ARZq?callback_url=https%3A%2F%2F…&file_offset=0` | `upload:X` — **sig perdido** | `{ sig: "ARZq?callback_url=https://…", file_offset: "0" }` |
+
+Duas consequências, as duas observadas:
+
+1. o sub-path forwardado à Meta era `upload:X`, sem HMAC → `HMAC check failed! …
+   mac=`;
+2. `callback_url` foi engolido como parte do valor de `sig` → `job.callbackUrl`
+   `undefined` → o resultado nunca voltava → `Timeout aguardando job de upload do
+   gateway: <jobId>` no whiz-server.
+
+**`development` funcionava** porque o modo direto monta `${base}/${sessionId}`
+sem anexar query nenhuma: o `?sig=` sobrevive intacto. A hipótese anterior
+(header `file_offset` comido pelo nginx) explicava o mesmo sintoma e **estava
+errada** como causa operante — o `requisicao` persistido mostra
+`"file_offset":"0"` chegando à Meta, então aquele caminho já funcionava. O
+endurecimento daquele PR segue válido por contrato, mas não era o defeito.
+
+## Novos FRs
+
+- **FR-15**: `POST /wpp/uploads/:uploadId` aceita `upload_session`, o id COMPLETO
+  da sessão em **base64url**, e o usa como sub-path.
+- **FR-16**: `upload_session` que não decodifique para algo começando com
+  `upload:` → `400`, antes de gravar tmp ou enfileirar job.
+- **FR-17**: sem `upload_session`, cai no path param. Se ele não contiver
+  `?sig=`, emite `warn` nomeando o `HMAC check failed` que a Meta vai devolver.
+- **FR-18**: `logs_erros_meta` ganha a coluna `url` — a URL ABSOLUTA de fato
+  requisitada, ao lado do `sub_path`.
+- **FR-19**: a `url` aparece na linha de log do persist.
+
+## Novos ACs
+
+- **AC-16** — *Given* `upload_session` em base64url do id com `?sig=`, *then*
+  `job.subPath` é o id completo, sig incluído.
+- **AC-17** — *Given* o mesmo, *then* `callback_url` e `file_offset` seguem sendo
+  lidos corretamente (não há mais `?` a mais para engolir nada).
+- **AC-18** — *Given* nenhum `upload_session`, *then* usa o path param
+  (compatibilidade com o whiz-server ainda não atualizado).
+- **AC-19** — *Given* `upload_session` com base64url inválido, ou que decodifique
+  para algo fora de `upload:…`, *then* `400`, sem tmp em disco e sem job na fila.
+- **AC-20** — *Given* o path param já trazendo o sig percent-encoded, *then* ele
+  é preservado.
+- **AC-21** — *Given* qualquer erro persistido, *then* a `url` absoluta
+  requisitada está no registro e na linha de log.
+
+## Data model (adendo)
+
+```sql
+ALTER TABLE "logs_erros_meta" ADD COLUMN IF NOT EXISTS "url" TEXT;
+```
+
+## Por que base64url e não percent-encoding no path
+
+`encodeURIComponent(sessionId)` **funciona** no Express (medido: o path param
+volta com o `?sig=` intacto). Mas vira `%3F` no path, e normalizar escapes de
+path é precisamente o que um reverse proxy pode fazer — é o mesmo tipo de aposta
+que já custou um incidente aqui. base64url é `[A-Za-z0-9-_]`: sem `?`, sem `%`,
+sem `+` (que `URLSearchParams` e o parser do Express leem como espaço). Não há o
+que reescrever.

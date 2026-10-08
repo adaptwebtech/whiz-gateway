@@ -1,0 +1,12 @@
+-- URL absoluta de fato requisitada, ao lado do `sub_path`.
+--
+-- `sub_path` é o que o caller pediu; a URL é a rota que saiu do processo, com
+-- base URL e query string montadas. A distinção não é cosmética: o primeiro erro
+-- que esta tabela capturou em produção foi
+--
+--   HMAC check failed! sessionId=upload:MTph…== mac=
+--
+-- e a causa era o `?sig=<mac>` do id de sessão perdido na montagem da URL. Com
+-- só o `sub_path` persistido isso não aparecia; com a URL final, aparece de
+-- imediato.
+ALTER TABLE "logs_erros_meta" ADD COLUMN IF NOT EXISTS "url" TEXT;

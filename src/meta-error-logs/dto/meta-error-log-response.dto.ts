@@ -41,6 +41,16 @@ export class MetaErrorLogResponseDto {
 
   @ApiProperty({
     description:
+      'URL absoluta de fato requisitada (ou a do callback). O sub_path é o que o caller pediu; esta é a rota que saiu do processo.',
+    example:
+      'https://graph.facebook.com/v24.0/upload:MTph...==?sig=ARZqAApVPDDNjMlPTpM',
+    nullable: true,
+  })
+  @Expose()
+  url: string | null;
+
+  @ApiProperty({
+    description:
       'Status HTTP recebido. null em erro de transporte (nenhuma resposta).',
     example: 400,
     nullable: true,
