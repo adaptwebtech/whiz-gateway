@@ -59,6 +59,7 @@ export class WppService {
     origem: OrigemErroMeta;
     metodo: string;
     subPath: string;
+    url?: string;
     status: number | null;
     corpo?: unknown;
     requisicao?: Record<string, unknown>;
@@ -131,6 +132,7 @@ export class WppService {
           origem: 'forward',
           metodo: method,
           subPath: normalizedPath,
+          url,
           status: axiosErr.response.status,
           corpo: axiosErr.response.data,
           requisicao: headers,
@@ -149,6 +151,7 @@ export class WppService {
         origem: 'forward',
         metodo: method,
         subPath: normalizedPath,
+        url,
         status: null,
         requisicao: headers,
         mensagem: String(err),
@@ -235,6 +238,7 @@ export class WppService {
           origem: 'forwardMultipart',
           metodo: 'POST',
           subPath: normalizedPath,
+          url,
           status: axiosErr.response.status,
           corpo: axiosErr.response.data,
           requisicao: { ...headers, filename, type: mediaType },
@@ -253,6 +257,7 @@ export class WppService {
         origem: 'forwardMultipart',
         metodo: 'POST',
         subPath: normalizedPath,
+        url,
         status: null,
         requisicao: { ...headers, filename, type: mediaType },
         jobId,
@@ -310,6 +315,7 @@ export class WppService {
           origem: 'forwardBinary',
           metodo: 'POST',
           subPath: normalizedPath,
+          url,
           status: axiosErr.response.status,
           corpo: axiosErr.response.data,
           requisicao: { ...headers, tamanhoEmBytes: String(fileBuffer.length) },
@@ -328,6 +334,7 @@ export class WppService {
         origem: 'forwardBinary',
         metodo: 'POST',
         subPath: normalizedPath,
+        url,
         status: null,
         requisicao: { ...headers, tamanhoEmBytes: String(fileBuffer.length) },
         jobId,

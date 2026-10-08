@@ -2,6 +2,7 @@ import * as fs from 'fs';
 import { pipeline } from 'stream/promises';
 import { randomUUID } from 'crypto';
 import {
+  BadRequestException,
   Controller,
   Get,
   HttpCode,
@@ -120,6 +121,13 @@ export class WppResumableUploadController {
       'Offset do chunk. Preferido ao header homônimo, que não sobrevive a proxy nginx.',
     example: '0',
   })
+  @ApiQuery({
+    name: 'upload_session',
+    required: false,
+    description:
+      'Id COMPLETO da sessão (com o `?sig=<mac>`) em base64url. Preferido ao path param, que não consegue carregar o `?`.',
+    example: 'dXBsb2FkOk1UcGhkSFJoWTJodFpXNTA_c2lnPUFSWnE',
+  })
   @ApiResponse({
     status: 202,
     description: 'Job enfileirado — retorna { jobId }',
@@ -130,9 +138,17 @@ export class WppResumableUploadController {
     @Param('uploadId') uploadId: string,
     @Query('callback_url') callbackUrl: string | undefined,
     @Query('file_offset') fileOffsetQuery: string | undefined,
+    @Query('upload_session') uploadSessionB64: string | undefined,
     @Req() req: Request,
     @Res() res: Response,
   ): Promise<void> {
+    // Resolver o id ANTES de gravar o tmp: um id inválido tem de virar 400 sem
+    // deixar arquivo para trás nem job na fila.
+    const { sessionId, origem: origemSessao } = this.resolverSessionId(
+      uploadId,
+      uploadSessionB64,
+    );
+
     const jobId = randomUUID();
     const tmpFilePath = `${TMP_DIR}/${jobId}`;
     await fs.promises.mkdir(TMP_DIR, { recursive: true });
@@ -150,7 +166,7 @@ export class WppResumableUploadController {
     const job: MediaUploadJobDto = {
       jobId,
       type: 'resumable-binary',
-      subPath: uploadId,
+      subPath: sessionId,
       tmpFilePath,
       contentType,
       fileOffset,
@@ -158,11 +174,67 @@ export class WppResumableUploadController {
     };
 
     this.logger.log(
-      `uploadBinary jobId=${jobId} uploadId=${uploadId} fileOffset=${fileOffset} (${origem})`,
+      `uploadBinary jobId=${jobId} sessionId=${sessionId} (${origemSessao}) fileOffset=${fileOffset} (${origem}) callbackUrl=${callbackUrl ?? '-'}`,
     );
     await this.rabbitMQService.publish(MEDIA_UPLOAD_QUEUE, job);
 
     res.status(202).json({ jobId });
+  }
+
+  /**
+   * Reconstitui o id de sessão COMPLETO — com o `?sig=<mac>` que a Meta anexa.
+   *
+   * O id devolvido por `POST /app/uploads` não é path-safe:
+   *
+   *   upload:MTphdHRhY2htZW50Ojc5MjVkMDRk?sig=ARZqAApVPDDNjMlPTpM
+   *          └─ base64 do payload ───────┘ └─ HMAC da sessão ────┘
+   *
+   * Montando `/uploads/${sessionId}?callback_url=…` nasce uma URL com DOIS `?`,
+   * e o Express corta no primeiro: o path param perde o sig e o `callback_url`
+   * é engolido como parte do valor de `sig`. A Meta então recusa com
+   *
+   *   HMAC check failed! sessionId=upload:MTph…== mac=
+   *
+   * — `mac=` vazio — e, sem `callback_url`, o resultado do job nunca voltava ao
+   * caller, que reportava timeout.
+   *
+   * Daí `upload_session` em **base64url** (`[A-Za-z0-9-_]`): sem `?`, sem `%`,
+   * sem `+`, logo imune a reescrita de proxy e a qualquer parser de query
+   * string. O path param continua aceito para compatibilidade — e se ele já
+   * vier com o sig (percent-encoded, que o Express decodifica), serve igual.
+   */
+  private resolverSessionId(
+    uploadId: string,
+    uploadSessionB64: string | undefined,
+  ): { sessionId: string; origem: string } {
+    if (uploadSessionB64) {
+      const decodificado = Buffer.from(uploadSessionB64, 'base64url').toString(
+        'utf8',
+      );
+      // `Buffer.from` com base64 inválido não lança: ignora o que não reconhece
+      // e devolve lixo. A validação é o que impede um subPath mutilado — ou
+      // apontado para outra rota do Graph — de chegar à Meta.
+      if (!decodificado.startsWith('upload:')) {
+        throw new BadRequestException(
+          'upload_session inválido: não decodifica para um id de sessão (`upload:…`).',
+        );
+      }
+      return { sessionId: decodificado, origem: 'query upload_session' };
+    }
+
+    // Sem validar o path param: ele é um segmento único, montado pelo caller, e
+    // recusá-lo aqui mudaria o comportamento de uma rota que hoje é passthrough.
+    // A validação estrita fica no `upload_session`, que é o único capaz de
+    // apontar o sub-path para outra rota do Graph.
+    if (!uploadId.includes('?sig=')) {
+      this.logger.warn(
+        `uploadBinary: id de sessão SEM \`?sig=\` (${uploadId}). A Meta vai recusar com ` +
+          '"HMAC check failed! … mac=". Mande o id completo em `upload_session` (base64url).',
+      );
+      return { sessionId: uploadId, origem: 'path param (sem sig)' };
+    }
+
+    return { sessionId: uploadId, origem: 'path param (com sig)' };
   }
 
   /**

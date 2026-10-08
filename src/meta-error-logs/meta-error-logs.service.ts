@@ -20,6 +20,13 @@ export interface DadosErroMeta {
   origem: OrigemErroMeta;
   metodo: string;
   subPath: string;
+  /**
+   * URL absoluta de fato requisitada. Guardá-la ao lado do `subPath` é o que
+   * torna visível uma URL montada errado: o primeiro erro que esta tabela
+   * capturou em produção foi o `?sig=<mac>` do id de sessão perdido na
+   * montagem, e o `subPath` sozinho não mostrava isso.
+   */
+  url?: string;
   /** `null` em erro de transporte: não houve resposta. */
   status?: number | null;
   corpo?: unknown;
@@ -85,6 +92,7 @@ export class MetaErrorLogsService {
         origem: dados.origem,
         metodo: dados.metodo,
         subPath: dados.subPath,
+        url: dados.url,
         status: dados.status ?? null,
         corpo: dados.corpo,
         requisicao: this.redigir(dados.requisicao),
@@ -99,7 +107,7 @@ export class MetaErrorLogsService {
     }
 
     this.logger.error(
-      `erro da Meta persistido chave=${chave} origem=${dados.origem} status=${String(dados.status ?? 'transporte')} subPath=${dados.subPath} jobId=${dados.jobId ?? '-'}`,
+      `erro da Meta persistido chave=${chave} origem=${dados.origem} status=${String(dados.status ?? 'transporte')} subPath=${dados.subPath} jobId=${dados.jobId ?? '-'} url=${dados.url ?? '-'}`,
     );
     return chave;
   }

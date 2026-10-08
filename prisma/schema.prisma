@@ -138,6 +138,13 @@ model logs_erros_meta {
   metodo   String
   sub_path String
 
+  /// URL ABSOLUTA de fato requisitada (ou a do callback). O `sub_path` é o que o
+  /// caller pediu; esta é a rota que saiu do processo, com base URL e query
+  /// string montadas. A distinção não é cosmética: o HMAC check failed do upload
+  /// resumível era o `?sig=` do id de sessão faltando na URL final, e `sub_path`
+  /// sozinho não mostrava isso.
+  url      String?
+
   /// Status HTTP da resposta. `null` em erro de transporte (nenhuma resposta).
   status Int?
   /// Corpo da resposta, sem truncar. `null` em erro de transporte.

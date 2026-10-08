@@ -354,3 +354,13 @@ Mapa de cada feature para seus arquivos. Autoritativo para descoberta (evita `gr
 | Painel (modificado) | `src/ui/public/index.html` (aba **Erros da Meta**, somente leitura) |
 | Guia operacional (modificado) | `docs/GUIA-GATEWAY.md` §7.1 |
 | Bootstrap (modificado) | `src/app.module.ts` |
+
+### meta-error-logs — adendo 2026-10-08 (`?sig=` + coluna `url`)
+
+| Camada | Arquivos |
+|---|---|
+| Upload resumível (modificado) | `src/wpp-media-business-profiles/wpp-resumable-upload.controller.ts` (`resolverSessionId`: `upload_session` base64url → path param com sig → path param sem sig + `warn`) · `src/wpp-media-business-profiles/wpp-resumable-upload-sig.reg.spec.ts` (novo) |
+| Coluna `url` (modificado) | `prisma/schema.prisma` · `prisma/migrations/20261008100000_logs_erros_meta_url/` · `src/meta-error-logs/{interfaces/meta-error-logs-repository.interface,dto/meta-error-log-response.dto,meta-error-logs.service,repositories/meta-error-logs.prisma.repository}.ts` · `src/meta-error-logs/meta-error-logs-url.spec.ts` (novo) |
+| Adapter Meta (modificado) | `src/wpp/wpp.service.ts` (6 pontos de persist passam a gravar a `url` absoluta) · `src/wpp/wpp-erro-persistido.spec.ts` |
+| Glossários | `src/meta-error-logs/context.md` · `src/wpp/context.md` |
+| Guia operacional | `docs/GUIA-GATEWAY.md` §7.1 |

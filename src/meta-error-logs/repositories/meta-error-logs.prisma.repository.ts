@@ -16,6 +16,7 @@ type RegistroCru = {
   origem: string;
   metodo: string;
   sub_path: string;
+  url: string | null;
   status: number | null;
   corpo: unknown;
   requisicao: unknown;
@@ -57,6 +58,7 @@ export class MetaErrorLogsPrismaRepository implements IMetaErrorLogsRepository {
         origem: data.origem,
         metodo: data.metodo,
         sub_path: data.subPath,
+        url: data.url ?? null,
         status: data.status ?? null,
         corpo: this.toJson(data.corpo),
         requisicao: this.toJson(data.requisicao),

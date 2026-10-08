@@ -40,6 +40,15 @@ Parâmetro obrigatório da Meta no upload binário de sessão resumível. Indica
 Chega ao gateway por **query param** (`?file_offset=0`), com fallback para os headers `file_offset`, `file-offset` e `x-file-offset` e default `"0"`. O header com underscore não é confiável: em produção e staging a rota é alcançada pela internet através de um reverse proxy nginx, que descarta headers com underscore por padrão (`underscores_in_headers off`) — o header morria no proxy, `forwardBinary` mandava o valor vazio, axios omitia o header e a Meta respondia `400`.
 _Avoid_: offset, posição do arquivo
 
+**Id de sessão de upload**:
+Token opaco que a Meta devolve em `POST /app/uploads`, na forma
+`upload:<base64 do payload>?sig=<HMAC>`. **Não é path-safe**: interpolá-lo num
+path e anexar query produz uma URL com dois `?`, o Express corta no primeiro e o
+HMAC se perde — a Meta recusa com `HMAC check failed! sessionId=… mac=`. Viaja do
+whiz-server para o gateway em `upload_session`, em base64url. Ver
+`resolverSessionId` em `wpp-resumable-upload.controller.ts`.
+_Avoid_: uploadId, sessionId, token de upload
+
 **Chave de erro** (`chaveErro`):
 Campo opcional de `WppForwardResult` que carrega a chave do erro persistido em `logs_erros_meta` quando a chamada falhou. Viaja até o `error` do callback de upload para que a mensagem que chega ao front traga por onde puxar o corpo inteiro da Meta. Ver `src/meta-error-logs/context.md`.
 _Avoid_: id do erro, código do erro

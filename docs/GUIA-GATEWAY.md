@@ -273,10 +273,17 @@ erro da Meta persistido chave=ERRMETA-A1B2C3D4E5F6 origem=forwardBinary status=4
 ```
 
 Cada registro guarda: `origem` (`forward`, `forwardMultipart`, `forwardBinary`
-ou `callback`), `metodo`, `sub_path`, `status` (`null` em erro de transporte),
-`corpo` (resposta da Meta **inteira**, sem truncar), `requisicao` (headers
-enviados, com `Authorization`, `x-api-key` e afins substituídos por
-`[REDACTED]`), `job_id` do upload assíncrono e `mensagem`.
+ou `callback`), `metodo`, `sub_path`, **`url`** (a rota ABSOLUTA de fato
+requisitada — `sub_path` é o que o caller pediu, `url` é o que saiu do processo),
+`status` (`null` em erro de transporte), `corpo` (resposta da Meta **inteira**,
+sem truncar), `requisicao` (headers enviados, com `Authorization`, `x-api-key` e
+afins substituídos por `[REDACTED]`), `job_id` do upload assíncrono e
+`mensagem`.
+
+A `url` é o campo que resolve URL montada errado de cara. O primeiro erro que
+esta tabela capturou em produção foi um `HMAC check failed! … mac=` cuja causa
+era o `?sig=` do id de sessão ausente na URL final — invisível no `sub_path`,
+óbvio na `url`.
 
 Operações (auth `x-api-key`):
 
@@ -326,6 +333,44 @@ O header `file_offset` continua aceito (e `file-offset`/`x-file-offset`), mas
 proxy nginx, e nginx descarta headers com underscore por padrão
 (`underscores_in_headers off`). Com o header comido no proxy, o gateway assume
 `"0"` e emite um `warn` dizendo isso. Mande por query param.
+
+### ⚠️ O id de sessão leva um `?sig=` — mande em `upload_session`
+
+O id que a Meta devolve em `POST /app/uploads` **não é path-safe**:
+
+```
+upload:MTphdHRhY2htZW50Ojc5MjVkMDRk?sig=ARZqAApVPDDNjMlPTpM
+       └─ base64 do payload ───────┘ └─ HMAC da sessão ────┘
+```
+
+Interpolar isso no path e anexar `?callback_url=…` produz uma URL com **dois
+`?`**. O Express corta no primeiro: o sig se perde e o `callback_url` é engolido
+como parte do valor de `sig`. A Meta responde
+
+```
+400 {"debug_info":{"type":"ParameterValidationError","message":"HMAC check failed! sessionId=upload:… mac="}}
+```
+
+e, sem `callback_url`, o resultado do job nunca volta — o caller vê timeout.
+
+Mande o id COMPLETO em `upload_session`, em **base64url**:
+
+```bash
+SESSION='upload:MTph…==?sig=ARZqAApVPDDNjMlPTpM'
+UPLOAD_SESSION=$(printf %s "$SESSION" | basenc --base64url | tr -d '=')
+TOKEN="${SESSION%%\?*}"   # parte antes do '?', só para log/correlação
+
+curl -X POST "https://gateway.exemplo.com/wpp/uploads/$TOKEN?upload_session=$UPLOAD_SESSION&file_offset=0&callback_url=https://servidor/cb" \
+  -H "x-api-key: $API_KEY" -H "Content-Type: application/octet-stream" \
+  --data-binary @arquivo.pdf
+```
+
+base64url (`[A-Za-z0-9-_]`) não tem `?`, `%` nem `+` — atravessa qualquer proxy e
+qualquer parser de query string sem ser reescrito.
+
+O path param continua aceito. Se vier sem `?sig=`, o gateway usa do mesmo jeito e
+emite `warn` avisando que a Meta vai recusar. `upload_session` que não decodifique
+para `upload:…` → `400`, sem job enfileirado.
 
 ---
 

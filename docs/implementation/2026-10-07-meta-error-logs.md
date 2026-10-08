@@ -208,3 +208,119 @@ o erro persistido com o job da fila):
    `uploadBinary jobId=… uploadId=… fileOffset=0 (query)`. `(default)` com um
    `warn` ao lado confirma que o header foi comido pelo proxy — esperado até o
    whiz-server subir com o query param.
+
+---
+
+# Adendo (2026-10-08) — o `?sig=` perdido, e a `url` no registro
+
+A tabela cumpriu o propósito no primeiro upload depois do deploy: devolveu o
+erro que três camadas de log tinham escondido.
+
+```json
+corpo: {"debug_info":{"type":"ParameterValidationError",
+  "message":"HMAC check failed! sessionId=upload:MTphdHRhY2htZW50Ojc5MjVkMDRk…== mac=",
+  "retriable":false}}
+requisicao: {"file_offset":"0","Content-Type":"application/octet-stream",
+  "Authorization":"[REDACTED]","tamanhoEmBytes":"41247"}
+```
+
+`mac=` vazio. E `"file_offset":"0"` **chegou** — ou seja, a hipótese do PR
+anterior (header comido pelo nginx) não era a causa operante. Fica registrado:
+aquele endurecimento é correto por contrato, mas não consertava este bug.
+
+## Causa raiz
+
+O id de sessão da Meta não é path-safe:
+
+```
+upload:MTphdHRhY2htZW50Ojc5MjVkMDRk?sig=ARZqAApVPDDNjMlPTpM
+       └─ base64 do payload ───────┘ └─ HMAC da sessão ────┘
+```
+
+`/uploads/${sessionId}?callback_url=…&file_offset=0` tem **dois `?`**, e o
+Express corta no primeiro. Medido contra o Express real desta `node_modules`:
+
+```
+params.uploadId = "upload:MTphdHRhY2htZW50Ojc5MjVkMDRk"          ← sig perdido
+query           = { sig: "ARZqAApVPDDNjMlPTpM?callback_url=https://server…",
+                    file_offset: "0" }                            ← callback engolido
+```
+
+Donde os dois sintomas, exatamente como vistos: `HMAC check failed … mac=` na
+Meta, e `job.callbackUrl === undefined` → nenhum callback → `Timeout aguardando
+job de upload do gateway` no whiz-server.
+
+`development` escapava porque o modo direto monta `${base}/${sessionId}`, sem
+anexar query nenhuma.
+
+## O que mudou
+
+### `upload_session` em base64url (FR-15..FR-17)
+
+`resolverSessionId(uploadId, uploadSessionB64)`:
+
+| ordem | fonte | resultado |
+|---|---|---|
+| 1 | `?upload_session=<base64url>` | id completo, decodificado |
+| 2 | path param contendo `?sig=` | usado como veio |
+| 3 | path param sem `?sig=` | usado, **com `warn`** nomeando o `HMAC check failed` que vai vir |
+
+Validação do caso 1: decodifica e exige prefixo `upload:`. `Buffer.from(…,
+'base64url')` **não lança** com entrada inválida — ignora o que não reconhece e
+devolve lixo —, então sem essa checagem um `upload_session` ruim viraria um
+sub-path mutilado, ou apontado para outra rota do Graph. O `400` sai **antes** de
+gravar o tmp e de enfileirar o job.
+
+O path param segue sem validação estrita: é um segmento único montado pelo
+caller, e recusá-lo mudaria o comportamento de uma rota que hoje é passthrough.
+
+**Por que base64url e não `encodeURIComponent` no path.** O percent-encoding
+funciona no Express — medi, o path param volta com o `?sig=` intacto. Mas vira
+`%3F` no path, e normalizar escapes de path é exatamente o que um reverse proxy
+pode fazer. base64url é `[A-Za-z0-9-_]`: sem `?`, sem `%`, sem `+` (que
+`URLSearchParams` e o parser do Express leem como espaço). Não há o que
+reescrever.
+
+### Coluna `url` (FR-18, FR-19)
+
+Migration `20261008100000_logs_erros_meta_url` — `ADD COLUMN IF NOT EXISTS`.
+
+`sub_path` é o que o caller pediu; `url` é a rota que **saiu do processo**, com
+base URL e query string montadas. Não é cosmético: com a `url` persistida, este
+incidente teria sido
+
+```
+url: https://graph.facebook.com/v24.0/upload:MTph…==
+```
+
+— sig visivelmente ausente — em lugar de uma investigação. Preenchida nos 6
+pontos de persist de `WppService` (erro da Meta e erro de transporte em
+`forward`, `forwardMultipart`, `forwardBinary`), e presente na linha de log:
+
+```
+erro da Meta persistido chave=ERRMETA-… origem=forwardBinary status=400 subPath=… jobId=… url=https://graph.facebook.com/v24.0/upload:…?sig=…
+```
+
+O log do controller também passou a dizer a procedência do id e se o callback
+veio:
+
+```
+uploadBinary jobId=… sessionId=upload:…?sig=… (query upload_session) fileOffset=0 (query) callbackUrl=https://server.whiz.net.br/…
+```
+
+## Gate
+
+| item | resultado |
+|---|---|
+| `nest build` | 0 erros |
+| testes | **71 suites / 558 testes GREEN** (`--maxWorkers=2`) |
+| lint | 0 erros nos arquivos tocados |
+
+Suítes novas: `src/wpp-media-business-profiles/wpp-resumable-upload-sig.reg.spec.ts`
+(AC-16..AC-20), `src/meta-error-logs/meta-error-logs-url.spec.ts` (AC-21), mais
+um caso de `url` em `src/wpp/wpp-erro-persistido.spec.ts`.
+
+## PR par
+
+whiz-server: manda `upload_session=<base64url(sessionId)>` em lugar de interpolar
+o id cru no path.
