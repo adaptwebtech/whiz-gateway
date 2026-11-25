@@ -157,18 +157,22 @@ Dois fluxos, com uma diferença crucial no **destino**.
 1. `MetaSignatureGuard` valida `X-Hub-Signature-256` com `META_APP_SECRET`.
    Falhou → **401** (e, se o corpo tiver forma Meta, vai para mensagens mortas
    com status `ASSINATURA_INVALIDA`).
-2. Resolve a inbox em **dois passos**, do mais para o menos específico:
+2. Resolve as inboxes em **dois passos**, do mais para o menos específico. Cada passo
+   devolve uma **lista**, e o webhook é despachado para **todas** as inboxes dela, uma por
+   ambiente. O payload da Meta não diz de qual ambiente é, e o mesmo número pode estar
+   cadastrado em `development`, `staging` e `production`:
    1. `pid` = `entry[0].changes[0].value.metadata.phone_number_id` →
-      `inboxRepo.findByPid(pid)`.
-   2. **Fallback:** `waba_id` = `entry[0].id` → `inboxRepo.findByWabaId(wabaId)`.
+      `inboxRepo.findAllByPid(pid)`.
+   2. **Fallback** (só se o passo 1 não achou nada): `waba_id` = `entry[0].id` →
+      `inboxRepo.findAllByWabaId(wabaId)`.
    Nenhum dos dois resolveu → DLQ `INBOX_NAO_REGISTRADA`.
 3. **Por que o fallback existe:** os webhooks que descrevem a CONTA
    (`account_update`, `phone_number_quality_update`, `message_template_status_update`,
    `message_template_quality_update`, `account_review_update`, `account_alerts`,
    `business_capability_update`, `template_category_update`, `user_preferences`, …) não
    têm `value.metadata` — logo, não têm `phone_number_id`. Antes deste fallback **todos
-   eles morriam na DLQ**. Se a WABA tiver inboxes em ambientes diferentes (cadastro
-   inconsistente), o gateway registra um `warn` e usa a mais antiga.
+   eles morriam na DLQ**. Se a WABA tiver inboxes em ambientes diferentes, todas recebem
+   o evento.
 4. `DispatchHandlerService.handle(inbox.id, payload)`:
    - Faz fan-out para `redirecionamentos-webhooks` (redirects extras por PID).
    - Resolve `ambiente = getAmbiente(inbox.id_ambiente)` (cache Redis, TTL 3600s).
@@ -178,6 +182,34 @@ Dois fluxos, com uma diferença crucial no **destino**.
 
 > **Destino WhatsApp = `ambiente.url` exatamente.** A `url` do ambiente já é o
 > endpoint que recebe o webhook de WhatsApp no servidor.
+
+### 5.1.1 Mesmo número em dois ambientes com WABAs DIFERENTES
+
+O roteamento por PID entrega a mensagem a todos os ambientes, mas **quem gera o webhook é a
+Meta**, e ela só entrega para o app assinado na WABA de onde o evento sai
+(`POST /{waba}/subscribed_apps`). Caso real (2026-11-25, PID `1106219235900077`): o número
+já estava em staging (WABA `1613…`, cadastro manual, token global) e foi onboardado em
+produção numa WABA nova (`1866…`). Resultado:
+
+- **Mensagens recebidas** saem pela WABA nova (`entry.id = 1866…`) e, roteadas por PID,
+  chegam aos dois ambientes.
+- **Status** (`sent`/`delivered`/`read`) saem pela conta paga do número, que continuou sendo
+  a WABA antiga. Ela tinha perdido a assinatura do app, e os status sumiram dos **dois**
+  ambientes. Reassinar a WABA antiga (`POST /1613…/subscribed_apps`) trouxe os status de volta.
+- **Envio de texto** pela WABA nova falhava com `#10 Viewer cannot access the provided Paid
+  Message Account <WABA antiga>`: sem `messaging_account_id`, a Meta cobra na conta padrão do
+  número, e o token da inbox nova não alcança essa conta. A correção foi mandar
+  `messaging_account_id` = WABA do remetente. O gateway aceita o campo desde o PR #33
+  (`SendMessageDto`); do lado do whiz é a chave WAME `messagingAccountIdNoEnvio`.
+
+Diagnóstico pelo banco do gateway: `logs_erros_meta` com `origem = 'webhook-status'` guarda só
+os status **com falha** (o `sub_path` traz `waba:<id> pid:<id>`, de onde o status saiu). Status
+com sucesso não ficam gravados aqui; confirme no `meta_webhook` de cada ambiente.
+
+> O gateway **não** escolhe token por PID. O Bearer de saída é o `X-Meta-Access-Token`
+> mandado pelo whiz em cada requisição ou, sem ele, o `META_ACCESS_TOKEN` global
+> (`src/wpp/wpp.service.ts`, `resolveToken`). Dois ambientes com o mesmo PID nunca trocam
+> credenciais no gateway.
 
 ### 5.2 Instagram / Messenger — `POST /webhook/{instagram|instagram-login|messenger}`
 
@@ -230,7 +262,7 @@ Falhas caem na tabela `fila_mensagens_mortas` (via fila RabbitMQ
 
 | Status                  | Quando                                                        |
 |-------------------------|--------------------------------------------------------------|
-| `INBOX_NAO_REGISTRADA`  | `pid` ausente no payload, ou nenhuma inbox para o `pid`       |
+| `INBOX_NAO_REGISTRADA`  | nenhuma inbox para o `pid` nem para o `waba_id` (`entry[0].id`). Evento de nível WABA de uma inbox sem `waba_id` cadastrado cai aqui |
 | `AMBIENTE_INDISPONIVEL` | inbox ok mas ambiente `del`/inalcançável (sem resposta HTTP)  |
 | `FALHA_ENVIO`           | destino respondeu com erro HTTP após esgotar os retries       |
 | `NACK_RECEBIDO`         | inbox some entre resolução e despacho                         |
