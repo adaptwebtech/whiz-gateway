@@ -107,6 +107,7 @@ Ambas as rotas: **Auth** `ApiKeyGuard` (header `X-API-KEY`); **Forward** com `Au
   - `to: string` (E.164, obrigatório nos envios; opcional nos corpos de status)
   - `type: string` (discriminador; opcional nos corpos de status)
   - `context?: { message_id: string }` (reply)
+  - `messaging_account_id?: string` — Messaging account (WABA) que paga o envio, no modelo de contas novo da Meta. Repassado íntegro (AC-26).
   - mais o objeto específico do tipo:
 
   | `type` | Objeto | Campos-chave |
@@ -280,6 +281,7 @@ flowchart TD
 - **AC-23** `[backend]` (transporte): Given o `WppService` lança erro de transporte, when envio, then o caller recebe `502`.
 - **AC-24** `[e2e]` (envio texto): Given app no ar, `X-API-KEY` válida e Meta stub respondendo `200 { messages:[{ id:"wamid.A" }] }`, when `POST /wpp/123/messages` de texto via HTTP, then `200` com o body do stub e `Authorization: Bearer` foi injetado (não veio do caller).
 - **AC-25** `[e2e]` (mark-as-read): Given app no ar e Meta stub respondendo `200 { success:true }`, when `PUT /wpp/123/messages` com `status:"read"` via HTTP, then `200 { success:true }`.
+- **AC-26** `[backend]` (conta de mensagens — 2026-11-25): Given `X-API-KEY` válida, when `POST /wpp/123/messages` de texto com `messaging_account_id: "<waba>"`, then o forward leva o campo íntegro e o caller recebe a resposta da Meta. Com valor não-string → `400`, sem forward. Antes, o `ValidationPipe` (`forbidNonWhitelisted`) recusava o campo com `property messaging_account_id should not exist` e o envio nem chegava à Meta.
 
 ## 14. Open questions
 

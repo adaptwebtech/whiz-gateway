@@ -144,6 +144,7 @@ Mapa de cada feature para seus arquivos. Autoritativo para descoberta (evita `gr
 | Module | `src/wpp-messages/wpp-messages.module.ts` |
 | Controller | `src/wpp-messages/wpp-messages.controller.ts` |
 | DTOs | `src/wpp-messages/dto/send-message.dto.ts` · `src/wpp-messages/dto/mark-as-read.dto.ts` |
+| Impl | [`docs/implementation/2026-11-25-send-messaging-account-id.md`](../implementation/2026-11-25-send-messaging-account-id.md) — `messaging_account_id` aceito no envio |
 
 ## wpp-templates
 

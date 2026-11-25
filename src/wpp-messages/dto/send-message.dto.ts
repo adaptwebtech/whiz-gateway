@@ -79,6 +79,17 @@ export class SendMessageDto {
   @IsObject()
   context?: Record<string, unknown>;
 
+  // ── Conta de mensagens (modelo de contas novo da Meta) ───────────────────────
+
+  @ApiPropertyOptional({
+    description:
+      'Messaging account (WABA) que paga o envio. Necessário quando o token alcança mais de uma conta, ou quando a conta padrão do número não é a do remetente — sem ele a Meta usa a conta padrão e pode responder #10 "Viewer cannot access the provided Paid Message Account". Repassado íntegro.',
+    example: '1866004451221378',
+  })
+  @IsOptional()
+  @IsString()
+  messaging_account_id?: string;
+
   // ── Objetos de tipo de mensagem (passados íntegros à Meta) ───────────────────
 
   @ApiPropertyOptional({
