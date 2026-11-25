@@ -689,6 +689,48 @@ describe('WppMessagesController — integração', () => {
       );
     });
 
+    // ── AC-26: messaging_account_id (modelo de contas novo da Meta) ─────────────
+
+    it('AC-26: dado X-API-KEY válida, quando POST com messaging_account_id, então 200 e o campo segue íntegro para a Meta', async () => {
+      const body = {
+        messaging_product: 'whatsapp',
+        to: '5511999998888',
+        type: 'text',
+        text: { body: 'oi' },
+        messaging_account_id: '1866004451221378',
+      };
+
+      await request(app.getHttpServer())
+        .post('/wpp/123/messages')
+        .send(body)
+        .expect(200);
+
+      expect(mockWppService.forward).toHaveBeenCalledWith(
+        'POST',
+        '123/messages',
+        {
+          body: expect.objectContaining({
+            messaging_account_id: '1866004451221378',
+          }),
+        },
+      );
+    });
+
+    it('AC-26: dado X-API-KEY válida, quando POST com messaging_account_id não-string, então 400 e forward não chamado', async () => {
+      await request(app.getHttpServer())
+        .post('/wpp/123/messages')
+        .send({
+          messaging_product: 'whatsapp',
+          to: '5511999998888',
+          type: 'text',
+          text: { body: 'oi' },
+          messaging_account_id: { id: 1 },
+        })
+        .expect(400);
+
+      expect(mockWppService.forward).not.toHaveBeenCalled();
+    });
+
     // ── AC-20: validação local ──────────────────────────────────────────────────
 
     it('AC-20: dado X-API-KEY válida, quando POST sem messaging_product, então 400 e forward não chamado', async () => {
